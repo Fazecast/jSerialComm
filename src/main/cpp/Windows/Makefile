@@ -8,6 +8,7 @@ LIBRARIES		= Advapi32.lib
 DELETE			= @del /q /f
 RMDIR			= @rmdir /q /s
 MKDIR			= @mkdir
+COPY			= @copy /y
 MOVE			= @move /y
 PRINT			= @echo
 FULL_CLASS		= com.fazecast.jSerialComm.SerialPort
@@ -17,7 +18,8 @@ JFLAGS 			= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	= jSerialComm.dll
 SOURCES			= SerialPort_Windows.cpp
 JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
-RESOURCE_DIR	= ../../../../src/main/resources/Windows
+RESOURCE_DIR1	= ../../../../src/main/resources/Windows
+RESOURCE_DIR2	= ../../../../src/test/resources/Windows
 BUILD_DIR		= ../../../../bin/Windows
 JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
 OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.cpp=.o)
@@ -39,20 +41,22 @@ all :
 	$(PRINT).
 	$(PRINT) Example: To build 64-bit Windows libraries, you would call:
 	$(PRINT)     C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/vcvarsall.bat x64
-	$(PRINT)     make (or mingw32-make)
+	$(PRINT)     mingw32-make
 	$(PRINT).
 
 # Builds 32-bit Windows libraries
 win32 : checkdirs $(BUILD_DIR)/x86/$(LIBRARY_NAME)
 	$(DELETE) "$(BUILD_DIR)"\\x86\\*.o
-	$(MOVE) "$(BUILD_DIR)"\\x86\\*.* "$(RESOURCE_DIR)"\\x86
+	$(COPY) "$(BUILD_DIR)"\\x86\\*.* "$(RESOURCE_DIR1)"\\x86
+	$(MOVE) "$(BUILD_DIR)"\\x86\\*.* "$(RESOURCE_DIR2)"\\x86
 	$(DELETE) ".."\\*.h
 	$(RMDIR) "$(BUILD_DIR)/.."
 
 # Builds 64-bit Windows libraries
 win64 : checkdirs $(BUILD_DIR)/x86_64/$(LIBRARY_NAME)
 	$(DELETE) "$(BUILD_DIR)"\\x86_64\\*.o
-	$(MOVE) "$(BUILD_DIR)"\\x86_64\\*.* "$(RESOURCE_DIR)"\\x86_64
+	$(COPY) "$(BUILD_DIR)"\\x86_64\\*.* "$(RESOURCE_DIR1)"\\x86_64
+	$(MOVE) "$(BUILD_DIR)"\\x86_64\\*.* "$(RESOURCE_DIR2)"\\x86_64
 	$(DELETE) ".."\\*.h
 	$(RMDIR) "$(BUILD_DIR)/.."
 

@@ -10,18 +10,23 @@ version = '1.0.0'
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 //compileJava.options.bootClasspath = "C:/Program Files/Java/jre6/lib/rt.jar"
-compileTestJava {
-}
-processTestResources {
-}
-testClasses {
-}
-test {
-}
 
 jar {
   manifest {
     attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
+	           'Implementation-Version': version,
+               'Implementation-Vendor': 'Fazecast, Inc.',
+               'Sealed': 'true'
+  }
+}
+
+task testJar(type: Jar) {
+  classifier = 'test'
+  from sourceSets.test.output, sourceSets.main.output
+  
+  manifest {
+    attributes 'Main-Class': 'com.fazecast.jSerialComm.SerialPortTest', 
+               'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
 	           'Implementation-Version': version,
                'Implementation-Vendor': 'Fazecast, Inc.',
                'Sealed': 'true'
@@ -39,7 +44,7 @@ task sourcesJar(type: Jar) {
 }
 
 artifacts {
-  archives jar, javadocJar, sourcesJar
+  archives jar, javadocJar, sourcesJar, testJar
 }
 
 signing {

@@ -161,16 +161,35 @@ public class SerialPort
 	 *
 	 * @return Whether the port was successfully opened.
 	 */
-	public final native boolean openPort();
+	public final boolean openPort()
+	{
+		try { Thread.sleep(500); } catch (Exception e) {}
+		if (!isOpened && openPortNative())
+		{
+			inputStream = new SerialPortInputStream();
+			outputStream = new SerialPortOutputStream();
+		}
+		return isOpened;
+	}
 	
 	/**
 	 * Closes this serial port.
 	 *
 	 * @return Whether the port was successfully closed.
 	 */
-	public final native boolean closePort();
+	public final boolean closePort()
+	{
+		if (isOpened && closePortNative())
+		{
+			inputStream = null;
+			outputStream = null;
+		}
+		return !isOpened;
+	}
 	
 	// Serial Port Setup Methods
+	private final native boolean openPortNative();
+	private final native boolean closePortNative();
 	private final native boolean configPort();							// Changes/sets serial port parameters as defined by this class
 	private final native boolean configFlowControl();					// Changes/sets flow control parameters as defined by this class
 	private final native boolean configTimeouts();						// Changes/sets serial port timeouts as defined by this class
@@ -179,7 +198,7 @@ public class SerialPort
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
 	 * after this method returns.
 	 * 
-	 * @return The number of bytes currently available to be read.
+	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
 	public final native int bytesAvailable();
 	
@@ -226,12 +245,7 @@ public class SerialPort
 	 * @return An {@link java.io.InputStream} object associated with this serial port.
 	 * @see java.io.InputStream
 	 */
-	public final InputStream getInputStream()
-	{
-		if ((inputStream == null) && isOpened)
-			inputStream = new SerialPortInputStream();
-		return inputStream;
-	}
+	public final InputStream getInputStream() { return inputStream; }
 	
 	/**
 	 * Returns an {@link java.io.OutputStream} object associated with this serial port.
@@ -243,12 +257,7 @@ public class SerialPort
 	 * @return An {@link java.io.OutputStream} object associated with this serial port.
 	 * @see java.io.OutputStream
 	 */
-	public final OutputStream getOutputStream()
-	{
-		if ((outputStream == null) && isOpened)
-			outputStream = new SerialPortOutputStream();
-		return outputStream;
-	}
+	public final OutputStream getOutputStream() { return outputStream; }
 	
 	/**
 	 * Sets all serial port parameters at one time.
@@ -279,11 +288,15 @@ public class SerialPort
 	 */
 	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity)
 	{
-		baudRate = newBaudRate;
-		dataBits = newDataBits;
-		stopBits = newStopBits;
-		parity = newParity;
-		configPort();
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			baudRate = newBaudRate;
+			dataBits = newDataBits;
+			stopBits = newStopBits;
+			parity = newParity;
+			configPort();
+		}
 	}
 	
 	/**
@@ -310,7 +323,7 @@ public class SerialPort
 	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds of inactivity have elapsed or at least 1 byte of data can be written or read.
 	 * <p>
 	 * The {@link #TIMEOUT_READ_BLOCKING} or {@link #TIMEOUT_WRITE_BLOCKING} modes specify that the corresponding call will block until either
-	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds of inactivity have elapsed or the total number of requested bytes can be written or 
+	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds have elapsed since the start of the call or the total number of requested bytes can be written or 
 	 * returned.
 	 * <p>
 	 * A value of 0 for either <i>newReadTimeout</i> or <i>newWriteTimeout</i> indicates that a {@link #readBytes(byte[],long)} or 
@@ -322,10 +335,14 @@ public class SerialPort
 	 */
 	public final void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
-		timeoutMode = newTimeoutMode;
-		readTimeout = newReadTimeout;
-		writeTimeout = newWriteTimeout;
-		configTimeouts();
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			timeoutMode = newTimeoutMode;
+			readTimeout = newReadTimeout;
+			writeTimeout = newWriteTimeout;
+			configTimeouts();
+		}
 	}
 	
 	/**
@@ -335,7 +352,15 @@ public class SerialPort
 	 * 
 	 * @param newBaudRate The desired baud rate for this serial port.
 	 */
-	public final void setBaudRate(int newBaudRate) { baudRate = newBaudRate; configPort(); }
+	public final void setBaudRate(int newBaudRate)
+	{
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			baudRate = newBaudRate;
+			configPort();
+		}
+	}
 	
 	/**
 	 * Sets the desired number of data bits per word.
@@ -344,7 +369,15 @@ public class SerialPort
 	 * 
 	 * @param newDataBits The desired number of data bits per word.
 	 */
-	public final void setNumDataBits(int newDataBits) { dataBits = newDataBits; configPort(); }
+	public final void setNumDataBits(int newDataBits)
+	{
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			dataBits = newDataBits;
+			configPort();
+		}
+	}
 	
 	/**
 	 * Sets the desired number of stop bits per word.
@@ -359,7 +392,15 @@ public class SerialPort
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
 	 */
-	public final void setNumStopBits(int newStopBits) { stopBits = newStopBits; configPort(); }
+	public final void setNumStopBits(int newStopBits)
+	{
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			stopBits = newStopBits;
+			configPort();
+		}
+	}
 	
 	/**
 	 * Specifies what kind of flow control to enable for this serial port.
@@ -389,7 +430,15 @@ public class SerialPort
 	 * @see #FLOW_CONTROL_XONXOFF_IN_ENABLED
 	 * @see #FLOW_CONTROL_XONXOFF_OUT_ENABLED
 	 */
-	public final void setFlowControl(int newFlowControlSettings) { flowControl = newFlowControlSettings; configFlowControl(); }
+	public final void setFlowControl(int newFlowControlSettings)
+	{
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			flowControl = newFlowControlSettings;
+			configFlowControl();
+		}
+	}
 	
 	/**
 	 * Sets the desired parity error-detection scheme to be used.
@@ -404,7 +453,15 @@ public class SerialPort
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final void setParity(int newParity) { parity = newParity; configPort(); }
+	public final void setParity(int newParity)
+	{
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			parity = newParity;
+			configPort();
+		}
+	}
 	
 	/**
 	 * Gets a descriptive string representing this serial port or the device connected to it.
@@ -618,100 +675,5 @@ public class SerialPort
 			if (writeBytes(buffer, len) < 0)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
-	}
-	
-	static public void main(String[] args)
-	{
-		SerialPort[] ports = SerialPort.getCommPorts();
-		System.out.println("\nPorts:\n");
-		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
-		SerialPort ubxPort = ports[1];
-		
-		byte[] readBuffer = new byte[2048];
-		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());
-		System.out.println("Setting read timeout mode to non-blocking");
-		ubxPort.setComPortTimeouts(TIMEOUT_NONBLOCKING, 1000, 0);
-		InputStream in = ubxPort.getInputStream();
-		try
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				System.out.println("\nReading #" + i);
-				System.out.println("Available: " + ubxPort.bytesAvailable());
-				int numRead = ubxPort.readBytes(readBuffer, readBuffer.length);
-				System.out.println("Read " + numRead + " bytes.");
-			}
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\nSetting read timeout mode to semi-blocking with a timeout of 200ms");
-		ubxPort.setComPortTimeouts(TIMEOUT_READ_SEMI_BLOCKING, 200, 0);
-		in = ubxPort.getInputStream();
-		try
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				System.out.println("\nReading #" + i);
-				System.out.println("Available: " + ubxPort.bytesAvailable());
-				int numRead = ubxPort.readBytes(readBuffer, readBuffer.length);
-				System.out.println("Read " + numRead + " bytes.");
-			}
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\nSetting read timeout mode to semi-blocking with no timeout");
-		ubxPort.setComPortTimeouts(TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
-		in = ubxPort.getInputStream();
-		try
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				System.out.println("\nReading #" + i);
-				System.out.println("Available: " + ubxPort.bytesAvailable());
-				int numRead = ubxPort.readBytes(readBuffer, readBuffer.length);
-				System.out.println("Read " + numRead + " bytes.");
-			}
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\nSetting read timeout mode to blocking with a timeout of 100ms");
-		ubxPort.setComPortTimeouts(TIMEOUT_READ_BLOCKING, 100, 0);
-		in = ubxPort.getInputStream();
-		try
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				System.out.println("\nReading #" + i);
-				System.out.println("Available: " + ubxPort.bytesAvailable());
-				int numRead = ubxPort.readBytes(readBuffer, readBuffer.length);
-				System.out.println("Read " + numRead + " bytes.");
-			}
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\nSetting read timeout mode to blocking with no timeout");
-		ubxPort.setComPortTimeouts(TIMEOUT_READ_BLOCKING, 0, 0);
-		in = ubxPort.getInputStream();
-		try
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				System.out.println("\nReading #" + i);
-				System.out.println("Available: " + ubxPort.bytesAvailable());
-				int numRead = ubxPort.readBytes(readBuffer, readBuffer.length);
-				System.out.println("Read " + numRead + " bytes.");
-			}
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
-		try { Thread.sleep(1000); } catch (InterruptedException e1) { e1.printStackTrace(); }
-		System.out.println("Reopening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort() + "\n");
-		ubxPort.setComPortTimeouts(TIMEOUT_READ_BLOCKING, 1000, 0);
-		in = ubxPort.getInputStream();
-		try
-		{
-			for (int j = 0; j < 1000; ++j)
-				System.out.print((char)in.read());
-			in.close();
-		} catch (Exception e) { e.printStackTrace(); }
-		
-		System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 	}
 }

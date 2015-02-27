@@ -1,20 +1,31 @@
+-------------
+ ALL SYSTEMS
+-------------
+
+Make sure proper JDK version installed for backward compatibility, targeting Java 1.6 (JDK 1.6)
+
+On any OS, make sure JDK_HOME is set
+
+
+------------
+ LINUX/UNIX
+------------
+
 g++ make glibc-devel.x86_64 glibc-devel.i686 libstdc++-devel.x86_64 libstdc++-devel.i686
 
 readlink -f /usr/bin/java : export everything up to /jre/... Ex: export JDK_HOME=/usr/lib/jvm/java-1.6.0-openjdk.x86_64
 
 
-Make sure proper JDK version installed for backward compatibility, targeting Java 1.6 (JDK 1.6)
 
+---------
+ WINDOWS
+---------
 
-With necessary information, like for instance
-
-On any OS, make sure JDK_HOME is set
-
-On Windows, first, call C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/vcvarsall.bat" x64 or x86 before building
-
-Etc.
+First, call C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/vcvarsall.bat" x64 or x86 before building
 
 
 
 gradle eclipse
 gradle build
+
+Located in build/lib
