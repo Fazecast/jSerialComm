@@ -1,0 +1,93 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+group = 'com.fazecast.jSerialComm'
+archivesBaseName = 'jSerialComm'
+version = '1.0.0'
+
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
+//compileJava.options.bootClasspath = "C:/Program Files/Java/jre6/lib/rt.jar"
+compileTestJava {
+}
+processTestResources {
+}
+testClasses {
+}
+test {
+}
+
+jar {
+  manifest {
+    attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
+	           'Implementation-Version': version,
+               'Implementation-Vendor': 'Fazecast, Inc.',
+               'Sealed': 'true'
+  }
+}
+
+task javadocJar(type: Jar) {
+  classifier = 'javadoc'
+  from javadoc
+}
+
+task sourcesJar(type: Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+  archives jar, javadocJar, sourcesJar
+}
+
+signing {
+  sign configurations.archives
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+        authentication(userName: ossrhUsername, password: ossrhPassword)
+      }
+
+      pom.project {
+        name 'jSerialComm'
+		artifactId 'jSerialComm'
+        packaging 'jar'
+		version version
+        description 'A platform-independent serial communications library for Java.'
+        url 'http://fazecast.github.io/jSerialComm/'
+
+        scm {
+          connection 'scm:git:https://github.com/Fazecast/jSerialComm.git'
+          developerConnection 'scm:git:https://github.com/Fazecast/jSerialComm.git'
+          url 'https://github.com/Fazecast/jSerialComm'
+        }
+
+        licenses {
+          license {
+            name 'GNU Lesser GPL, Version 3'
+            url 'http://www.gnu.org/licenses/lgpl.html'
+          }
+        }
+
+        developers {
+          developer {
+            id 'hedgecrw85'
+            name 'Will Hedgecock'
+            email 'will.hedgecock@fazecast.com'
+          }
+        }
+      }
+    }
+  }
+}

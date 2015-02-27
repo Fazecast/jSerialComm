@@ -1,0 +1,86 @@
+## Windows specific library variables
+COMPILE			= cl
+LINK			= link
+CFLAGS			= /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TP
+LDFLAGS			= /DLL /LTCG /NOASSEMBLY /NOLOGO
+INCLUDES		= /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32"
+LIBRARIES		= Advapi32.lib
+DELETE			= @del /q /f
+RMDIR			= @rmdir /q /s
+MKDIR			= @mkdir
+MOVE			= @move /y
+PRINT			= @echo
+FULL_CLASS		= com.fazecast.jSerialComm.SerialPort
+JAVAC			= "$(JDK_HOME)/bin/javac"
+JAVAH			= "$(JDK_HOME)/bin/javah" -jni
+JFLAGS 			= -source 1.6 -target 1.6 -Xlint:-options
+LIBRARY_NAME	= jSerialComm.dll
+SOURCES			= SerialPort_Windows.cpp
+JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
+RESOURCE_DIR	= ../../../../src/main/resources/Windows
+BUILD_DIR		= ../../../../bin/Windows
+JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
+OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.cpp=.o)
+OBJECTSx86_64	= $(BUILD_DIR)/x86_64/$(SOURCES:.cpp=.o)
+JNI_HEADER		= ../com_fazecast_jSerialComm_SerialPort.h
+JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
+
+# Define phony and suffix rules
+.PHONY: all win32 win64 checkdirs clean
+.SUFFIXES:
+.SUFFIXES: .cpp .o .class .java .h
+
+# Default build target not possible due to different architecture compilers
+all :
+	$(PRINT).
+	$(PRINT) Must specify a target (either win32 or win64), but not both at the same time since different versions of the Microsoft Compiler are required for difference architectures.
+	$(PRINT). 
+	$(PRINT) NOTE: Before attempting to use this Makefile, make sure that you have called 'vcvarsall.bat' for your intended architecture. This file can normally be found in "C:/Program Files (x86)/Microsoft Visual Studio [version]/VC/".
+	$(PRINT).
+	$(PRINT) Example: To build 64-bit Windows libraries, you would call:
+	$(PRINT)     C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/vcvarsall.bat x64
+	$(PRINT)     make (or mingw32-make)
+	$(PRINT).
+
+# Builds 32-bit Windows libraries
+win32 : checkdirs $(BUILD_DIR)/x86/$(LIBRARY_NAME)
+	$(DELETE) "$(BUILD_DIR)"\\x86\\*.o
+	$(MOVE) "$(BUILD_DIR)"\\x86\\*.* "$(RESOURCE_DIR)"\\x86
+	$(DELETE) ".."\\*.h
+	$(RMDIR) "$(BUILD_DIR)/.."
+
+# Builds 64-bit Windows libraries
+win64 : checkdirs $(BUILD_DIR)/x86_64/$(LIBRARY_NAME)
+	$(DELETE) "$(BUILD_DIR)"\\x86_64\\*.o
+	$(MOVE) "$(BUILD_DIR)"\\x86_64\\*.* "$(RESOURCE_DIR)"\\x86_64
+	$(DELETE) ".."\\*.h
+	$(RMDIR) "$(BUILD_DIR)/.."
+
+# Rule to create build directories
+checkdirs : $(BUILD_DIR)/x86 $(BUILD_DIR)/x86_64
+$(BUILD_DIR)/x86 :
+	$(MKDIR) "$@"
+$(BUILD_DIR)/x86_64 :
+	$(MKDIR) "$@"
+
+# Rule to build 32-bit library
+$(BUILD_DIR)/x86/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
+	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
+
+# Rule to build 64-bit library
+$(BUILD_DIR)/x86_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
+	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
+	
+# Suffix rules to get from *.cpp -> *.o
+$(BUILD_DIR)/x86/%.o : %.cpp
+	$(COMPILE) $(CFLAGS) $(INCLUDES) $< -Fo$@
+$(BUILD_DIR)/x86_64/%.o : %.cpp
+	$(COMPILE) $(CFLAGS) $(INCLUDES) $< -Fo$@
+
+# Rule to build JNI header file
+$(JNI_HEADER) : $(JAVA_CLASS)
+	$(JAVAH) -d .. -classpath $(JAVA_CLASS_DIR)/../../.. $(FULL_CLASS)
+
+# Suffix rule to get from *.java -> *.class
+$(JAVA_CLASS) :
+	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java
