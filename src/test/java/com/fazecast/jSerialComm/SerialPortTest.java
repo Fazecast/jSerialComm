@@ -107,7 +107,25 @@ public class SerialPortTest
 				System.out.println("Read " + numRead + " bytes.");
 			}
 		} catch (Exception e) { e.printStackTrace(); }
+		System.out.println("\nSwitching over to event-based reading");
+		ubxPort.addDataListener(new SerialPortPacketListener() {
+			@Override
+			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
+			@Override
+			public void serialEvent(SerialPortEvent event)
+			{
+				byte[] newData = event.getReceivedData();
+				System.out.println("Received data of size: " + newData.length);
+				for (int i = 0; i < newData.length; ++i)
+					System.out.print((char)newData[i]);
+				System.out.println("\n");
+			}
+			@Override
+			public int getPacketSize() { return 100; }
+		});
+		try { Thread.sleep(5000); } catch (Exception e) {}
 		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+		ubxPort.removeDataListener();
 		try { Thread.sleep(1000); } catch (InterruptedException e1) { e1.printStackTrace(); }
 		System.out.println("Reopening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort() + "\n");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 1000, 0);

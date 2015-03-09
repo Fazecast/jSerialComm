@@ -17,8 +17,7 @@ JFLAGS 			:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	:= libjSerialComm.jnilib
 SOURCES			:= SerialPort_OSX.cpp
 JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
-RESOURCE_DIR1	= ../../../../src/main/resources/OSX
-RESOURCE_DIR2	= ../../../../src/test/resources/OSX
+RESOURCE_DIR	= ../../../../src/main/resources/OSX
 BUILD_DIR		= ../../../../bin/OSX
 JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
 OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.cpp=.o)
@@ -40,15 +39,13 @@ all : osx32 osx64
 osx32 : ARCH = -m32
 osx32 : checkdirs $(BUILD_DIR)/x86/$(LIBRARY_NAME)
 	$(DELETE) -rf $(BUILD_DIR)/x86/*.o
-	$(COPY) $(BUILD_DIR)/x86/*.* $(RESOURCE_DIR1)/x86
-	$(MOVE) $(BUILD_DIR)/x86/*.* $(RESOURCE_DIR2)/x86
+	$(COPY) $(BUILD_DIR)/x86/*.* $(RESOURCE_DIR)/x86
 
 # Builds 64-bit OSX libraries
 osx64 : ARCH = -m64
 osx64 : checkdirs $(BUILD_DIR)/x86_64/$(LIBRARY_NAME)
 	$(DELETE) -rf $(BUILD_DIR)/x86_64/*.o
-	$(COPY) $(BUILD_DIR)/x86_64/*.* $(RESOURCE_DIR1)/x86_64
-	$(MOVE) $(BUILD_DIR)/x86_64/*.* $(RESOURCE_DIR2)/x86_64
+	$(COPY) $(BUILD_DIR)/x86_64/*.* $(RESOURCE_DIR)/x86_64
 
 # Rule to create build directories
 checkdirs : $(BUILD_DIR)/x86 $(BUILD_DIR)/x86_64 $(JAVA_CLASS_DIR)
@@ -79,4 +76,4 @@ $(JNI_HEADER) : $(JAVA_CLASS)
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :
-	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java
+	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java

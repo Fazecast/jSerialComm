@@ -9,6 +9,7 @@ version = '1.0.0'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
+javadoc.options.links("http://docs.oracle.com/javase/7/docs/api/")
 //compileJava.options.bootClasspath = "C:/Program Files/Java/jre6/lib/rt.jar"
 
 jar {

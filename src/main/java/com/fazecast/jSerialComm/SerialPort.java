@@ -39,7 +39,7 @@ import java.io.OutputStream;
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
-public class SerialPort
+public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
 	static
@@ -145,11 +145,18 @@ public class SerialPort
 	static final public int TIMEOUT_READ_BLOCKING = 0x00000100;
 	static final public int TIMEOUT_WRITE_BLOCKING = 0x00001000;
 	
+	// Serial Port Listening Events
+	static final public int LISTENING_EVENT_DATA_AVAILABLE = 0x00000001;
+	static final public int LISTENING_EVENT_DATA_RECEIVED = 0x00000010;
+	static final public int LISTENING_EVENT_DATA_WRITTEN = 0x00000100;
+	
 	// Serial Port Parameters
-	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY;
+	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile SerialPortInputStream inputStream = null;
 	private volatile SerialPortOutputStream outputStream = null;
+	private volatile SerialPortDataListener userDataListener = null;
+	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String portString, comPort;
 	private volatile long portHandle = -1l;
 	private volatile boolean isOpened = false;
@@ -168,6 +175,8 @@ public class SerialPort
 		{
 			inputStream = new SerialPortInputStream();
 			outputStream = new SerialPortOutputStream();
+			if (serialEventListener != null)
+				serialEventListener.startListening();
 		}
 		return isOpened;
 	}
@@ -181,6 +190,8 @@ public class SerialPort
 	{
 		if (isOpened && closePortNative())
 		{
+			if (serialEventListener != null)
+				serialEventListener.stopListening();
 			inputStream = null;
 			outputStream = null;
 		}
@@ -188,11 +199,13 @@ public class SerialPort
 	}
 	
 	// Serial Port Setup Methods
-	private final native boolean openPortNative();
-	private final native boolean closePortNative();
-	private final native boolean configPort();							// Changes/sets serial port parameters as defined by this class
-	private final native boolean configFlowControl();					// Changes/sets flow control parameters as defined by this class
-	private final native boolean configTimeouts();						// Changes/sets serial port timeouts as defined by this class
+	private final native boolean openPortNative();			// Opens serial port
+	private final native boolean closePortNative();			// Closes serial port
+	private final native boolean configPort();				// Changes/sets serial port parameters as defined by this class
+	private final native boolean configFlowControl();		// Changes/sets flow control parameters as defined by this class
+	private final native boolean configTimeouts();			// Changes/sets serial port timeouts as defined by this class
+	private final native boolean configEventFlags();		// Changes/sets which serial events to listen for as defined by this class
+	private final native int waitForEvent();				// Waits for serial event to occur as specified in eventFlags
 	
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
@@ -234,6 +247,64 @@ public class SerialPort
 	
 	// Default Constructor
 	public SerialPort() {}
+	
+	/**
+	 * Adds a {@link SerialPortDataListener} to the serial port interface.
+	 * <p>
+	 * Calling this function enables event-based serial port callbacks to be used instead of, or in addition to, direct serial port read/write calls or the {@link java.io.InputStream}/{@link java.io.OutputStream} interface.
+	 * <p>
+	 * The parameter passed into this method must be an implementation of either the {@link SerialPortDataListener} or the {@link SerialPortPacketListener}.
+	 * The {@link SerialPortPacketListener} interface <b>must</b> be used if you plan to use event-based reading of <i>full</i> data packets over the serial port.
+	 * Otherwise, the simpler {@link SerialPortDataListener} may be used.
+	 * <p>
+	 * Only one listener can be registered at a time; however, that listener can be used to detect multiple types of serial port events.
+	 * Refer to {@link SerialPortDataListener} and {@link SerialPortPacketListener} for more information.
+	 * 
+	 * @param listener A {@link SerialPortDataListener} or {@link SerialPortPacketListener}implementation to be used for event-based serial port communications.
+	 * @return Whether the listener was successfully registered with the serial port.
+	 * @see SerialPortDataListener
+	 * @see SerialPortPacketListener
+	 */
+	public final boolean addDataListener(SerialPortDataListener listener)
+	{
+		if (userDataListener != null)
+			return false;
+		userDataListener = listener;
+		serialEventListener = new SerialPortEventListener((userDataListener instanceof SerialPortPacketListener) ?
+				((SerialPortPacketListener)userDataListener).getPacketSize() : 0);
+		
+		eventFlags = 0;
+		if ((listener.getListeningEvents() & LISTENING_EVENT_DATA_AVAILABLE) > 0)
+			eventFlags |= LISTENING_EVENT_DATA_AVAILABLE;
+		if ((listener.getListeningEvents() & LISTENING_EVENT_DATA_RECEIVED) > 0)
+			eventFlags |= LISTENING_EVENT_DATA_RECEIVED;
+		if ((listener.getListeningEvents() & LISTENING_EVENT_DATA_WRITTEN) > 0)
+			eventFlags |= LISTENING_EVENT_DATA_WRITTEN;
+		
+		if (isOpened)
+		{
+			configEventFlags();
+			serialEventListener.startListening();
+		}
+		return true;
+	}
+	
+	/**
+	 * Removes the associated {@link SerialPortDataListener} from the serial port interface.
+	 */
+	public final void removeDataListener()
+	{
+		if (serialEventListener != null)
+		{
+			serialEventListener.stopListening();
+			serialEventListener = null;
+		}
+		userDataListener = null;
+		
+		eventFlags = 0;
+		if (isOpened)
+			configEventFlags();
+	}
 	
 	/**
 	 * Returns an {@link java.io.InputStream} object associated with this serial port.
@@ -288,13 +359,14 @@ public class SerialPort
 	 */
 	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity)
 	{
+		baudRate = newBaudRate;
+		dataBits = newDataBits;
+		stopBits = newStopBits;
+		parity = newParity;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			baudRate = newBaudRate;
-			dataBits = newDataBits;
-			stopBits = newStopBits;
-			parity = newParity;
 			configPort();
 		}
 	}
@@ -335,12 +407,13 @@ public class SerialPort
 	 */
 	public final void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
+		timeoutMode = newTimeoutMode;
+		readTimeout = newReadTimeout;
+		writeTimeout = newWriteTimeout;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			timeoutMode = newTimeoutMode;
-			readTimeout = newReadTimeout;
-			writeTimeout = newWriteTimeout;
 			configTimeouts();
 		}
 	}
@@ -354,10 +427,11 @@ public class SerialPort
 	 */
 	public final void setBaudRate(int newBaudRate)
 	{
+		baudRate = newBaudRate;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			baudRate = newBaudRate;
 			configPort();
 		}
 	}
@@ -371,10 +445,11 @@ public class SerialPort
 	 */
 	public final void setNumDataBits(int newDataBits)
 	{
+		dataBits = newDataBits;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			dataBits = newDataBits;
 			configPort();
 		}
 	}
@@ -394,10 +469,11 @@ public class SerialPort
 	 */
 	public final void setNumStopBits(int newStopBits)
 	{
+		stopBits = newStopBits;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			stopBits = newStopBits;
 			configPort();
 		}
 	}
@@ -432,10 +508,11 @@ public class SerialPort
 	 */
 	public final void setFlowControl(int newFlowControlSettings)
 	{
+		flowControl = newFlowControlSettings;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			flowControl = newFlowControlSettings;
 			configFlowControl();
 		}
 	}
@@ -455,10 +532,11 @@ public class SerialPort
 	 */
 	public final void setParity(int newParity)
 	{
+		parity = newParity;
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			parity = newParity;
 			configPort();
 		}
 	}
@@ -571,6 +649,84 @@ public class SerialPort
 	 * @see #FLOW_CONTROL_XONXOFF_OUT_ENABLED
 	 */
 	public final int getFlowControlSettings() { return flowControl; }
+	
+	// Private EventListener class
+	private final class SerialPortEventListener
+	{
+		private volatile boolean isListening = false;
+		private final byte[] dataPacket;
+		private volatile int dataPacketIndex = 0;
+		
+		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; }
+		
+		public final void startListening()
+		{
+			if (isListening)
+				return;
+			isListening = true;
+			
+			new Thread(new Runnable() {
+				@Override
+				public void run()
+				{
+					while (isListening && isOpened)
+						waitForSerialEvent();
+					isListening = false;
+				}
+			}).start();
+		}
+		
+		public final void stopListening()
+		{
+			if (!isListening)
+				return;
+			isListening = false;
+		}
+		
+		public final void waitForSerialEvent()
+		{
+			switch (waitForEvent())
+			{
+				case LISTENING_EVENT_DATA_AVAILABLE:
+				{
+					if ((eventFlags & LISTENING_EVENT_DATA_RECEIVED) > 0)
+					{
+						// Read data from serial port
+						int numBytesAvailable, bytesRemaining, newBytesIndex;
+						while ((numBytesAvailable = bytesAvailable()) > 0)
+						{
+							byte[] newBytes = new byte[numBytesAvailable];
+							newBytesIndex = 0;
+							bytesRemaining = readBytes(newBytes, newBytes.length);
+							while (bytesRemaining >= (dataPacket.length - dataPacketIndex))
+							{
+								System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, dataPacket.length - dataPacketIndex);
+								bytesRemaining -= (dataPacket.length - dataPacketIndex);
+								newBytesIndex += (dataPacket.length - dataPacketIndex);
+								dataPacketIndex = 0;
+								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, dataPacket.clone()));
+							}
+							if (bytesRemaining > 0)
+							{
+								System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, bytesRemaining);
+								dataPacketIndex += bytesRemaining;
+							}
+						}
+					}
+					else if ((eventFlags & LISTENING_EVENT_DATA_AVAILABLE) > 0)
+						userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_AVAILABLE));
+					break;
+				}
+				case LISTENING_EVENT_DATA_WRITTEN:
+				{
+					userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_WRITTEN));
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
 	
 	// InputStream interface class
 	private final class SerialPortInputStream extends InputStream

@@ -1,2 +1,9 @@
-# jSerialComm
-Platform-independent serial port access for Java
+------------------------------------------------------------
+ jSerialComm
+ ------------
+ A platform-independent serial port access library for Java
+------------------------------------------------------------
+
+For building and/or installation instructions, please refer to the INSTALL file
+
+For usage examples, please refer to the Usage Wiki at https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples
