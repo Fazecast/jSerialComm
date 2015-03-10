@@ -19,7 +19,7 @@ You can then Import the project using the "Existing Project into Workspace" impo
  LINUX/UNIX
 ------------
 
-Ensure that the following tools are installed on your Linux distribution:  g++ make glibc-devel.x86_64 glibc-devel.i686 libstdc++-devel.x86_64 libstdc++-devel.i686
+Ensure that the following tools are installed on your Linux distribution:  g++ make glibc-devel.x86_64 glibc-devel.i686 libstdc++-devel.x86_64 libstdc++-devel.i686 (on some distros, these may be called multilib tools for gcc and binutils)
 
 Ensure that the JDK_HOME environment variable has been set for the 1.6 version of your Java SDK.  The correct directory can usually be found by entering the following command:  readlink -f /usr/bin/java
 Export the result of this command UP TO BUT NOT INCLUDING the /jre/... portion using the 'export' command.  For example, if 'readlink' produced "/usr/lib/jvm/java-6-jdk/jre/bin/java" as an output, the export command would look like:  export JDK_HOME=/usr/lib/jvm/java-6-jdk

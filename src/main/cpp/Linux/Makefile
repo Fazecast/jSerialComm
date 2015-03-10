@@ -15,13 +15,12 @@ JAVAC			:= "$(JDK_HOME)/bin/javac"
 JAVAH			:= "$(JDK_HOME)/bin/javah" -jni
 JFLAGS 			:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	:= libjSerialComm.so
-SOURCES			:= SerialPort_Linux.cpp
 JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
 RESOURCE_DIR	= ../../../../src/main/resources/Linux
 BUILD_DIR		= ../../../../bin/Linux
 JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
-OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.cpp=.o)
-OBJECTSx86_64	= $(BUILD_DIR)/x86_64/$(SOURCES:.cpp=.o)
+OBJECTSx86		= $(BUILD_DIR)/x86/SerialPort_Linux.o $(BUILD_DIR)/x86/LinuxHelperFunctions.o
+OBJECTSx86_64	= $(BUILD_DIR)/x86_64/SerialPort_Linux.o $(BUILD_DIR)/x86_64/LinuxHelperFunctions.o
 JNI_HEADER		= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 
