@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 27, 2015
+ *  Last Updated on:  Mar 12, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -34,8 +34,8 @@ import java.io.OutputStream;
 /**
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
- * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 1.0
+ * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
+ * @version 1.0.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -753,6 +753,7 @@ public final class SerialPort
 				bytesRead = readBytes(buffer, 1l);
 				if (bytesRead > 0)
 					return ((int)buffer[0] & 0x000000FF);
+				try { Thread.sleep(2); } catch (Exception e) {}
 			}
 			throw new IOException("This port appears to have been shutdown or disconnected.");
 		}

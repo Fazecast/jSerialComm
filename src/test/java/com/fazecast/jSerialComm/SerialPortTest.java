@@ -2,7 +2,7 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Feb 27, 2015
+ *  Last Updated on:  Mar 12, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -37,13 +37,30 @@ import java.io.InputStream;
  */
 public class SerialPortTest
 {
+	private static final class PacketListener implements SerialPortPacketListener
+	{
+		@Override
+		public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
+		@Override
+		public void serialEvent(SerialPortEvent event)
+		{
+			byte[] newData = event.getReceivedData();
+			System.out.println("Received data of size: " + newData.length);
+			for (int i = 0; i < newData.length; ++i)
+				System.out.print((char)newData[i]);
+			System.out.println("\n");
+		}
+		@Override
+		public int getPacketSize() { return 100; }
+	}
+	
 	static public void main(String[] args)
 	{
 		SerialPort[] ports = SerialPort.getCommPorts();
 		System.out.println("\nPorts:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
-		SerialPort ubxPort = ports[0];
+		SerialPort ubxPort = ports[(args.length > 0) ? Integer.parseInt(args[0]) : 0];
 		
 		byte[] readBuffer = new byte[2048];
 		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());
@@ -108,21 +125,24 @@ public class SerialPortTest
 			}
 		} catch (Exception e) { e.printStackTrace(); }
 		System.out.println("\nSwitching over to event-based reading");
-		ubxPort.addDataListener(new SerialPortPacketListener() {
+		System.out.println("\nListening for any amount of data available\n");
+		ubxPort.addDataListener(new SerialPortDataListener() {
 			@Override
-			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
+			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
 			@Override
 			public void serialEvent(SerialPortEvent event)
 			{
-				byte[] newData = event.getReceivedData();
-				System.out.println("Received data of size: " + newData.length);
-				for (int i = 0; i < newData.length; ++i)
-					System.out.print((char)newData[i]);
-				System.out.println("\n");
+				SerialPort comPort = event.getSerialPort();
+				byte[] newData = new byte[comPort.bytesAvailable()];
+				int numRead = comPort.readBytes(newData, newData.length);
+				System.out.println("Read " + numRead + " bytes.");
 			}
-			@Override
-			public int getPacketSize() { return 100; }
 		});
+		try { Thread.sleep(5000); } catch (Exception e) {}
+		ubxPort.removeDataListener();
+		System.out.println("\nNow listening for full 100-byte data packets\n");
+		PacketListener listener = new PacketListener();
+		ubxPort.addDataListener(listener);
 		try { Thread.sleep(5000); } catch (Exception e) {}
 		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 		ubxPort.removeDataListener();
