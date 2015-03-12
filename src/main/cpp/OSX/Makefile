@@ -32,7 +32,7 @@ JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Default build target builds both 32 and 64 bit libraries
 all : osx32 osx64
-	$(DELETE) -rf `readlink -f $(BUILD_DIR)/..`
+	$(DELETE) -rf $(BUILD_DIR)
 	$(DELETE) -rf ../*.h
 
 # Builds 32-bit OSX libraries

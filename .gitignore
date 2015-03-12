@@ -13,6 +13,7 @@ site
 # Gradle Files #
 .gradle
 gradle.properties
+build.gradle.private
 
 # Eclipse Files #
 .settings
