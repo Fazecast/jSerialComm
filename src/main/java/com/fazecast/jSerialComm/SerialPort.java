@@ -764,7 +764,6 @@ public final class SerialPort
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			
 			return read(b, 0, b.length);
-			
 		}
 		
 		@Override

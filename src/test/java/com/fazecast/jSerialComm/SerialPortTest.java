@@ -43,7 +43,7 @@ public class SerialPortTest
 		System.out.println("\nPorts:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
-		SerialPort ubxPort = ports[1];
+		SerialPort ubxPort = ports[0];
 		
 		byte[] readBuffer = new byte[2048];
 		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());
