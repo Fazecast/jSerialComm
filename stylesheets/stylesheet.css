@@ -1,11 +1,4 @@
 /*******************************************************************************
-Slate Theme for GitHub Pages
-by Jason Costello, @jsncostello
-*******************************************************************************/
-
-@import url(pygment_trac.css);
-
-/*******************************************************************************
 MeyerWeb Reset
 *******************************************************************************/
 
@@ -266,7 +259,7 @@ Full-Width Styles
 
 .inner {
   position: relative;
-  max-width: 640px;
+  max-width: 780px;
   padding: 20px 10px;
   margin: 0 auto;
 }
@@ -317,7 +310,7 @@ Full-Width Styles
 
 #downloads {
   position: absolute;
-  width: 210px;
+  width: 303px;
   z-index: 10;
   bottom: -40px;
   right: 0;
@@ -342,6 +335,17 @@ Full-Width Styles
   height:70px;
   text-indent: -5000px;
   overflow: hidden;
+  background: url(../images/sprite_download.png) no-repeat bottom center;
+  margin-left: 10px;
+}
+
+.jar_download_link {
+  display: block;
+  float: right;
+  width: 90px;
+  height:70px;
+  text-indent: -5000px;
+  overflow: hidden;
   background: url(../images/sprite_download.png) no-repeat bottom right;
   margin-left: 10px;
 }
@@ -351,6 +355,10 @@ Full-Width Styles
 }
 
 .tar_download_link:hover {
+  background: url(../images/sprite_download.png) no-repeat top center;
+}
+
+.jar_download_link:hover {
   background: url(../images/sprite_download.png) no-repeat top right;
 }
 
@@ -422,4 +430,38 @@ Small Device Styles
     font-size: 11px;
   }
 
+}
+
+#tabs-nohdr {
+    padding: 0px;
+    background: none;
+    border-width: 0px;
+}
+#tabs-nohdr .ui-tabs-nav {
+    padding-left: 0px;
+	font-size: small;
+    background: transparent;
+    border-width: 0px 0px 1px 0px;
+    -moz-border-radius: 0px;
+    -webkit-border-radius: 0px;
+    border-radius: 0px;
+}
+#tabs-nohdr .ui-tabs-panel {
+    background: #f5f3e5;
+    border-width: 0px 1px 1px 1px;
+}
+#tabs-nohdr pre {
+   background: transparent;
+   padding: 0;
+   overflow: hidden;
+   box-shadow: none;
+  -webkit-box-shadow: none;
+  -moz-box-shadow: none;
+  -o-box-shadow: none;
+  -ms-box-shadow: none;
+}
+#tabs-nohdr code {
+   background: transparent;
+   padding: 0;
+   overflow: hidden;
 }
