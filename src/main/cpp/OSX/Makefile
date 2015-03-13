@@ -11,6 +11,7 @@ COPY			:= @cp
 MOVE			:= @mv
 PRINT			:= @echo
 FULL_CLASS		:= com.fazecast.jSerialComm.SerialPort
+JDK_HOME		= /System/Library/Frameworks/JavaVM.framework/Versions/Current
 JAVAC			:= "$(JDK_HOME)/bin/javac"
 JAVAH			:= "$(JDK_HOME)/bin/javah" -jni
 JFLAGS 			:= -source 1.6 -target 1.6 -Xlint:-options

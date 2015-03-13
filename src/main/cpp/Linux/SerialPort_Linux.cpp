@@ -251,12 +251,10 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	int serialFD = (int)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
 
 	// Initialize the waiting set and the timeouts
-	struct timeval timeout;
+	struct timeval timeout = { 1, 0 };
 	fd_set waitingSet;
 	FD_ZERO(&waitingSet);
 	FD_SET(serialFD, &waitingSet);
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
 
 	// Wait for a serial port event
 	int retVal = select(serialFD + 1, &waitingSet, NULL, NULL, &timeout);
