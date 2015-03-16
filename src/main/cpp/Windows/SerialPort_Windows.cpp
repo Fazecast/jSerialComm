@@ -223,9 +223,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	DCB dcbSerialParams = {0};
 	dcbSerialParams.DCBlength = sizeof(DCB);
 	jclass serialCommClass = env->GetObjectClass(obj);
+	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
 
 	// Get port parameters from Java class
-	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
 	DWORD baudRate = (DWORD)env->GetIntField(obj, env->GetFieldID(serialCommClass, "baudRate", "I"));
 	BYTE byteSize = (BYTE)env->GetIntField(obj, env->GetFieldID(serialCommClass, "dataBits", "I"));
 	int stopBitsInt = env->GetIntField(obj, env->GetFieldID(serialCommClass, "stopBits", "I"));
@@ -257,6 +259,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 	dcbSerialParams.DCBlength = sizeof(DCB);
 	jclass serialCommClass = env->GetObjectClass(obj);
 	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
 
 	// Get flow control parameters from Java class
 	int flowControl = env->GetIntField(obj, env->GetFieldID(serialCommClass, "flowControl", "I"));
@@ -303,6 +307,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	int timeoutMode = env->GetIntField(obj, env->GetFieldID(serialCommClass, "timeoutMode", "I"));
 	DWORD readTimeout = (DWORD)env->GetIntField(obj, env->GetFieldID(serialCommClass, "readTimeout", "I"));
 	DWORD writeTimeout = (DWORD)env->GetIntField(obj, env->GetFieldID(serialCommClass, "writeTimeout", "I"));
+	if (serialHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
 
 	// Set updated port timeouts
 	timeouts.WriteTotalTimeoutMultiplier = 0;
@@ -361,6 +367,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 {
 	jclass serialCommClass = env->GetObjectClass(obj);
 	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
 
 	// Get event flags from Java class
 	int eventsToMonitor = env->GetIntField(obj, env->GetFieldID(serialCommClass, "eventFlags", "I"));
@@ -393,12 +401,14 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 {
 	jclass serialCommClass = env->GetObjectClass(obj);
 	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(serialCommClass, "portHandle", "J"));
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return 0;
 	OVERLAPPED overlappedStruct = {0};
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (overlappedStruct.hEvent == NULL)
 	{
 		CloseHandle(overlappedStruct.hEvent);
-		return -1;
+		return 0;
 	}
 
 	// Wait for a serial port event
@@ -427,6 +437,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 {
 	// Purge any outstanding port operations
 	HANDLE serialPortHandle = (HANDLE)env->GetLongField(obj, env->GetFieldID(env->GetObjectClass(obj), "portHandle", "J"));
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_TRUE;
 	PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 
 	// Close port
