@@ -25,8 +25,10 @@
 
 package com.fazecast.jSerialComm;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -52,7 +54,31 @@ public final class SerialPort
 			tempFileDirectory += "/";
 	
 		// Determine Operating System and architecture
-		if (OS.indexOf("win") >= 0)
+		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
+		{
+			try
+			{
+				BufferedReader buildPropertiesFile = new BufferedReader(new FileReader("/system/build.prop"));
+				String line;
+				while ((line = buildPropertiesFile.readLine()) != null)
+				{
+					if (line.contains("ro.product.cpu.abi") || line.contains("ro.product.cpu.abi2") || line.contains("ro.product.cpu.abilist") ||
+							line.contains("ro.product.cpu.abilist64") || line.contains("ro.product.cpu.abilist32"))
+					{
+						libraryPath = (line.indexOf(',') == -1) ? "Android/" + line.substring(line.indexOf('=')+1) :
+							"Android/" + line.substring(line.indexOf('=')+1, line.indexOf(','));
+						break;
+					}
+				}
+				buildPropertiesFile.close();
+			}
+			catch (Exception e) { e.printStackTrace(); }
+			
+			if (libraryPath.isEmpty())
+				libraryPath = "Android/armeabi";
+			fileName = "libjSerialComm.so";
+		}
+		else if (OS.indexOf("win") >= 0)
 		{
 			if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Windows/x86_64";
