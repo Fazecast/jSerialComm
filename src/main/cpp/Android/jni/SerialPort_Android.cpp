@@ -127,7 +127,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	options.c_lflag = 0;
 
 	// Apply changes
-	tcsetattr(portFD, TCSAFLUSH, &options);
+	tcsetattr(portFD, TCSANOW, &options);
 	ioctl(portFD, TIOCEXCL);				// Block non-root users from using this port
 	return JNI_TRUE;
 }
@@ -157,7 +157,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 	options.c_lflag = 0;
 
 	// Apply changes
-	tcsetattr(portFD, TCSAFLUSH, &options);
+	tcsetattr(portFD, TCSANOW, &options);
 	return JNI_TRUE;
 }
 
@@ -210,7 +210,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Apply changes
 	fcntl(serialFD, F_SETFL, flags);
-	return (tcsetattr(serialFD, TCSAFLUSH, &options) == 0) ? JNI_TRUE : JNI_FALSE;
+	return (tcsetattr(serialFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(JNIEnv *env, jobject obj)
@@ -233,7 +233,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 10;
 		fcntl(serialFD, F_SETFL, flags);
-		tcsetattr(serialFD, TCSAFLUSH, &options);
+		tcsetattr(serialFD, TCSANOW, &options);
 	}
 	else
 		Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj);
