@@ -2,9 +2,9 @@ apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'maven'
 
-group = 'com.fazecast.jSerialComm'
+group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '1.0.0'
+version = '1.0.1'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6

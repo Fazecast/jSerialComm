@@ -2,7 +2,7 @@
  * SerialPort_OSX.cpp
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 27, 2015
+ *  Last Updated on:  Mar 17, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -119,8 +119,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (portFD <= 0)
 		return JNI_FALSE;
 
+	// Block non-root users from using this port
+	if (ioctl(portFD, TIOCEXCL) == -1)
+		return JNI_FALSE;
+
 	// Set raw-mode to allow the use of tcsetattr() and ioctl()
-	fcntl(portFD, F_SETFL, 0);
+	if (fcntl(portFD, F_SETFL, 0) == -1)
+		return JNI_FALSE;
+	tcgetattr(portFD, &options);
 	cfmakeraw(&options);
 
 	// Get port parameters from Java class
@@ -132,20 +138,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
 
-	// Retrieve existing port configuration
-	tcgetattr(portFD, &options);
-
 	// Set updated port parameters
-	options.c_cflag = (B38400 | byteSize | stopBits | parity | CLOCAL | CREAD);
+	cfsetspeed(&options, B38400);
+	options.c_cflag |= (byteSize | stopBits | parity | CLOCAL | CREAD);
 	if (parityInt == com_fazecast_jSerialComm_SerialPort_SPACE_PARITY)
 		options.c_cflag &= ~PARODD;
-	options.c_iflag = ((parityInt > 0) ? (INPCK | ISTRIP) : IGNPAR);
-	options.c_oflag = 0;
-	options.c_lflag = 0;
+	options.c_iflag |= ((parityInt > 0) ? (INPCK | ISTRIP) : IGNPAR);
 
 	// Apply changes
-	tcsetattr(portFD, TCSAFLUSH, &options);
-	ioctl(portFD, TIOCEXCL);				// Block non-root users from using this port
+	if (tcsetattr(portFD, TCSANOW, &options) == -1)
+		return JNI_FALSE;
 	return (ioctl(portFD, IOSSIOSPEED, &baudRate) == -1) ? JNI_FALSE : JNI_TRUE;
 }
 
@@ -159,8 +161,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 
 	// Get port parameters from Java class
 	int flowControl = env->GetIntField(obj, env->GetFieldID(serialCommClass, "flowControl", "I"));
-	tcflag_t CTSRTSEnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ||
-			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0)) ? CRTSCTS : 0;
+	tcflag_t CTSRTSEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ? CCTS_OFLOW : 0;
+	CTSRTSEnabled |= ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0) ? CRTS_IFLOW : 0;
 	tcflag_t XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0) ? IXOFF : 0;
 	tcflag_t XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0) ? IXON : 0;
 
@@ -169,13 +171,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 
 	// Set updated port parameters
 	options.c_cflag |= CTSRTSEnabled;
-	options.c_iflag |= XonXoffInEnabled | XonXoffOutEnabled;
-	options.c_oflag = 0;
-	options.c_lflag = 0;
+	options.c_iflag |= (XonXoffInEnabled | XonXoffOutEnabled);
 
 	// Apply changes
-	tcsetattr(portFD, TCSAFLUSH, &options);
-	return JNI_TRUE;
+	return (tcsetattr(portFD, TCSANOW, &options) == -1) ? JNI_FALSE : JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj)
@@ -227,7 +226,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Apply changes
 	fcntl(serialFD, F_SETFL, flags);
-	return (tcsetattr(serialFD, TCSAFLUSH, &options) == 0) ? JNI_TRUE : JNI_FALSE;
+	return (tcsetattr(serialFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(JNIEnv *env, jobject obj)
@@ -239,6 +238,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 
 	// Get event flags from Java class
 	int eventsToMonitor = env->GetIntField(obj, env->GetFieldID(serialCommClass, "eventFlags", "I"));
+	jboolean retVal = JNI_FALSE;
 
 	// Change read timeouts if we are monitoring data received
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
@@ -250,13 +250,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 10;
 		fcntl(serialFD, F_SETFL, flags);
-		tcsetattr(serialFD, TCSAFLUSH, &options);
+		retVal = (tcsetattr(serialFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE;
 	}
 	else
-		Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj);
+		retVal = Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj);
 
-	// Apply changes
-	return JNI_TRUE;
+	return retVal;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj)
@@ -285,6 +284,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	int portFD = (int)env->GetLongField(obj, env->GetFieldID(env->GetObjectClass(obj), "portHandle", "J"));
 	if (portFD <= 0)
 		return JNI_TRUE;
+	tcdrain(portFD);
 	close(portFD);
 	env->SetLongField(obj, env->GetFieldID(env->GetObjectClass(obj), "portHandle", "J"), -1l);
 	env->SetBooleanField(obj, env->GetFieldID(env->GetObjectClass(obj), "isOpened", "Z"), JNI_FALSE);
@@ -391,7 +391,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jbyteArray buffer, jlong bytesToWrite)
 {
 	int serialPortFD = (int)env->GetLongField(obj, env->GetFieldID(env->GetObjectClass(obj), "portHandle", "J"));
-	if (serialPortFD == -1)
+	if (serialPortFD <= 0)
 		return -1;
 	jbyte *writeBuffer = env->GetByteArrayElements(buffer, 0);
 	int numBytesWritten;
