@@ -53,18 +53,46 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 	// Enumerate serial ports on machine
 	IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
-	while (IOIteratorNext(serialPortIterator)) ++numValues;
+	while ((serialPort = IOIteratorNext(serialPortIterator)))
+	{
+		++numValues;
+		IOObjectRelease(serialPort);
+	}
 	IOIteratorReset(serialPortIterator);
 	jobjectArray arrayObject = env->NewObjectArray(numValues, serialCommClass, 0);
 	for (int i = 0; i < numValues; ++i)
 	{
-		// Get serial port name and COM value
+		// Get serial port information
 		serialPort = IOIteratorNext(serialPortIterator);
-		CFStringRef portStringRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOTTYDeviceKey), kCFAllocatorDefault, 0);
+		portString[0] = '\0';
+		io_registry_entry_t parent = 0;
+		io_registry_entry_t service = serialPort;
+		while (service)
+		{
+			if (IOObjectConformsTo(service, "IOUSBDevice"))
+			{
+				IORegistryEntryGetName(service, portString);
+				break;
+			}
+
+			if (IORegistryEntryGetParentEntry(service, kIOServicePlane, &parent) != KERN_SUCCESS)
+				break;
+			if (service != serialPort)
+				IOObjectRelease(service);
+			service = parent;
+		}
+		if (service != serialPort)
+			IOObjectRelease(service);
+
+		// Get serial port name and COM value
+		if (portString[0] == '\0')
+		{
+			CFStringRef portStringRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOTTYDeviceKey), kCFAllocatorDefault, 0);
+			CFStringGetCString(portStringRef, portString, sizeof(portString), kCFStringEncodingUTF8);
+			CFRelease(portStringRef);
+		}
 		CFStringRef comPortRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
-		CFStringGetCString(portStringRef, portString, sizeof(portString), kCFStringEncodingUTF8);
 		CFStringGetCString(comPortRef, comPort, sizeof(comPort), kCFStringEncodingUTF8);
-		CFRelease(portStringRef);
 		CFRelease(comPortRef);
 
 		// Create new SerialComm object containing the enumerated values
