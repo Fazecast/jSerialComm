@@ -81,9 +81,9 @@
 		
 		<p>This will return an array of SerialPort objects through which you can iterate. See the <a href="javadoc/index.html" target="_blank">Javadoc Library Reference</a> for a complete overview of this library and its methods.</p>
 		
-		<p><i>Note for Linux users</i>: Serial port access is limited to certain users and groups in Linux. To enable user access, you must open a terminal and enter the following commands before jSerialComm will be able to access the ports on your system. (Note, this must only be done once for each user):</p>
+		<p><i>Note for Linux users</i>: Serial port access is limited to certain users and groups in Linux. To enable user access, you must open a terminal and enter the following commands before jSerialComm will be able to access the ports on your system. Don't worry if some of the commands fail. All of these groups may not exist on every Linux distro. (Note, this process must only be done once for each user):</p>
 		
-		<pre><code>sudo usermod -a -G uucp username<br />sudo usermod -a -G dialout username</code></pre>
+		<pre><code>sudo usermod -a -G uucp username<br />sudo usermod -a -G dialout username<br />sudo usermod -a -G lock username<br />sudo usermod -a -G tty username</code></pre>
 		
 		<p>Replace the username parameter with your current username. (If you are not sure what your username is, type <code>whoami</code> and it will tell you.) If you are using SUSE 11.3 or higher, replace the '-a -G' flags with a single '-A' flag. Log out and you should have access to the serial port after logging back in.</p>
 		
