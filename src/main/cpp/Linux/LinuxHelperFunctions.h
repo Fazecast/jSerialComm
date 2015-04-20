@@ -26,12 +26,14 @@
 #ifndef __LINUX_HELPER_FUNCTIONS_HEADER_H__
 #define __LINUX_HELPER_FUNCTIONS_HEADER_H__
 
-#include <cstring>
-#include <string>
-#include <vector>
-#include <utility>
+typedef struct charPairVector
+{
+	char **first, **second;
+	size_t length;
+} charPairVector;
+void push_back(struct charPairVector* vector, const char* firstString, const char* secondString);
 
-std::vector< std::pair<std::string, std::string> > recursiveSearchForComPorts(const std::string& fullPathToSearch);
-std::string getFriendlyName(const std::string& fullPathToSearch);
+void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch);
+void getFriendlyName(const char* productFile, char* friendlyName);
 
 #endif		// #ifndef __LINUX_HELPER_FUNCTIONS_HEADER_H__

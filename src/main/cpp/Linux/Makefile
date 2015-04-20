@@ -1,14 +1,14 @@
 # Linux specific library variables
-COMPILE			:= g++
-COMPILE_ARM32	:= arm32-unknown-linux-gnueabi-g++
-COMPILE_ARM32HF	:= arm32hf-unknown-linux-gnueabi-g++
-COMPILE_ARM64	:= arm64-unknown-linux-gnueabi-g++
-LINK			:= g++
-LINK_ARM32		:= arm32-unknown-linux-gnueabi-g++
-LINK_ARM32HF	:= arm32hf-unknown-linux-gnueabi-g++
-LINK_ARM64		:= arm64-unknown-linux-gnueabi-g++
-CFLAGS			:= -fPIC -static-libstdc++ -static-libgcc -Os -flto -fuse-linker-plugin
-LDFLAGS			:= -shared -fPIC -static-libstdc++ -static-libgcc -flto -fuse-linker-plugin -Os
+COMPILE			:= gcc
+COMPILE_ARM32	:= arm32-unknown-linux-gnueabi-gcc
+COMPILE_ARM32HF	:= arm32hf-unknown-linux-gnueabi-gcc
+COMPILE_ARM64	:= arm64-unknown-linux-gnueabi-gcc
+LINK			:= gcc
+LINK_ARM32		:= arm32-unknown-linux-gnueabi-gcc
+LINK_ARM32HF	:= arm32hf-unknown-linux-gnueabi-gcc
+LINK_ARM64		:= arm64-unknown-linux-gnueabi-gcc
+CFLAGS			:= -fPIC -static-libgcc -Os -flto -fuse-linker-plugin
+LDFLAGS			:= -shared -static-libgcc -flto -fuse-linker-plugin -Os
 INCLUDES		:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux"
 LIBRARIES		:= 
 DELETE			:= @rm
@@ -47,7 +47,7 @@ JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 # Define phony and suffix rules
 .PHONY: all checkdirs linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8 armv8_64
 .SUFFIXES:
-.SUFFIXES: .cpp .o .class .java .h
+.SUFFIXES: .c .o .class .java .h
 
 # Default build target builds both 32 and 64 bit libraries
 all : linux32 linux64
@@ -139,24 +139,24 @@ $(BUILD_DIR)/armv8/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv8)
 $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv8_64)
 	$(LINK_ARM64) $(LDFLAGS) $(FLAGSarmv8_64) -o $@ $(OBJECTSarmv8_64) $(LIBRARIES)
 	
-# Suffix rules to get from *.cpp -> *.o
-$(BUILD_DIR)/x86/%.o : %.cpp
+# Suffix rules to get from *.c -> *.o
+$(BUILD_DIR)/x86/%.o : %.c
 	$(COMPILE) $(INCLUDES) $(CFLAGS) $(ARCH) -c $< -o $@
-$(BUILD_DIR)/x86_64/%.o : %.cpp
+$(BUILD_DIR)/x86_64/%.o : %.c
 	$(COMPILE) $(INCLUDES) $(CFLAGS) $(ARCH) -c $< -o $@
-$(BUILD_DIR)/armv5/%.o : %.cpp
+$(BUILD_DIR)/armv5/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv5) -c $< -o $@
-$(BUILD_DIR)/armv6/%.o : %.cpp
+$(BUILD_DIR)/armv6/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv6) -c $< -o $@
-$(BUILD_DIR)/armv6-hf/%.o : %.cpp
+$(BUILD_DIR)/armv6-hf/%.o : %.c
 	$(COMPILE_ARM32HF) $(INCLUDES) $(CFLAGS) $(FLAGSarmv6-hf) -c $< -o $@
-$(BUILD_DIR)/armv7/%.o : %.cpp
+$(BUILD_DIR)/armv7/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv7) -c $< -o $@
-$(BUILD_DIR)/armv7-hf/%.o : %.cpp
+$(BUILD_DIR)/armv7-hf/%.o : %.c
 	$(COMPILE_ARM32HF) $(INCLUDES) $(CFLAGS) $(FLAGSarmv7-hf) -c $< -o $@
-$(BUILD_DIR)/armv8/%.o : %.cpp
+$(BUILD_DIR)/armv8/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv8) -c $< -o $@
-$(BUILD_DIR)/armv8_64/%.o : %.cpp
+$(BUILD_DIR)/armv8_64/%.o : %.c
 	$(COMPILE_ARM64) $(INCLUDES) $(CFLAGS) $(FLAGSarmv8_64) -c $< -o $@
 
 # Rule to build JNI header file
