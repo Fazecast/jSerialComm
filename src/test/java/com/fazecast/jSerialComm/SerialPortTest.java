@@ -26,6 +26,7 @@
 package com.fazecast.jSerialComm;
 
 import java.io.InputStream;
+import java.util.Scanner;
 
 /**
  * This class provides a test case for the jSerialComm library.
@@ -57,12 +58,15 @@ public class SerialPortTest
 	static public void main(String[] args)
 	{
 		SerialPort[] ports = SerialPort.getCommPorts();
-		System.out.println("\nPorts:\n");
+		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
-		SerialPort ubxPort = ports[(args.length > 0) ? Integer.parseInt(args[0]) : 0];
-		
+		System.out.print("\nChoose your desired serial port: ");
+		int serialPortChoice = 0;
+		try { serialPortChoice = (new Scanner(System.in)).nextInt(); } catch (Exception e) {}
+		SerialPort ubxPort = ports[serialPortChoice];
 		byte[] readBuffer = new byte[2048];
+		
 		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());
 		System.out.println("Setting read timeout mode to non-blocking");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0);

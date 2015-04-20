@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 12, 2015
+ *  Last Updated on:  Apr 04, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -32,12 +32,13 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Date;
 
 /**
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.0.0
+ * @version 1.1.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -96,7 +97,35 @@ public final class SerialPort
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
 		{
-			if (System.getProperty("os.arch").indexOf("64") >= 0)
+			if (System.getProperty("os.arch").indexOf("arm") >= 0)
+			{
+				// Determine the specific ARM architecture of this device
+				try
+				{
+					BufferedReader cpuPropertiesFile = new BufferedReader(new FileReader("/proc/cpuinfo"));
+					String line;
+					while ((line = cpuPropertiesFile.readLine()) != null)
+					{
+						if (line.contains("ARMv"))
+						{
+							libraryPath = "Linux/armv" + line.substring(line.indexOf("ARMv")+4, line.indexOf("ARMv")+5);
+							break;
+						}
+					}
+					cpuPropertiesFile.close();
+				}
+				catch (Exception e) { e.printStackTrace(); }
+				
+				// Ensure that there was no error
+				if (libraryPath.isEmpty())
+					libraryPath = "Linux/armv6";
+				
+				// See if we need to use the hard-float dynamic linker
+				File linkerFile = new File("/lib/ld-linux-armhf.so.3");
+				if (linkerFile.exists())
+					libraryPath += "-hf";
+			}
+			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Linux/x86_64";
 			else
 				libraryPath = "Linux/x86";
@@ -109,7 +138,8 @@ public final class SerialPort
 		}
 		
 		// Get path of native library and copy file to working directory
-		File tempNativeLibrary = new File(tempFileDirectory + fileName);
+		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName;
+		File tempNativeLibrary = new File(tempFileName);
 		tempNativeLibrary.deleteOnExit();
 		try
 		{
@@ -127,7 +157,7 @@ public final class SerialPort
 		catch (Exception e) { e.printStackTrace(); }
 		
 		// Load native library
-		System.load(tempFileDirectory + fileName);
+		System.load(tempFileName);
 	}
 	
 	/**
@@ -214,10 +244,10 @@ public final class SerialPort
 	 */
 	public final boolean closePort()
 	{
+		if (serialEventListener != null)
+			serialEventListener.stopListening();
 		if (isOpened && closePortNative())
 		{
-			if (serialEventListener != null)
-				serialEventListener.stopListening();
 			inputStream = null;
 			outputStream = null;
 		}
@@ -682,6 +712,7 @@ public final class SerialPort
 		private volatile boolean isListening = false;
 		private final byte[] dataPacket;
 		private volatile int dataPacketIndex = 0;
+		private Thread serialEventThread = null;
 		
 		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; }
 		
@@ -691,15 +722,16 @@ public final class SerialPort
 				return;
 			isListening = true;
 			
-			new Thread(new Runnable() {
+			dataPacketIndex = 0;
+			serialEventThread = new Thread(new Runnable() {
 				@Override
 				public void run()
 				{
-					while (isListening && isOpened)
-						waitForSerialEvent();
+					while (isListening && isOpened) { try { waitForSerialEvent(); } catch (NullPointerException e) { isListening = false; } }
 					isListening = false;
 				}
-			}).start();
+			});
+			serialEventThread.start();
 		}
 		
 		public final void stopListening()
@@ -707,9 +739,11 @@ public final class SerialPort
 			if (!isListening)
 				return;
 			isListening = false;
+			try { serialEventThread.join(); } catch (InterruptedException e) {}
+			serialEventThread = null;
 		}
 		
-		public final void waitForSerialEvent()
+		public final void waitForSerialEvent() throws NullPointerException
 		{
 			switch (waitForEvent())
 			{

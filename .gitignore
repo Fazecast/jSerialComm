@@ -1,6 +1,7 @@
 *.class
 bin
 site
+build
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
