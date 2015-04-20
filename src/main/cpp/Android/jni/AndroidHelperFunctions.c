@@ -104,23 +104,7 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					strcat(productFile, directoryEntry->d_name);
 					strcat(productFile, "/device/../product");
 					getFriendlyName(productFile, friendlyName);
-					if (friendlyName[0] == '\0')		// Must be a physical platform port
-					{
-						// Ensure that the platform port is actually open
-						struct serial_struct serialInfo = { 0 };
-						int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
-						if (fd >= 0)
-						{
-							if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
-							{
-								strcpy(friendlyName, "Physical Port ");
-								strcat(friendlyName, directoryEntry->d_name+3);
-								push_back(comPorts, systemName, friendlyName);
-							}
-							close(fd);
-						}
-					}
-					else
+					if (friendlyName[0] != '\0')
 						push_back(comPorts, systemName, friendlyName);
 
 					// Clean up memory
