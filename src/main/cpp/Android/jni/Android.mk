@@ -8,5 +8,5 @@ LOCAL_SRC_FILES := SerialPort_Android.c AndroidHelperFunctions.c
 include $(BUILD_SHARED_LIBRARY)
 
 all:
-	cp -rf libs/* ../../resources/Android/
+	cp -rf libs/* ../../resources/Android
 	rm -rf libs obj/* obj
