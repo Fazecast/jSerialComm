@@ -108,10 +108,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (portFD <= 0)
 		return JNI_FALSE;
 
-	// Set raw-mode to allow the use of tcsetattr() and ioctl()
-	fcntl(portFD, F_SETFL, 0);
-	cfmakeraw(&options);
-
 	// Get port parameters from Java class
 	int baudRate = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "baudRate", "I"));
 	int byteSizeInt = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "dataBits", "I"));
@@ -120,31 +116,35 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
 	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-	int flowControl = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "flowControl", "I"));
-	tcflag_t XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0) ? IXOFF : 0;
-	tcflag_t XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0) ? IXON : 0;
 
-	// Retrieve existing port configuration
+	// Clear any serial port flags
+	fcntl(portFD, F_SETFL, 0);
+
+	// Set raw-mode to allow the use of tcsetattr() and ioctl()
 	tcgetattr(portFD, &options);
+	cfmakeraw(&options);
 
 	// Set updated port parameters
-	options.c_cflag = (B38400 | byteSize | stopBits | parity | CLOCAL | CREAD);
+	options.c_cflag = (byteSize | stopBits | parity | CLOCAL | CREAD);
 	if (parityInt == com_fazecast_jSerialComm_SerialPort_SPACE_PARITY)
 		options.c_cflag &= ~PARODD;
-	options.c_iflag = ((parityInt > 0) ? (INPCK | ISTRIP) : IGNPAR);
-	options.c_oflag = 0;
-	options.c_lflag = 0;
+	options.c_iflag &= ~(INPCK | IGNPAR);
+	options.c_iflag |= ((parityInt > 0) ? (INPCK | ISTRIP) : IGNPAR);
+
+	// Set baud rate
+	unsigned int baudRateCode = getBaudRateCode(baudRate);
+	if (baudRateCode != 0)
+	{
+		cfsetispeed(&options, baudRateCode);
+		cfsetospeed(&options, baudRateCode);
+	}
 
 	// Apply changes
-	tcsetattr(portFD, TCSANOW, &options);
+	int retVal = tcsetattr(portFD, TCSANOW, &options);
 	ioctl(portFD, TIOCEXCL);				// Block non-root users from using this port
-
-	// Allow custom baud rate (only for true serial ports)
-	ioctl(portFD, TIOCGSERIAL, &serialInfo);
-	serialInfo.flags = ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
-	serialInfo.custom_divisor = serialInfo.baud_base / baudRate;
-	ioctl(portFD, TIOCSSERIAL, &serialInfo);
-	return JNI_TRUE;
+	if (baudRateCode == 0)					// Set custom baud rate
+		setBaudRate(portFD, baudRate);
+	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowControl(JNIEnv *env, jobject obj)
@@ -156,6 +156,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 		return JNI_FALSE;
 
 	// Get port parameters from Java class
+	int baudRate = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "baudRate", "I"));
+	unsigned int baudRateCode = getBaudRateCode(baudRate);
 	int flowControl = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "flowControl", "I"));
 	tcflag_t CTSRTSEnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ||
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0)) ? CRTSCTS : 0;
@@ -167,13 +169,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 
 	// Set updated port parameters
 	options.c_cflag |= CTSRTSEnabled;
-	options.c_iflag |= XonXoffInEnabled | XonXoffOutEnabled;
-	options.c_oflag = 0;
-	options.c_lflag = 0;
+	options.c_iflag |= (XonXoffInEnabled | XonXoffOutEnabled);
 
 	// Apply changes
-	tcsetattr(portFD, TCSANOW, &options);
-	return JNI_TRUE;
+	int retVal = tcsetattr(portFD, TCSANOW, &options);
+	if (baudRateCode == 0)					// Set custom baud rate
+		setBaudRate(portFD, baudRate);
+	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj)
@@ -181,6 +183,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	// Get port timeouts from Java class
 	jclass serialCommClass = (*env)->GetObjectClass(env, obj);
 	int serialFD = (int)(*env)->GetLongField(env, obj, (*env)->GetFieldID(env, serialCommClass, "portHandle", "J"));
+	int baudRate = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "baudRate", "I"));
+	unsigned int baudRateCode = getBaudRateCode(baudRate);
 	int timeoutMode = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I"));
 	int readTimeout = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I"));
 	if (serialFD <= 0)
@@ -225,7 +229,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Apply changes
 	fcntl(serialFD, F_SETFL, flags);
-	return (tcsetattr(serialFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE;
+	int retVal = tcsetattr(serialFD, TCSANOW, &options);
+	if (baudRateCode == 0)					// Set custom baud rate
+		setBaudRate(serialFD, baudRate);
+	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(JNIEnv *env, jobject obj)
@@ -236,6 +243,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 		return JNI_FALSE;
 
 	// Get event flags from Java class
+	int baudRate = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "baudRate", "I"));
+	unsigned int baudRateCode = getBaudRateCode(baudRate);
 	int eventsToMonitor = (*env)->GetIntField(env, obj, (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I"));
 
 	// Change read timeouts if we are monitoring data received
@@ -249,6 +258,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 		options.c_cc[VTIME] = 10;
 		fcntl(serialFD, F_SETFL, flags);
 		tcsetattr(serialFD, TCSANOW, &options);
+		if (baudRateCode == 0)					// Set custom baud rate
+			setBaudRate(serialFD, baudRate);
 	}
 	else
 		Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj);

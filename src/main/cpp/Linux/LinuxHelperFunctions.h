@@ -35,5 +35,7 @@ void push_back(struct charPairVector* vector, const char* firstString, const cha
 
 void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch);
 void getFriendlyName(const char* productFile, char* friendlyName);
+unsigned int getBaudRateCode(int baudRate);
+void setBaudRate(int portFD, int baudRate);
 
 #endif		// #ifndef __LINUX_HELPER_FUNCTIONS_HEADER_H__
