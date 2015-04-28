@@ -61,10 +61,19 @@ public class SerialPortTest
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
-		System.out.print("\nChoose your desired serial port: ");
+		SerialPort ubxPort;
+		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
 		try { serialPortChoice = (new Scanner(System.in)).nextInt(); } catch (Exception e) {}
-		SerialPort ubxPort = ports[serialPortChoice];
+		if (serialPortChoice == -1)
+		{
+			String serialPortDescriptor = "";
+			System.out.print("\nSpecify your desired serial port descriptor: ");
+			try { serialPortDescriptor = (new Scanner(System.in)).nextLine(); } catch (Exception e) {}
+			ubxPort = SerialPort.getCommPort(serialPortDescriptor);
+		}
+		else
+			ubxPort = ports[serialPortChoice];
 		byte[] readBuffer = new byte[2048];
 		
 		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());

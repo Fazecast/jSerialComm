@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.1.1
+ * @version 1.2.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -169,9 +169,32 @@ public final class SerialPort
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time after the port has been opened.
 	 * 
-	 * @return An array of SerialPort objects.
+	 * @return An array of {@link SerialPort} objects.
 	 */
 	static public native SerialPort[] getCommPorts();
+	
+	/**
+	 * Allocates a {@link SerialPort} object corresponding to the user-specified port descriptor.
+	 * <p>
+	 * On Windows machines, this descriptor should be in the form of "COM[*]".<br>
+	 * On Linux machines, the descriptor will look similar to "/dev/tty[*]".
+	 * 
+	 * @param portDescriptor The desired serial port to use with this library.
+	 * @return A SerialPort object.
+	 */
+	static public SerialPort getCommPort(String portDescriptor)
+	{
+		// Correct Windows port descriptor, if needed
+		if (portDescriptor.contains("COM"))
+			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
+		
+		// Create SerialPort object
+		SerialPort serialPort = new SerialPort();
+		serialPort.comPort = portDescriptor;
+		serialPort.portString = "User-Specified Port";
+		
+		return serialPort;
+	}
 	
 	// Parity Values
 	static final public int NO_PARITY = 0;
@@ -302,7 +325,7 @@ public final class SerialPort
 	public final native int writeBytes(byte[] buffer, long bytesToWrite);
 	
 	// Default Constructor
-	public SerialPort() {}
+	private SerialPort() {}
 	
 	/**
 	 * Adds a {@link SerialPortDataListener} to the serial port interface.
