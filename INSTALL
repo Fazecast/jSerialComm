@@ -106,31 +106,31 @@ Maven:
 <dependency>
 	<groupId>com.fazecast</groupId>
 	<artifactId>jSerialComm</artifactId>
-	<version>1.2.0</version>
+	<version>1.2.2</version>
 </dependency>
 
 Ivy:
 
-<dependency org="com.fazecast" name="jSerialComm" rev="1.2.0"/>
+<dependency org="com.fazecast" name="jSerialComm" rev="1.2.2"/>
 
 Grape:
 
 @Grapes(
-	@Grab(group='com.fazecast', module='jSerialComm', version='1.2.0')
+	@Grab(group='com.fazecast', module='jSerialComm', version='1.2.2')
 )
 
 Gradle:
 
-'com.fazecast:jSerialComm:1.2.0'
+'com.fazecast:jSerialComm:1.2.2'
 
 Buildr:
 
-'com.fazecast:jSerialComm:jar:1.2.0'
+'com.fazecast:jSerialComm:jar:1.2.2'
 
 SBT:
 
-libraryDependencies += "com.fazecast" % "jSerialComm" % "1.2.0"
+libraryDependencies += "com.fazecast" % "jSerialComm" % "1.2.2"
 
 Leiningen:
 
-[com.fazecast/jSerialComm "1.2.0"]
+[com.fazecast/jSerialComm "1.2.2"]

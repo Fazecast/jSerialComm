@@ -38,13 +38,14 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.2.0
+ * @version 1.2.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
+	private static boolean isAndroid = false;
 	static
 	{
 		String OS = System.getProperty("os.name").toLowerCase();
@@ -75,6 +76,7 @@ public final class SerialPort
 			}
 			catch (Exception e) { e.printStackTrace(); }
 			
+			isAndroid = true;
 			if (libraryPath.isEmpty())
 				libraryPath = "Android/armeabi";
 			fileName = "libjSerialComm.so";
@@ -249,6 +251,17 @@ public final class SerialPort
 	 */
 	public final boolean openPort()
 	{
+		// If this is an Android application, we must explicitly allow serial port access to this library
+		if (isAndroid)
+		{
+			try
+			{
+				String grantPermissions = "chmod 666 " + getSystemPortName() + "\nexit\n";
+				Process process = Runtime.getRuntime().exec("su -c " + grantPermissions);
+				process.waitFor();
+			} catch (Exception e) { return false; }
+		}
+		
 		try { Thread.sleep(500); } catch (Exception e) {}
 		if (!isOpened && openPortNative())
 		{

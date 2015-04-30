@@ -72,6 +72,39 @@ void getFriendlyName(const char* productFile, char* friendlyName)
 	}
 }
 
+void getDriverName(const char* directoryToSearch, char* friendlyName)
+{
+	friendlyName[0] = '\0';
+
+	// Open the directory
+	DIR *directoryIterator = opendir(directoryToSearch);
+	if (!directoryIterator)
+		return;
+
+	// Read all sub-directories in the current directory
+	struct dirent *directoryEntry = readdir(directoryIterator);
+	while (directoryEntry)
+	{
+		// Check if entry is a valid sub-directory
+		if (directoryEntry->d_name[0] != '.')
+		{
+			// Get the readable part of the driver name
+			strcpy(friendlyName, "USB-to-Serial Port (");
+			char *startingPoint = strchr(directoryEntry->d_name, ':');
+			if (startingPoint != NULL)
+				strcat(friendlyName, startingPoint+1);
+			else
+				strcat(friendlyName, directoryEntry->d_name);
+			strcat(friendlyName, ")");
+			break;
+		}
+		directoryEntry = readdir(directoryIterator);
+	}
+
+	// Close the directory
+	closedir(directoryIterator);
+}
+
 void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch)
 {
 	// Open the directory
@@ -104,21 +137,31 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					strcat(productFile, directoryEntry->d_name);
 					strcat(productFile, "/device/../product");
 					getFriendlyName(productFile, friendlyName);
-					if (friendlyName[0] == '\0')		// Must be a physical platform port
+					if (friendlyName[0] == '\0')		// Must be a physical (or emulated) port
 					{
-						// Ensure that the platform port is actually open
-						struct serial_struct serialInfo = { 0 };
-						int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
-						if (fd >= 0)
+						// See if this is a USB-to-Serial converter based on the driver loaded
+						strcpy(productFile, fullPathToSearch);
+						strcat(productFile, directoryEntry->d_name);
+						strcat(productFile, "/driver/module/drivers");
+						getDriverName(productFile, friendlyName);
+						if (friendlyName[0] == '\0')	// Must be a physical port
 						{
-							if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
+							// Ensure that the platform port is actually open
+							struct serial_struct serialInfo = { 0 };
+							int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
+							if (fd >= 0)
 							{
-								strcpy(friendlyName, "Physical Port ");
-								strcat(friendlyName, directoryEntry->d_name+3);
-								push_back(comPorts, systemName, friendlyName);
+								if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
+								{
+									strcpy(friendlyName, "Physical Port ");
+									strcat(friendlyName, directoryEntry->d_name+3);
+									push_back(comPorts, systemName, friendlyName);
+								}
+								close(fd);
 							}
-							close(fd);
 						}
+						else
+							push_back(comPorts, systemName, friendlyName);
 					}
 					else
 						push_back(comPorts, systemName, friendlyName);
