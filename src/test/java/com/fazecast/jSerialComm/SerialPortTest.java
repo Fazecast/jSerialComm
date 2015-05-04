@@ -2,7 +2,7 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Mar 12, 2015
+ *  Last Updated on:  May 05, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.0
+ * @version 1.3.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -60,7 +60,7 @@ public class SerialPortTest
 		SerialPort[] ports = SerialPort.getCommPorts();
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
@@ -76,8 +76,12 @@ public class SerialPortTest
 			ubxPort = ports[serialPortChoice];
 		byte[] readBuffer = new byte[2048];
 		
-		System.out.println("\nOpening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort());
+		boolean openedSuccessfully = ubxPort.openPort();
+		System.out.println("\nOpening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + ": " + openedSuccessfully);
+		if (!openedSuccessfully)
+			return;
 		System.out.println("Setting read timeout mode to non-blocking");
+		ubxPort.setBaudRate(115200);
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0);
 		try
 		{
@@ -169,7 +173,13 @@ public class SerialPortTest
 				System.out.print((char)in.read());
 			in.close();
 		} catch (Exception e) { e.printStackTrace(); }
-		
+		System.out.println("\n\nEntering Java-based InputStream in Scanner mode and reading 200 lines\n");
+		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_SCANNER, 0, 0);
+		Scanner scanner = new Scanner(ubxPort.getInputStream());
+		for (int i = 1; i < 201; ++i)
+			if (scanner.hasNextLine())
+				System.out.println("Full Line #" + i + ": " + scanner.nextLine());
+		scanner.close();
 		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 	}
 }

@@ -47,7 +47,7 @@ JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 # Define phony and suffix rules
 .PHONY: all checkdirs linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8 armv8_64
 .SUFFIXES:
-.SUFFIXES: .c .o .class .java .h
+.SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target builds both 32 and 64 bit libraries
 all : linux32 linux64

@@ -1,9 +1,10 @@
 # OSX specific library variables
-COMPILE			:= g++
-LINK			:= g++
+COMPILE			:= gcc
+LINK			:= gcc
 CFLAGS			:=
 LDFLAGS			:= -dynamiclib
-INCLUDES		:= -I"/System/Library/Frameworks/JavaVM.framework/Versions/Current/Headers"
+JDK_HOME		= /Library/Java/JavaVirtualMachines/jdk1.8.0_45.jdk/Contents/Home
+INCLUDES		:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/darwin"
 LIBRARIES		:= -framework Cocoa -framework IOKit -framework JavaVM
 DELETE			:= @rm
 MKDIR			:= @mkdir
@@ -11,25 +12,24 @@ COPY			:= @cp
 MOVE			:= @mv
 PRINT			:= @echo
 FULL_CLASS		:= com.fazecast.jSerialComm.SerialPort
-JDK_HOME		= /System/Library/Frameworks/JavaVM.framework/Versions/Current
 JAVAC			:= javac
 JAVAH			:= javah -jni
 JFLAGS 			:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	:= libjSerialComm.jnilib
-SOURCES			:= SerialPort_OSX.cpp
+SOURCES			:= SerialPort_OSX.c
 JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
 RESOURCE_DIR	= ../../../../src/main/resources/OSX
 BUILD_DIR		= ../../../../bin/OSX
 JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
-OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.cpp=.o)
-OBJECTSx86_64	= $(BUILD_DIR)/x86_64/$(SOURCES:.cpp=.o)
+OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.c=.o)
+OBJECTSx86_64	= $(BUILD_DIR)/x86_64/$(SOURCES:.c=.o)
 JNI_HEADER		= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Define phony and suffix rules
 .PHONY: all osx32 osx64 checkdirs
 .SUFFIXES:
-.SUFFIXES: .cpp .o .class .java .h
+.SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target builds both 32 and 64 bit libraries
 all : osx32 osx64
@@ -65,10 +65,10 @@ $(BUILD_DIR)/x86/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
 $(BUILD_DIR)/x86_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
 	$(LINK) $(LDFLAGS) $(ARCH) -o $@ $(OBJECTSx86_64) $(LIBRARIES)
 	
-# Suffix rules to get from *.cpp -> *.o
-$(BUILD_DIR)/x86/%.o : %.cpp
+# Suffix rules to get from *.c -> *.o
+$(BUILD_DIR)/x86/%.o : %.c
 	$(COMPILE) $(INCLUDES) $(CFLAGS) $(ARCH) -c $< -o $@
-$(BUILD_DIR)/x86_64/%.o : %.cpp
+$(BUILD_DIR)/x86_64/%.o : %.c
 	$(COMPILE) $(INCLUDES) $(CFLAGS) $(ARCH) -c $< -o $@
 
 # Rule to build JNI header file

@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 04, 2015
+ *  Last Updated on:  May 04, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.2.2
+ * @version 1.3.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -160,6 +160,7 @@ public final class SerialPort
 		
 		// Load native library
 		System.load(tempFileName);
+		initializeLibrary();
 	}
 	
 	/**
@@ -225,6 +226,7 @@ public final class SerialPort
 	static final public int TIMEOUT_WRITE_SEMI_BLOCKING = 0x00000010;
 	static final public int TIMEOUT_READ_BLOCKING = 0x00000100;
 	static final public int TIMEOUT_WRITE_BLOCKING = 0x00001000;
+	static final public int TIMEOUT_SCANNER = 0x00010000;
 	
 	// Serial Port Listening Events
 	static final public int LISTENING_EVENT_DATA_AVAILABLE = 0x00000001;
@@ -239,7 +241,6 @@ public final class SerialPort
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String portString, comPort;
-	private volatile long portHandle = -1l;
 	private volatile boolean isOpened = false;
 	
 	/**
@@ -259,6 +260,8 @@ public final class SerialPort
 				String grantPermissions = "chmod 666 " + getSystemPortName() + "\nexit\n";
 				Process process = Runtime.getRuntime().exec("su -c " + grantPermissions);
 				process.waitFor();
+				if (process.exitValue() != 0)
+					return false;
 			} catch (Exception e) { return false; }
 		}
 		
@@ -291,6 +294,8 @@ public final class SerialPort
 	}
 	
 	// Serial Port Setup Methods
+	private static native void initializeLibrary();			// Initializes the JNI code
+	private static native void uninitializeLibrary();		// Un-initializes the JNI code
 	private final native boolean openPortNative();			// Opens serial port
 	private final native boolean closePortNative();			// Closes serial port
 	private final native boolean configPort();				// Changes/sets serial port parameters as defined by this class
@@ -467,7 +472,7 @@ public final class SerialPort
 	 * Sets the serial port read and write timeout parameters.
 	 * <p>
 	 * The built-in timeout mode constants should be used ({@link #TIMEOUT_NONBLOCKING}, {@link #TIMEOUT_READ_SEMI_BLOCKING}, 
-	 * {@link #TIMEOUT_WRITE_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING}, {@link #TIMEOUT_WRITE_BLOCKING}) to specify how
+	 * {@link #TIMEOUT_WRITE_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING}, {@link #TIMEOUT_WRITE_BLOCKING}, {@link #TIMEOUT_SCANNER}) to specify how
 	 * timeouts are to be handled.
 	 * <p>
 	 * Valid modes are:
@@ -479,6 +484,7 @@ public final class SerialPort
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Full-blocking: {@link #TIMEOUT_READ_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Full-blocking/Write Semi-blocking: {@link #TIMEOUT_READ_BLOCKING} | {@link #TIMEOUT_WRITE_SEMI_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read/Write Full-blocking: {@link #TIMEOUT_READ_BLOCKING} | {@link #TIMEOUT_WRITE_BLOCKING}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scanner: {@link #TIMEOUT_SCANNER}<br>
 	 * <p>
 	 * The {@link #TIMEOUT_NONBLOCKING} mode specifies that the corresponding {@link #readBytes(byte[],long)} or {@link #writeBytes(byte[],long)} call
 	 * will return immediately with any available data.
@@ -489,6 +495,9 @@ public final class SerialPort
 	 * The {@link #TIMEOUT_READ_BLOCKING} or {@link #TIMEOUT_WRITE_BLOCKING} modes specify that the corresponding call will block until either
 	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds have elapsed since the start of the call or the total number of requested bytes can be written or 
 	 * returned.
+	 * <p>
+	 * The {@link #TIMEOUT_SCANNER} mode is intended for use with the Java {@link java.util.Scanner} class for reading from the serial port. In this mode,
+	 * manually specified timeouts are ignored to ensure compatibility with the Java specification.
 	 * <p>
 	 * A value of 0 for either <i>newReadTimeout</i> or <i>newWriteTimeout</i> indicates that a {@link #readBytes(byte[],long)} or 
 	 * {@link #writeBytes(byte[],long)} call should block forever until it can return successfully (based upon the current timeout mode specified).

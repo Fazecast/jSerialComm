@@ -47,6 +47,8 @@ extern "C" {
 #define com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING 256L
 #undef com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING
 #define com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING 4096L
+#undef com_fazecast_jSerialComm_SerialPort_TIMEOUT_SCANNER
+#define com_fazecast_jSerialComm_SerialPort_TIMEOUT_SCANNER 65536L
 #undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE 1L
 #undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED
@@ -59,6 +61,22 @@ extern "C" {
  * Signature: ()[Lcom/fazecast/jSerialComm/SerialPort;
  */
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    initializeLibrary
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrary
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    uninitializeLibrary
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary
   (JNIEnv *, jclass);
 
 /*

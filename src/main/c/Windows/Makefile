@@ -16,20 +16,20 @@ JAVAC			= "$(JDK_HOME)\bin\javac"
 JAVAH			= "$(JDK_HOME)\bin\javah" -jni
 JFLAGS 			= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	= jSerialComm.dll
-SOURCES			= SerialPort_Windows.cpp
+SOURCES			= SerialPort_Windows.c WindowsHelperFunctions.c
 JAVA_SOURCE_DIR	= ..\..\..\..\src\main\java\com\fazecast\jSerialComm
 RESOURCE_DIR	= ..\..\..\..\src\main\resources\Windows
 BUILD_DIR		= ..\..\..\..\bin\Windows
 JAVA_CLASS_DIR	= $(BUILD_DIR)\..\com\fazecast\jSerialComm
-OBJECTSx86		= $(BUILD_DIR)\x86\$(SOURCES:.cpp=.obj)
-OBJECTSx86_64	= $(BUILD_DIR)\x86_64\$(SOURCES:.cpp=.obj)
+OBJECTSx86		= $(BUILD_DIR)\x86\SerialPort_Windows.obj $(BUILD_DIR)\x86\WindowsHelperFunctions.obj
+OBJECTSx86_64	= $(BUILD_DIR)\x86_64\SerialPort_Windows.obj $(BUILD_DIR)\x86_64\WindowsHelperFunctions.obj
 JNI_HEADER		= ..\com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS		= $(JAVA_CLASS_DIR)\SerialPort.class
 
 # Define phony and suffix rules
 .PHONY: all win32 win64 checkdirs clean
 .SUFFIXES:
-.SUFFIXES: .cpp .obj .class .java .h
+.SUFFIXES: .c .obj .class .java .h
 
 # Default build target not possible due to different architecture compilers
 all :
@@ -72,11 +72,11 @@ $(BUILD_DIR)\x86\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
 	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
 	
-# Suffix rules to get from *.cpp -> *.obj
-$(OBJECTSx86_64) : $(*B).cpp
-	$(COMPILE) $(CFLAGS) $(INCLUDES) $? -Fo$@
-$(OBJECTSx86) : $(*B).cpp
-	$(COMPILE) $(CFLAGS) $(INCLUDES) $? -Fo$@
+# Suffix rules to get from *.c -> *.obj
+$(OBJECTSx86_64) :
+	$(COMPILE) $(CFLAGS) $(INCLUDES) $(*B).c -Fo$@
+$(OBJECTSx86) :
+	$(COMPILE) $(CFLAGS) $(INCLUDES) $(*B).c -Fo$@
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)

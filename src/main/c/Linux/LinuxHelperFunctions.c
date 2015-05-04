@@ -1,5 +1,5 @@
 /*
- * AndroidHelperFunctions.cpp
+ * LinuxHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
  *  Last Updated on:  Mar 10, 2015
@@ -28,14 +28,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <fcntl.h>
+#include <linux/serial.h>
+#include <dirent.h>
 #include <asm/termios.h>
 #include <asm/ioctls.h>
-#ifndef BOTHER
-#include <termios.h>
-#endif
-#include "AndroidHelperFunctions.h"
+#include "LinuxHelperFunctions.h"
 
 void push_back(struct charPairVector* vector, const char* firstString, const char* secondString)
 {
@@ -139,14 +137,30 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					strcat(productFile, directoryEntry->d_name);
 					strcat(productFile, "/device/../product");
 					getFriendlyName(productFile, friendlyName);
-					if (friendlyName[0] == '\0')
+					if (friendlyName[0] == '\0')		// Must be a physical (or emulated) port
 					{
-						// Get friendly name based on the driver loaded
+						// See if this is a USB-to-Serial converter based on the driver loaded
 						strcpy(productFile, fullPathToSearch);
 						strcat(productFile, directoryEntry->d_name);
 						strcat(productFile, "/driver/module/drivers");
 						getDriverName(productFile, friendlyName);
-						if (friendlyName[0] != '\0')
+						if (friendlyName[0] == '\0')	// Must be a physical port
+						{
+							// Ensure that the platform port is actually open
+							struct serial_struct serialInfo = { 0 };
+							int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
+							if (fd >= 0)
+							{
+								if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
+								{
+									strcpy(friendlyName, "Physical Port ");
+									strcat(friendlyName, directoryEntry->d_name+3);
+									push_back(comPorts, systemName, friendlyName);
+								}
+								close(fd);
+							}
+						}
+						else
 							push_back(comPorts, systemName, friendlyName);
 					}
 					else
@@ -243,7 +257,6 @@ unsigned int getBaudRateCode(int baudRate)
 
 void setBaudRate(int portFD, int baudRate)
 {
-#ifdef BOTHER
 	struct termios2 options = { 0 };
 	ioctl(portFD, TCGETS2, &options);
 	options.c_cflag &= ~CBAUD;
@@ -251,13 +264,6 @@ void setBaudRate(int portFD, int baudRate)
 	options.c_ispeed = baudRate;
 	options.c_ospeed = baudRate;
 	ioctl(portFD, TCSETS2, &options);
-#else
-	struct termios options = { 0 };
-	tcgetattr(portFD, &options);
-	cfsetispeed(&options, B38400);
-	cfsetospeed(&options, B38400);
-	tcsetattr(portFD, TCSANOW, &options);
-#endif
 }
 
 #endif
