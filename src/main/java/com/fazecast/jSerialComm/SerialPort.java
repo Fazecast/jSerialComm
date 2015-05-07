@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.0
+ * @version 1.3.1
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -190,6 +190,8 @@ public final class SerialPort
 		// Correct Windows port descriptor, if needed
 		if (portDescriptor.contains("COM"))
 			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
+		else
+			portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 		
 		// Create SerialPort object
 		SerialPort serialPort = new SerialPort();
@@ -657,7 +659,11 @@ public final class SerialPort
 	 * 
 	 * @return The system-defined device name of this serial port.
 	 */
-	public final String getSystemPortName() { return comPort.substring(comPort.lastIndexOf('\\')+1); }
+	public final String getSystemPortName()
+	{
+		return (comPort.lastIndexOf('\\') != -1) ?
+				comPort.substring(comPort.lastIndexOf('\\')+1) : comPort.substring(comPort.lastIndexOf('/')+1);
+	}
 	
 	/**
 	 * Gets the current baud rate of the serial port.

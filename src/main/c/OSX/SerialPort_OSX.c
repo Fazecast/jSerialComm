@@ -28,6 +28,7 @@
 #define CMSPAR 010000000000
 #endif
 #include <stdlib.h>
+#include <string.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
@@ -61,7 +62,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	io_object_t serialPort;
 	io_iterator_t serialPortIterator;
 	int numValues = 0;
-	char portString[1024], comPort[1024];
+	char portString[1024], comPortCu[1024], comPortTty[1024];
 
 	// Enumerate serial ports on machine
 	IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
@@ -71,7 +72,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		IOObjectRelease(serialPort);
 	}
 	IOIteratorReset(serialPortIterator);
-	jobjectArray arrayObject = (*env)->NewObjectArray(env, numValues, serialCommClass, 0);
+	jobjectArray arrayObject = (*env)->NewObjectArray(env, numValues*2, serialCommClass, 0);
 	for (int i = 0; i < numValues; ++i)
 	{
 		// Get serial port information
@@ -104,16 +105,26 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			CFRelease(portStringRef);
 		}
 		CFStringRef comPortRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
-		CFStringGetCString(comPortRef, comPort, sizeof(comPort), kCFStringEncodingUTF8);
+		CFStringGetCString(comPortRef, comPortCu, sizeof(comPortCu), kCFStringEncodingUTF8);
+		CFRelease(comPortRef);
+		comPortRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIODialinDeviceKey), kCFAllocatorDefault, 0);
+		CFStringGetCString(comPortRef, comPortTty, sizeof(comPortTty), kCFStringEncodingUTF8);
 		CFRelease(comPortRef);
 
-		// Create new SerialComm object containing the enumerated values
+		// Create new SerialComm callout object containing the enumerated values and add to array
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
 		(*env)->SetObjectField(env, serialCommObject, portStringField, (*env)->NewStringUTF(env, portString));
-		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, comPort));
+		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, comPortCu));
+		(*env)->SetObjectArrayElement(env, arrayObject, i*2, serialCommObject);
+		(*env)->DeleteLocalRef(env, serialCommObject);
 
-		// Add new SerialComm object to array
-		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
+		// Create new SerialComm dialin object containing the enumerated values and add to array
+		strcat(portString, " (Dial-In)");
+		serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
+		(*env)->SetObjectField(env, serialCommObject, portStringField, (*env)->NewStringUTF(env, portString));
+		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, comPortTty));
+		(*env)->SetObjectArrayElement(env, arrayObject, i*2 + 1, serialCommObject);
+		(*env)->DeleteLocalRef(env, serialCommObject);
 		IOObjectRelease(serialPort);
 	}
 	IOObjectRelease(serialPortIterator);
