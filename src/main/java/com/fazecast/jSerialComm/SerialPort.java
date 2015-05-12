@@ -45,7 +45,9 @@ import java.util.Date;
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	private static boolean isAndroid = false;
+	private static volatile boolean isAndroid = false;
+	private static volatile boolean isLinuxOrMac = false;
+	private static volatile boolean isWindows = false;
 	static
 	{
 		String OS = System.getProperty("os.name").toLowerCase();
@@ -76,9 +78,9 @@ public final class SerialPort
 			}
 			catch (Exception e) { e.printStackTrace(); }
 			
-			isAndroid = true;
 			if (libraryPath.isEmpty())
 				libraryPath = "Android/armeabi";
+			isAndroid = true;
 			fileName = "libjSerialComm.so";
 		}
 		else if (OS.indexOf("win") >= 0)
@@ -87,6 +89,7 @@ public final class SerialPort
 				libraryPath = "Windows/x86_64";
 			else
 				libraryPath = "Windows/x86";
+			isWindows = true;
 			fileName = "jSerialComm.dll";
 		}
 		else if (OS.indexOf("mac") >= 0)
@@ -95,6 +98,7 @@ public final class SerialPort
 				libraryPath = "OSX/x86_64";
 			else
 				libraryPath = "OSX/x86";
+			isLinuxOrMac = true;
 			fileName = "libjSerialComm.jnilib";
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
@@ -131,6 +135,7 @@ public final class SerialPort
 				libraryPath = "Linux/x86_64";
 			else
 				libraryPath = "Linux/x86";
+			isLinuxOrMac = true;
 			fileName = "libjSerialComm.so";
 		}
 		else
@@ -188,7 +193,7 @@ public final class SerialPort
 	static public SerialPort getCommPort(String portDescriptor)
 	{
 		// Correct Windows port descriptor, if needed
-		if (portDescriptor.contains("COM"))
+		if (isWindows)
 			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
 		else
 			portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
@@ -259,11 +264,12 @@ public final class SerialPort
 		{
 			try
 			{
-				String grantPermissions = "chmod 666 " + getSystemPortName() + "\nexit\n";
+				String grantPermissions = "chmod 666 " + comPort + "\nexit\n";
 				Process process = Runtime.getRuntime().exec("su -c " + grantPermissions);
 				process.waitFor();
 				if (process.exitValue() != 0)
 					return false;
+				Thread.sleep(500);
 			} catch (Exception e) { return false; }
 		}
 		
@@ -659,11 +665,7 @@ public final class SerialPort
 	 * 
 	 * @return The system-defined device name of this serial port.
 	 */
-	public final String getSystemPortName()
-	{
-		return (comPort.lastIndexOf('\\') != -1) ?
-				comPort.substring(comPort.lastIndexOf('\\')+1) : comPort.substring(comPort.lastIndexOf('/')+1);
-	}
+	public final String getSystemPortName() { return (isWindows ? comPort.substring(comPort.lastIndexOf('\\')+1) : comPort.substring(comPort.lastIndexOf('/')+1)); }
 	
 	/**
 	 * Gets the current baud rate of the serial port.

@@ -151,7 +151,8 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 							int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
 							if (fd >= 0)
 							{
-								if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
+								if (((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
+										((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN)))
 								{
 									strcpy(friendlyName, "Physical Port ");
 									strcat(friendlyName, directoryEntry->d_name+3);
