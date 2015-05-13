@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.1
+ * @version 1.3.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -792,8 +792,13 @@ public final class SerialPort
 			if (!isListening)
 				return;
 			isListening = false;
+			
+			int oldEventFlags = eventFlags;
+			eventFlags = 0;
+			configEventFlags();
 			try { serialEventThread.join(); } catch (InterruptedException e) {}
 			serialEventThread = null;
+			eventFlags = oldEventFlags;
 		}
 		
 		public final void waitForSerialEvent() throws NullPointerException
