@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 04, 2015
+ *  Last Updated on:  May 18, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.2
+ * @version 1.3.3
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -192,9 +192,11 @@ public final class SerialPort
 	 */
 	static public SerialPort getCommPort(String portDescriptor)
 	{
-		// Correct Windows port descriptor, if needed
+		// Correct port descriptor, if needed
 		if (isWindows)
 			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
+		else if (portDescriptor.contains("/pts/"))
+			portDescriptor = "/dev/pts/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 		else
 			portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 		
