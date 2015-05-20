@@ -29,7 +29,7 @@
             <section id="downloads">
               <a class="zip_download_link" href="https://github.com/Fazecast/jSerialComm/zipball/master">Download this project as a .zip file</a>
               <a class="tar_download_link" href="https://github.com/Fazecast/jSerialComm/tarball/master">Download this project as a tar.gz file</a>
-			  <a class="jar_download_link" href="binaries/jSerialComm-1.3.3.jar">Download this library as a .jar file</a>
+			  <a class="jar_download_link" href="binaries/jSerialComm-1.3.4.jar">Download this library as a .jar file</a>
             </section>
         </header>
     </div>
@@ -39,7 +39,7 @@
       <section id="main_content" class="inner">
         <h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>What is jSerialComm?</h3>
 		
-		<p>jSerialComm is a Java library designed to provide a platform-independent way to access standard serial ports without requiring external libraries, native code, or any other tools. It is meant as an alternative to RxTx and the (deprecated) Java Communications API, with increased ease-of-use and an enhanced support for timeouts.</p>
+		<p>jSerialComm is a Java library designed to provide a platform-independent way to access standard serial ports without requiring external libraries, native code, or any other tools. It is meant as an alternative to RxTx and the (deprecated) Java Communications API, with increased ease-of-use, an enhanced support for timeouts, and the ability to open multiple ports simultaneously.</p>
 		
 		<p>Some of the features of this library include:</p>
 		
@@ -73,13 +73,13 @@
 		
 		<h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>How can use this library in my own project?</h3>
 		
-		<p>One of the most convenient features of this library is that it allows you to simply include the <a href="binaries/jSerialComm-1.3.3.jar">JAR file</a> in your custom project, and it will automatically select and load the correct native library for your platform and architecture. As such, you can make use of this library by simply copying the jSerialComm.jar file into your project directory and linking to it as you would any other JAR file.</p>
+		<p>One of the most convenient features of this library is that it allows you to simply include the <a href="binaries/jSerialComm-1.3.4.jar">JAR file</a> in your custom project, and it will automatically select and load the correct native library for your platform and architecture. As such, you can make use of this library by simply copying the jSerialComm.jar file into your project directory and linking to it as you would any other JAR file.</p>
 		
 		<p>To access the contents of the library in your project, make sure to <code>import com.fazecast.jSerialComm.*</code> into your java files. You can then generate a list of all available serial ports on your system (real or virtual), by calling the following static method:</p>
 		
 		<pre><code>SerialPort.getCommPorts()</code></pre>
 		
-		<p>This will return an array of SerialPort objects through which you can iterate. See the <a href="javadoc/index.html" target="_blank">Javadoc Library Reference</a> for a complete overview of this library and its methods. Alternately, if you already know the port descriptor of the port you wish to use (e.g., "/dev/ttyS0" or "COM3"), you can create a SerialPort object using the following static method:</p>
+		<p>This will return an array of SerialPort objects through which you can iterate. See the <a href="javadoc/index.html" target="_blank">Javadoc Library Reference</a> for a complete overview of this library and its methods. Alternately, if you already know the port descriptor of the port you wish to use (e.g., "/dev/ttyS0" or "COM3"), or if you are using this library with pseudo-terminals (e.g., "/dev/pts/14"), you can create a SerialPort object using the following static method:</p>
 		
 		<pre><code>SerialPort.getCommPort(String portDescriptor)</code></pre>
 		
@@ -102,25 +102,25 @@
 			<li><a href="#tabs-7">Leiningen</a></li>
 		  </ul>
 		  <div id="tabs-1">
-		    <pre><code>&lt;dependency&gt;<br />&nbsp;&nbsp;&nbsp;&lt;groupId&gt;com.fazecast&lt;/groupId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;artifactId&gt;jSerialComm&lt;/artifactId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;version&gt;1.3.3&lt;/version&gt;<br />&lt;/dependency&gt;</code></pre>
+		    <pre><code>&lt;dependency&gt;<br />&nbsp;&nbsp;&nbsp;&lt;groupId&gt;com.fazecast&lt;/groupId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;artifactId&gt;jSerialComm&lt;/artifactId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;version&gt;1.3.4&lt;/version&gt;<br />&lt;/dependency&gt;</code></pre>
 		  </div>
 		  <div id="tabs-2">
-		    <pre><code>&lt;dependency org="com.fazecast" name="jSerialComm" rev="1.3.3"/&gt;</code></pre>
+		    <pre><code>&lt;dependency org="com.fazecast" name="jSerialComm" rev="1.3.4"/&gt;</code></pre>
 		  </div>
 		  <div id="tabs-3">
-		    <pre><code>@Grapes(<br />&nbsp;&nbsp;&nbsp;@Grab(group='com.fazecast', module='jSerialComm', version='1.3.3')<br />)</code></pre>
+		    <pre><code>@Grapes(<br />&nbsp;&nbsp;&nbsp;@Grab(group='com.fazecast', module='jSerialComm', version='1.3.4')<br />)</code></pre>
 		  </div>
 		  <div id="tabs-4">
-		    <pre><code>'com.fazecast:jSerialComm:1.3.3'</code></pre>
+		    <pre><code>'com.fazecast:jSerialComm:1.3.4'</code></pre>
 		  </div>
 		  <div id="tabs-5">
-		    <pre><code>'com.fazecast:jSerialComm:jar:1.3.3'</code></pre>
+		    <pre><code>'com.fazecast:jSerialComm:jar:1.3.4'</code></pre>
 		  </div>
 		  <div id="tabs-6">
-		    <pre><code>libraryDependencies += "com.fazecast" % "jSerialComm" % "1.3.3"</code></pre>
+		    <pre><code>libraryDependencies += "com.fazecast" % "jSerialComm" % "1.3.4"</code></pre>
 		  </div>
 		  <div id="tabs-7">
-		    <pre><code>[com.fazecast/jSerialComm "1.3.3"]</code></pre>
+		    <pre><code>[com.fazecast/jSerialComm "1.3.4"]</code></pre>
 		  </div>
 		</div>
 		
