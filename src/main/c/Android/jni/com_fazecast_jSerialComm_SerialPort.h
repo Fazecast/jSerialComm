@@ -82,82 +82,82 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    openPortNative
- * Signature: ()Z
+ * Signature: ()J
  */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative
+JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative
   (JNIEnv *, jobject);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    closePortNative
- * Signature: ()Z
+ * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configPort
- * Signature: ()Z
+ * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configFlowControl
- * Signature: ()Z
+ * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowControl
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configTimeouts
- * Signature: ()Z
+ * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configEventFlags
- * Signature: ()Z
+ * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventFlags
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    waitForEvent
- * Signature: ()I
+ * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    bytesAvailable
- * Signature: ()I
+ * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    readBytes
- * Signature: ([BJ)I
+ * Signature: (J[BJ)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
-  (JNIEnv *, jobject, jbyteArray, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    writeBytes
- * Signature: ([BJ)I
+ * Signature: (J[BJ)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
-  (JNIEnv *, jobject, jbyteArray, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong);
 
 #ifdef __cplusplus
 }

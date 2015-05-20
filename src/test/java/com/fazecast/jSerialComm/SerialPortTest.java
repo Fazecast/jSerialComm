@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 1.3.2
+ * @version 1.3.4
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -173,6 +173,35 @@ public class SerialPortTest
 				System.out.print((char)in.read());
 			in.close();
 		} catch (Exception e) { e.printStackTrace(); }
+		System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
+		System.out.println("\nAvailable Ports:\n");
+		for (int i = 0; i < ports.length; ++i)
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName());
+		SerialPort ubxPort2;
+		System.out.print("\nChoose your second desired serial port, or enter -1 to skip this test: ");
+		serialPortChoice = 0;
+		try { serialPortChoice = (new Scanner(System.in)).nextInt(); } catch (Exception e) {}
+		if (serialPortChoice != -1)
+		{
+			ubxPort2 = ports[serialPortChoice];
+			ubxPort2.openPort();
+			try
+			{
+				System.out.print("\nReading from first serial port...\n\n");
+				in = ubxPort.getInputStream();
+				InputStream in2 = ubxPort2.getInputStream();
+				for (int j = 0; j < 1000; ++j)
+					System.out.print((char)in.read());
+				System.out.print("\nReading from second serial port...\n\n");
+				for (int j = 0; j < 100; ++j)
+					System.out.print((char)in2.read());
+				System.out.print("\nReading from first serial port again...\n\n");
+				for (int j = 0; j < 1000; ++j)
+					System.out.print((char)in.read());
+				in.close();
+				in2.close();
+			} catch (Exception e) { e.printStackTrace(); }
+		}
 		System.out.println("\n\nEntering Java-based InputStream in Scanner mode and reading 200 lines\n");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_SCANNER, 0, 0);
 		Scanner scanner = new Scanner(ubxPort.getInputStream());

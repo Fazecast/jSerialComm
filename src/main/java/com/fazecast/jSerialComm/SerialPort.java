@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.3
+ * @version 1.3.4
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -243,6 +243,7 @@ public final class SerialPort
 	static final public int LISTENING_EVENT_DATA_WRITTEN = 0x00000100;
 	
 	// Serial Port Parameters
+	private volatile long portHandle = -1;
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile SerialPortInputStream inputStream = null;
@@ -276,7 +277,7 @@ public final class SerialPort
 		}
 		
 		try { Thread.sleep(500); } catch (Exception e) {}
-		if (!isOpened && openPortNative())
+		if (!isOpened && (portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
 			outputStream = new SerialPortOutputStream();
@@ -295,24 +296,28 @@ public final class SerialPort
 	{
 		if (serialEventListener != null)
 			serialEventListener.stopListening();
-		if (isOpened && closePortNative())
+		if (isOpened && closePortNative(portHandle))
 		{
 			inputStream = null;
 			outputStream = null;
+			portHandle = -1;
 		}
 		return !isOpened;
 	}
 	
 	// Serial Port Setup Methods
-	private static native void initializeLibrary();			// Initializes the JNI code
-	private static native void uninitializeLibrary();		// Un-initializes the JNI code
-	private final native boolean openPortNative();			// Opens serial port
-	private final native boolean closePortNative();			// Closes serial port
-	private final native boolean configPort();				// Changes/sets serial port parameters as defined by this class
-	private final native boolean configFlowControl();		// Changes/sets flow control parameters as defined by this class
-	private final native boolean configTimeouts();			// Changes/sets serial port timeouts as defined by this class
-	private final native boolean configEventFlags();		// Changes/sets which serial events to listen for as defined by this class
-	private final native int waitForEvent();				// Waits for serial event to occur as specified in eventFlags
+	private static native void initializeLibrary();						// Initializes the JNI code
+	private static native void uninitializeLibrary();					// Un-initializes the JNI code
+	private final native long openPortNative();							// Opens serial port
+	private final native boolean closePortNative(long portHandle);		// Closes serial port
+	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
+	private final native boolean configFlowControl(long portHandle);	// Changes/sets flow control parameters as defined by this class
+	private final native boolean configTimeouts(long portHandle);		// Changes/sets serial port timeouts as defined by this class
+	private final native boolean configEventFlags(long portHandle);		// Changes/sets which serial events to listen for as defined by this class
+	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
+	private final native int bytesAvailable(long portHandle);			// Returns number of bytes available for reading
+	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead);	// Reads bytes from serial port
+	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite);	// Write bytes to serial port
 	
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
@@ -320,7 +325,7 @@ public final class SerialPort
 	 * 
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
-	public final native int bytesAvailable();
+	public final int bytesAvailable() { return bytesAvailable(portHandle); }
 	
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
@@ -335,7 +340,7 @@ public final class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final native int readBytes(byte[] buffer, long bytesToRead);
+	public final int readBytes(byte[] buffer, long bytesToRead) { return readBytes(portHandle, buffer, bytesToRead); }
 	
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -350,7 +355,7 @@ public final class SerialPort
 	 * @param bytesToWrite The number of bytes to write to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final native int writeBytes(byte[] buffer, long bytesToWrite);
+	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite); }
 	
 	// Default Constructor
 	private SerialPort() {}
@@ -390,7 +395,7 @@ public final class SerialPort
 		
 		if (isOpened)
 		{
-			configEventFlags();
+			configEventFlags(portHandle);
 			serialEventListener.startListening();
 		}
 		return true;
@@ -410,7 +415,7 @@ public final class SerialPort
 		
 		eventFlags = 0;
 		if (isOpened)
-			configEventFlags();
+			configEventFlags(portHandle);
 	}
 	
 	/**
@@ -474,7 +479,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configPort();
+			configPort(portHandle);
 		}
 	}
 	
@@ -525,7 +530,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configTimeouts();
+			configTimeouts(portHandle);
 		}
 	}
 	
@@ -543,7 +548,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configPort();
+			configPort(portHandle);
 		}
 	}
 	
@@ -561,7 +566,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configPort();
+			configPort(portHandle);
 		}
 	}
 	
@@ -585,7 +590,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configPort();
+			configPort(portHandle);
 		}
 	}
 	
@@ -624,7 +629,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configFlowControl();
+			configFlowControl(portHandle);
 		}
 	}
 	
@@ -648,7 +653,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configPort();
+			configPort(portHandle);
 		}
 	}
 	
@@ -797,7 +802,7 @@ public final class SerialPort
 			
 			int oldEventFlags = eventFlags;
 			eventFlags = 0;
-			configEventFlags();
+			configEventFlags(portHandle);
 			try { serialEventThread.join(); } catch (InterruptedException e) {}
 			serialEventThread = null;
 			eventFlags = oldEventFlags;
@@ -805,7 +810,7 @@ public final class SerialPort
 		
 		public final void waitForSerialEvent() throws NullPointerException
 		{
-			switch (waitForEvent())
+			switch (waitForEvent(portHandle))
 			{
 				case LISTENING_EVENT_DATA_AVAILABLE:
 				{
