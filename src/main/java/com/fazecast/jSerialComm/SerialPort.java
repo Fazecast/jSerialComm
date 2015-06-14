@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.4
+ * @version 1.3.5
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -257,12 +257,18 @@ public final class SerialPort
 	 * Opens this serial port for reading and writing.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time after the port has been opened.
+	 * <p>
+	 * Note that calling this method on an already opened port will simply return a value of true.
 	 *
 	 * @return Whether the port was successfully opened.
 	 */
 	public final boolean openPort()
 	{
-		// If this is an Android application, we must explicitly allow serial port access to this library
+		// Return true if already opened
+		if (isOpened)
+			return true;
+		
+		// If this is an Android root application, we must explicitly allow serial port access to this library
 		if (isAndroid)
 		{
 			try
@@ -277,7 +283,7 @@ public final class SerialPort
 		}
 		
 		try { Thread.sleep(500); } catch (Exception e) {}
-		if (!isOpened && (portHandle = openPortNative()) > 0)
+		if ((portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
 			outputStream = new SerialPortOutputStream();
@@ -289,6 +295,8 @@ public final class SerialPort
 	
 	/**
 	 * Closes this serial port.
+	 * <p>
+	 * Note that calling this method on an already closed port will simply return a value of true.
 	 *
 	 * @return Whether the port was successfully closed.
 	 */
@@ -304,6 +312,13 @@ public final class SerialPort
 		}
 		return !isOpened;
 	}
+	
+	/**
+	 * Returns whether the port is currently open and available for communication.
+	 * 
+	 * @return Whether the port is opened.
+	 */
+	public final boolean isOpen() { return isOpened; }
 	
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
