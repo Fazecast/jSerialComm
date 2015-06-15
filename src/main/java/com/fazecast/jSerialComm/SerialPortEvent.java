@@ -31,7 +31,7 @@ import java.util.EventObject;
  * This class describes an asynchronous serial port event.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.5
+ * @version 1.3.6
  * @see java.util.EventObject
  */
 public final class SerialPortEvent extends EventObject
@@ -51,6 +51,8 @@ public final class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
 	 * <p>
+	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
+	 * event will never be called on a non-Windows system.
 	 * 
 	 * @param comPort The {@link SerialPort} about which this object is being created.
 	 * @param serialEventType The type of serial port event that this object describes.
@@ -74,6 +76,8 @@ public final class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
 	 * <p>
+	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
+	 * event will never be called on a non-Windows system.
 	 * 
 	 * @param comPort The {@link SerialPort} about which this object is being created.
 	 * @param serialEventType The type of serial port event that this object describes.
@@ -105,6 +109,8 @@ public final class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
 	 * <p>
+	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
+	 * event will never be called on a non-Windows system.
 	 * 
 	 * @return The serial port event that this object describes.
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE

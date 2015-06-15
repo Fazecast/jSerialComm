@@ -31,7 +31,7 @@ import java.util.EventListener;
  * This interface must be implemented to enable simple event-based serial port I/O.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.5
+ * @version 1.3.6
  * @see java.util.EventListener
  */
 public interface SerialPortDataListener extends EventListener
@@ -49,6 +49,8 @@ public interface SerialPortDataListener extends EventListener
 	 * <p>
 	 * Two or more events may be OR'd together to listen for multiple events; however, if {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} is OR'd with {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}, the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} flag will take precedence.
 	 * <p>
+	 * Note that event-based <i>write</i> callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
+	 * event will never be called on a non-Windows system.
 	 * 
 	 * @return The event constants that should trigger the {@link #serialEvent(SerialPortEvent)} callback.
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE

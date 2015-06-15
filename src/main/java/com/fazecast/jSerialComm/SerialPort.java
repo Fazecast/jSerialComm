@@ -38,7 +38,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.5
+ * @version 1.3.6
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -501,6 +501,8 @@ public final class SerialPort
 	/**
 	 * Sets the serial port read and write timeout parameters.
 	 * <p>
+	 * <i>Note that write timeouts are only available on Windows-based systems. There is no functionality to set a write timeout on other operating systems.</i>
+	 * <p>
 	 * The built-in timeout mode constants should be used ({@link #TIMEOUT_NONBLOCKING}, {@link #TIMEOUT_READ_SEMI_BLOCKING}, 
 	 * {@link #TIMEOUT_WRITE_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING}, {@link #TIMEOUT_WRITE_BLOCKING}, {@link #TIMEOUT_SCANNER}) to specify how
 	 * timeouts are to be handled.
@@ -531,6 +533,10 @@ public final class SerialPort
 	 * <p>
 	 * A value of 0 for either <i>newReadTimeout</i> or <i>newWriteTimeout</i> indicates that a {@link #readBytes(byte[],long)} or 
 	 * {@link #writeBytes(byte[],long)} call should block forever until it can return successfully (based upon the current timeout mode specified).
+	 * <p>
+	 * It is important to note that non-Windows operating systems only allow decisecond (1/10th of a second) granularity for serial port timeouts. As such, your 
+	 * millisecond timeout value will be rounded to the nearest decisecond under Linux or Mac OS. To ensure consistent performance across multiple platforms, it is
+	 * advisable that you set your timeout values to be multiples of 100, although this is not strictly enforced.
 	 * 
 	 * @param newTimeoutMode The new timeout mode as specified above.
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
@@ -539,8 +545,13 @@ public final class SerialPort
 	public final void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
 		timeoutMode = newTimeoutMode;
-		readTimeout = newReadTimeout;
-		writeTimeout = newWriteTimeout;
+		if (isWindows)
+		{
+			readTimeout = newReadTimeout;
+			writeTimeout = newWriteTimeout;
+		}
+		else
+			readTimeout = Math.round((float)newReadTimeout / 100.0f) * 100;
 		
 		if (isOpened)
 		{
@@ -627,6 +638,12 @@ public final class SerialPort
 	 * <p>
 	 * Note that only one valid flow control configuration can be used at any time.  For example, attempting to use both XOn/XOff
 	 * <b>and</b> RTS/CTS will most likely result in an unusable serial port.
+	 * <p>
+	 * Also note that some flow control modes are only available on certain operating systems. Valid modes for each OS are:
+	 * <p>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Windows: CTS, RTS/CTS, DSR, DTR/DSR, Xon, Xoff, Xon/Xoff<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mac: RTS/CTS, Xon, Xoff, Xon/Xoff<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Linux: RTS/CTS, Xon, Xoff, Xon/Xoff
 	 * 
 	 * @param newFlowControlSettings The desired type of flow control to enable for this serial port.
 	 * @see #FLOW_CONTROL_DISABLED
@@ -752,6 +769,8 @@ public final class SerialPort
 	 * <p>
 	 * Any value other than 0 indicates the number of milliseconds of inactivity that will be tolerated before the {@link #writeBytes(byte[],long)}
 	 * call will return.
+	 * <p>
+	 * Note that write timeouts are only available on Windows operating systems. This value is ignored on all other systems.
 	 * 
 	 * @return The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call.
 	 */
@@ -769,6 +788,12 @@ public final class SerialPort
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DSR: {@link #FLOW_CONTROL_DSR_ENABLED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DTR/DSR: {@link #FLOW_CONTROL_DTR_ENABLED} | {@link #FLOW_CONTROL_DSR_ENABLED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;XOn/XOff: {@link #FLOW_CONTROL_XONXOFF_IN_ENABLED} | {@link #FLOW_CONTROL_XONXOFF_OUT_ENABLED}
+	 * <p>
+	 * Note that some flow control modes are only available on certain operating systems. Valid modes for each OS are:
+	 * <p>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Windows: CTS, RTS/CTS, DSR, DTR/DSR, Xon, Xoff, Xon/Xoff<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mac: RTS/CTS, Xon, Xoff, Xon/Xoff<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Linux: RTS/CTS, Xon, Xoff, Xon/Xoff
 	 * 
 	 * @return The flow control settings enabled on this serial port.
 	 * @see #FLOW_CONTROL_DISABLED
