@@ -599,7 +599,7 @@ public final class SerialPort
 	/**
 	 * Sets the desired number of stop bits per word.
 	 * <p>
-	 * The default number of stop bits per word is 2.  Built-in stop-bit constants should be used
+	 * The default number of stop bits per word is 1.  Built-in stop-bit constants should be used
 	 * in this method ({@link #ONE_STOP_BIT}, {@link #ONE_POINT_FIVE_STOP_BITS}, {@link #TWO_STOP_BITS}).
 	 * <p>
 	 * Note that {@link #ONE_POINT_FIVE_STOP_BITS} stop bits may not be available on non-Windows systems.
