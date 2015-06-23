@@ -130,21 +130,19 @@ Ivy:
 
 <dependency org="com.fazecast" name="jSerialComm" rev="1.3.6"/>
 
-Grape:
+Groovy:
 
-@Grapes(
-	@Grab(group='com.fazecast', module='jSerialComm', version='1.3.6')
-)
+@Grab(group='com.fazecast', module='jSerialComm', version='1.3.6')
 
 Gradle:
 
-'com.fazecast:jSerialComm:1.3.6'
+compile 'com.fazecast:jSerialComm:1.3.6'
 
 Buildr:
 
-'com.fazecast:jSerialComm:jar:1.3.6'
+compile.with 'com.fazecast:jSerialComm:jar:1.3.6'
 
-SBT:
+Scala/SBT:
 
 libraryDependencies += "com.fazecast" % "jSerialComm" % "1.3.6"
 
