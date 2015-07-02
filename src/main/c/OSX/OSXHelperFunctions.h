@@ -29,6 +29,5 @@
 #include <termios.h>
 
 speed_t getBaudRateCode(speed_t baudRate);
-void setBaudRate(int portFD, speed_t baudRate);
 
 #endif		// #ifndef __OSX_HELPER_FUNCTIONS_HEADER_H__

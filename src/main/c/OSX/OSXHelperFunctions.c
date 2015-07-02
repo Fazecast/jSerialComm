@@ -71,15 +71,4 @@ speed_t getBaudRateCode(speed_t baudRate)
 	return 0;
 }
 
-void setBaudRate(int portFD, speed_t baudRate)
-{
-	struct termios2 options = { 0 };
-	ioctl(portFD, TCGETS2, &options);
-	options.c_cflag &= ~CBAUD;
-	options.c_cflag |= BOTHER;
-	options.c_ispeed = baudRate;
-	options.c_ospeed = baudRate;
-	ioctl(portFD, TCSETS2, &options);
-}
-
 #endif

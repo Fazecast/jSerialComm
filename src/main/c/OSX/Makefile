@@ -16,13 +16,12 @@ JAVAC			:= javac
 JAVAH			:= javah -jni
 JFLAGS 			:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME	:= libjSerialComm.jnilib
-SOURCES			:= SerialPort_OSX.c OSXHelperFunctions.c
 JAVA_SOURCE_DIR	= ../../../../src/main/java/com/fazecast/jSerialComm
 RESOURCE_DIR	= ../../../../src/main/resources/OSX
 BUILD_DIR		= ../../../../bin/OSX
 JAVA_CLASS_DIR	= $(BUILD_DIR)/../com/fazecast/jSerialComm
-OBJECTSx86		= $(BUILD_DIR)/x86/$(SOURCES:.c=.o)
-OBJECTSx86_64	= $(BUILD_DIR)/x86_64/$(SOURCES:.c=.o)
+OBJECTSx86		= $(BUILD_DIR)/x86/SerialPort_OSX.o $(BUILD_DIR)/x86/OSXHelperFunctions.o
+OBJECTSx86_64	= $(BUILD_DIR)/x86_64/SerialPort_OSX.o $(BUILD_DIR)/x86_64/OSXHelperFunctions.o
 JNI_HEADER		= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 
