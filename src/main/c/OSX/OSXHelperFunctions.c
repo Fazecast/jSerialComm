@@ -26,8 +26,6 @@
 #ifdef __APPLE__
 #include <sys/types.h>
 #include <fcntl.h>
-#include <asm/termios.h>
-#include <asm/ioctls.h>
 #include "OSXHelperFunctions.h"
 
 speed_t getBaudRateCode(speed_t baudRate)

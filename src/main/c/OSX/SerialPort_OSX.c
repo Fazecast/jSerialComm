@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sys/time.h>
+#include "OSXHelperFunctions.h"
 #include "../com_fazecast_jSerialComm_SerialPort.h"
 
 // Cached class, method, and field IDs
