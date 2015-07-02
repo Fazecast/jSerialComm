@@ -2,7 +2,7 @@
  * SerialPort_OSX.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 19, 2015
+ *  Last Updated on:  July 1, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -192,17 +192,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		return JNI_FALSE;
 	struct termios options = { 0 };
 
-	// Block non-root users from using this port
-	if (ioctl(serialPortFD, TIOCEXCL) == -1)
-		return JNI_FALSE;
-
-	// Clear any serial port flags
-	fcntl(serialPortFD, F_SETFL, 0);
-
-	// Set raw-mode to allow the use of tcsetattr() and ioctl()
-	tcgetattr(serialPortFD, &options);
-	cfmakeraw(&options);
-
 	// Get port parameters from Java class
 	speed_t baudRate = (*env)->GetIntField(env, obj, baudRateField);
 	int byteSizeInt = (*env)->GetIntField(env, obj, dataBitsField);
@@ -212,8 +201,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
 
+	// Clear any serial port flags
+	fcntl(serialPortFD, F_SETFL, 0);
+
+	// Set raw-mode to allow the use of tcsetattr() and ioctl()
+	tcgetattr(serialPortFD, &options);
+	cfmakeraw(&options);
+
 	// Set updated port parameters
-	cfsetspeed(&options, B38400);
 	options.c_cflag = (byteSize | stopBits | parity | CLOCAL | CREAD);
 	if (parityInt == com_fazecast_jSerialComm_SerialPort_SPACE_PARITY)
 		options.c_cflag &= ~PARODD;
@@ -223,10 +218,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (parityInt != 0)
 		options.c_iflag |= (INPCK | IGNPAR);
 
+	// Set baud rate
+	speed_t baudRateCode = getBaudRateCode(baudRate);
+	if (baudRateCode != 0)
+	{
+		cfsetispeed(&options, baudRateCode);
+		cfsetospeed(&options, baudRateCode);
+	}
+	else
+	{
+		cfsetispeed(&options, baudRate);
+		cfsetospeed(&options, baudRate);
+	}
+
 	// Apply changes
-	if (tcsetattr(serialPortFD, TCSANOW, &options) == -1)
-		return JNI_FALSE;
-	return (ioctl(serialPortFD, IOSSIOSPEED, &baudRate) == -1) ? JNI_FALSE : JNI_TRUE;
+	ioctl(serialPortFD, TIOCEXCL);			// Block other non-root users from using this port
+	return ((tcsetattr(serialPortFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowControl(JNIEnv *env, jobject obj, jlong serialPortFD)
