@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 18, 2015
+ *  Last Updated on:  Jul 18, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -26,6 +26,8 @@
 package com.fazecast.jSerialComm;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.InputStreamReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -38,7 +40,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.7
+ * @version 1.3.8
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -50,12 +52,23 @@ public final class SerialPort
 	private static volatile boolean isWindows = false;
 	static
 	{
+		// Determine the temporary file directory for Java
 		String OS = System.getProperty("os.name").toLowerCase();
 		String libraryPath = "", fileName = "";
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		if ((tempFileDirectory.charAt(tempFileDirectory.length()-1) != '\\') && 
 				(tempFileDirectory.charAt(tempFileDirectory.length()-1) != '/'))
 			tempFileDirectory += "/";
+		
+		// Force remove any previous versions of this library
+		File directory = new File(tempFileDirectory);
+		if (directory.exists())
+		{
+			File directoryListing[] = directory.listFiles();
+			for (File listing : directoryListing)
+				if (listing.isFile() && listing.toString().contains("jSerialComm"))
+					listing.delete();
+		}
 	
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
@@ -66,8 +79,9 @@ public final class SerialPort
 				String line;
 				while ((line = buildPropertiesFile.readLine()) != null)
 				{
-					if (line.contains("ro.product.cpu.abi") || line.contains("ro.product.cpu.abi2") || line.contains("ro.product.cpu.abilist") ||
-							line.contains("ro.product.cpu.abilist64") || line.contains("ro.product.cpu.abilist32"))
+					if (!line.contains("#") &&
+							(line.contains("ro.product.cpu.abi") || line.contains("ro.product.cpu.abi2") || line.contains("ro.product.cpu.abilist") ||
+									line.contains("ro.product.cpu.abilist64") || line.contains("ro.product.cpu.abilist32")))
 					{
 						libraryPath = (line.indexOf(',') == -1) ? "Android/" + line.substring(line.indexOf('=')+1) :
 							"Android/" + line.substring(line.indexOf('=')+1, line.indexOf(','));
@@ -154,7 +168,7 @@ public final class SerialPort
 			FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
 			byte transferBuffer[] = new byte[4096];
 			int numBytesRead;
-					
+			
 			while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
 				destinationFileContents.write(transferBuffer, 0, numBytesRead);
 					
@@ -268,21 +282,38 @@ public final class SerialPort
 		if (isOpened)
 			return true;
 		
-		// If this is an Android root application, we must explicitly allow serial port access to this library
+		// If this is an Android root application, we must explicitly allow serial port access to the library
 		if (isAndroid)
 		{
+			Process process = null;
 			try
 			{
-				String grantPermissions = "chmod 666 " + comPort + "\nexit\n";
-				Process process = Runtime.getRuntime().exec("su -c " + grantPermissions);
-				process.waitFor();
-				if (process.exitValue() != 0)
+				process = Runtime.getRuntime().exec("su");
+				DataOutputStream writer = new DataOutputStream(process.getOutputStream());
+				writer.writeBytes("chmod 666 " + comPort + "\n");
+				writer.writeBytes("exit\n");
+				writer.flush();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+				while (reader.readLine() != null);
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				return false;
+			}
+			finally
+			{
+				if (process == null)
 					return false;
-				Thread.sleep(500);
-			} catch (Exception e) { return false; }
+				try { process.waitFor(); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+			}
 		}
 		
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception e) { e.printStackTrace(); }
 		if ((portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
@@ -858,11 +889,11 @@ public final class SerialPort
 					{
 						// Read data from serial port
 						int numBytesAvailable, bytesRemaining, newBytesIndex;
-						while ((numBytesAvailable = bytesAvailable()) > 0)
+						while ((numBytesAvailable = bytesAvailable(portHandle)) > 0)
 						{
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
-							bytesRemaining = readBytes(newBytes, newBytes.length);
+							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length);
 							while (bytesRemaining >= (dataPacket.length - dataPacketIndex))
 							{
 								System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, dataPacket.length - dataPacketIndex);
@@ -904,7 +935,7 @@ public final class SerialPort
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			
-			return bytesAvailable();
+			return bytesAvailable(portHandle);
 		}
 		
 		@Override
@@ -915,10 +946,10 @@ public final class SerialPort
 			
 			while (isOpened)
 			{
-				bytesRead = readBytes(buffer, 1l);
+				bytesRead = readBytes(portHandle, buffer, 1l);
 				if (bytesRead > 0)
 					return ((int)buffer[0] & 0x000000FF);
-				try { Thread.sleep(2); } catch (Exception e) {}
+				try { Thread.sleep(1); } catch (Exception e) {}
 			}
 			throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
@@ -926,9 +957,6 @@ public final class SerialPort
 		@Override
 		public final int read(byte[] b) throws IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			
 			return read(b, 0, b.length);
 		}
 		
@@ -941,7 +969,7 @@ public final class SerialPort
 				return 0;
 			
 			byte[] buffer = new byte[len];
-			int numRead = readBytes(buffer, len);
+			int numRead = readBytes(portHandle, buffer, len);
 			if (numRead > 0)
 				System.arraycopy(buffer, 0, b, off, numRead);
 			
@@ -955,7 +983,7 @@ public final class SerialPort
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			
 			byte[] buffer = new byte[(int)n];
-			return readBytes(buffer, n);
+			return readBytes(portHandle, buffer, n);
 		}
 	}
 	
@@ -972,16 +1000,13 @@ public final class SerialPort
 			
 			byte[] buffer = new byte[1];
 			buffer[0] = (byte)(b & 0x000000FF);
-			if (writeBytes(buffer, 1l) < 0)
+			if (writeBytes(portHandle, buffer, 1l) < 0)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
 		
 		@Override
 		public final void write(byte[] b) throws IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			
 			write(b, 0, b.length);
 		}
 		
@@ -993,7 +1018,7 @@ public final class SerialPort
 			
 			byte[] buffer = new byte[len];
 			System.arraycopy(b, off, buffer, 0, len);
-			if (writeBytes(buffer, len) < 0)
+			if (writeBytes(portHandle, buffer, len) < 0)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
 	}
