@@ -53,6 +53,15 @@ void push_back(struct charPairVector* vector, const char* firstString, const cha
 	strcpy(vector->second[vector->length-1], secondString);
 }
 
+char keyExists(struct charPairVector* vector, const char* key)
+{
+	size_t i;
+	for (i = 0; i < vector->length; ++i)
+		if (strcmp(key, vector->first[i]) == 0)
+			return 1;
+	return 0;
+}
+
 void getFriendlyName(const char* productFile, char* friendlyName)
 {
 	int friendlyNameLength = 0;
@@ -193,6 +202,47 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					free(newComPorts.second);
 				}
 			}
+		}
+		directoryEntry = readdir(directoryIterator);
+	}
+
+	// Close the directory
+	closedir(directoryIterator);
+}
+
+void lastDitchSearchForComPorts(charPairVector* comPorts)
+{
+	// Open the linux dev directory
+	DIR *directoryIterator = opendir("/dev/");
+	if (!directoryIterator)
+		return;
+
+	// Read all files in the current directory
+	struct dirent *directoryEntry = readdir(directoryIterator);
+	while (directoryEntry)
+	{
+		// See if the file names a potential serial port
+		if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
+				(((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
+						((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'C') && (directoryEntry->d_name[5] == 'M')) ||
+						((directoryEntry->d_name[3] == 'U') && (directoryEntry->d_name[4] == 'S') && (directoryEntry->d_name[5] == 'B'))))
+		{
+			// Determine system name of port
+			char* systemName = (char*)malloc(256);
+			strcpy(systemName, "/dev/");
+			strcat(systemName, directoryEntry->d_name);
+
+			// Set static friendly name
+			char* friendlyName = (char*)malloc(256);
+			strcpy(friendlyName, "USB-Based Serial Port");
+
+			// Determine if port is already in the list, and add it if not
+			if (!keyExists(comPorts, systemName))
+				push_back(comPorts, systemName, friendlyName);
+
+			// Clean up memory
+			free(systemName);
+			free(friendlyName);
 		}
 		directoryEntry = readdir(directoryIterator);
 	}

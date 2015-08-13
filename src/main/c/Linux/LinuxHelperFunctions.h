@@ -32,9 +32,11 @@ typedef struct charPairVector
 	size_t length;
 } charPairVector;
 void push_back(struct charPairVector* vector, const char* firstString, const char* secondString);
+char keyExists(struct charPairVector* vector, const char* key);
 
 void getDriverName(const char* directoryToSearch, char* friendlyName);
 void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch);
+void lastDitchSearchForComPorts(charPairVector* comPorts);
 void getFriendlyName(const char* productFile, char* friendlyName);
 unsigned int getBaudRateCode(int baudRate);
 void setBaudRate(int portFD, int baudRate);

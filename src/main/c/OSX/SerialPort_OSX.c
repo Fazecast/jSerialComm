@@ -356,7 +356,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	FD_SET(serialPortFD, &waitingSet);
 
 	// Wait for a serial port event
-	int retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout);
+	int retVal;
+	do { retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout); } while ((retVal < 0) && (errno == EINTR));
 	if (retVal <= 0)
 		return 0;
 	return (FD_ISSET(serialPortFD, &waitingSet)) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
@@ -401,7 +402,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		// While there are more bytes we are supposed to read
 		while (bytesRemaining > 0)
 		{
-			if ((numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining)) == -1)
+			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
+			if (numBytesRead == -1)
 			{
 				// Problem reading, close port
 				close(serialPortFD);
@@ -431,7 +433,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		// While there are more bytes we are supposed to read and the timeout has not elapsed
 		do
 		{
-			if ((numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining)) == -1)
+			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
+			if (numBytesRead == -1)
 			{
 				// Problem reading, close port
 				close(serialPortFD);
@@ -453,7 +456,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	else		// Semi- or non-blocking specified
 	{
 		// Read from port
-		if ((numBytesRead = read(serialPortFD, readBuffer, bytesToRead)) == -1)
+		do { numBytesRead = read(serialPortFD, readBuffer, bytesToRead); } while ((numBytesRead < 0) && (errno == EINTR));
+		if (numBytesRead == -1)
 		{
 			// Problem reading, close port
 			close(serialPortFD);
@@ -479,7 +483,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	int numBytesWritten;
 
 	// Write to port
-	if ((numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite)) == -1)
+	do { numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
+	if (numBytesWritten == -1)
 	{
 		// Problem writing, close port
 		close(serialPortFD);
