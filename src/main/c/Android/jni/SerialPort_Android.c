@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  May 19, 2015
+ *  Last Updated on:  Oct 09, 2015
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2015 Fazecast, Inc.
@@ -27,7 +27,9 @@
 #ifndef CMSPAR
 #define CMSPAR 010000000000
 #endif
+#include <android/log.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -35,8 +37,14 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sys/time.h>
+#include <linux/usbdevice_fs.h>
+#include <asm/byteorder.h>
 #include "com_fazecast_jSerialComm_SerialPort.h"
 #include "AndroidHelperFunctions.h"
+
+// Logging defines
+#define LOG_TAG "com.fazecast.jSerialComm"
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 // Cached class, method, and field IDs
 jclass serialCommClass;
@@ -104,7 +112,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
 {
-	// Delete the cache global reference
+	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
 }
 
@@ -124,7 +132,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		else
 		{
 			// Close the port if there was a problem setting the parameters
-			close(serialPortFD);
+			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
 			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 		}
@@ -150,10 +158,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
 
 	// Clear any serial port flags
-	fcntl(serialPortFD, F_SETFL, 0);
+	if (isatty(serialPortFD))
+		fcntl(serialPortFD, F_SETFL, 0);
 
-	// Set raw-mode to allow the use of tcsetattr() and ioctl()
-	tcgetattr(serialPortFD, &options);
+	// Set raw-mode to allow the use of ioctl()
+	if (isatty(serialPortFD))
+		ioctl(serialPortFD, TCGETS, &options);
 	cfmakeraw(&options);
 
 	// Set updated port parameters
@@ -175,8 +185,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	}
 
 	// Apply changes
-	int retVal = tcsetattr(serialPortFD, TCSANOW, &options);
-	ioctl(serialPortFD, TIOCEXCL);			// Block non-root users from using this port
+	int retVal = -1;
+	if (isatty(serialPortFD))
+		retVal = ioctl(serialPortFD, TCSETS, &options);
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -198,14 +209,17 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 	tcflag_t XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0) ? IXON : 0;
 
 	// Retrieve existing port configuration
-	tcgetattr(serialPortFD, &options);
+	if (isatty(serialPortFD))
+		ioctl(serialPortFD, TCGETS, &options);
 
 	// Set updated port parameters
 	options.c_cflag |= CTSRTSEnabled;
 	options.c_iflag |= XonXoffInEnabled | XonXoffOutEnabled;
 
 	// Apply changes
-	int retVal = tcsetattr(serialPortFD, TCSANOW, &options);
+	int retVal = -1;
+	if (isatty(serialPortFD))
+		retVal = ioctl(serialPortFD, TCSETS, &options);
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -223,8 +237,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Retrieve existing port configuration
 	struct termios options = { 0 };
-	tcgetattr(serialPortFD, &options);
+	if (isatty(serialPortFD))
+		ioctl(serialPortFD, TCGETS, &options);
 	int flags = fcntl(serialPortFD, F_GETFL);
+	if (flags == -1)
+		return JNI_FALSE;
 
 	// Set updated port timeouts
 	if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING) > 0) && (readTimeout > 0))	// Read Semi-blocking with timeout
@@ -265,8 +282,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	}
 
 	// Apply changes
-	fcntl(serialPortFD, F_SETFL, flags);
-	int retVal = tcsetattr(serialPortFD, TCSANOW, &options);
+	int retVal = fcntl(serialPortFD, F_SETFL, flags);
+	if ((retVal != -1) && isatty(serialPortFD))
+		retVal = ioctl(serialPortFD, TCSETS, &options);
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -283,24 +301,27 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 	int eventsToMonitor = (*env)->GetIntField(env, obj, eventFlagsField);
 
 	// Change read timeouts if we are monitoring data received
+	jboolean retVal;
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
 	{
 		struct termios options = { 0 };
-		tcgetattr(serialPortFD, &options);
+		ioctl(serialPortFD, TCGETS, &options);
 		int flags = fcntl(serialPortFD, F_GETFL);
+		if (flags == -1)
+			return JNI_FALSE;
 		flags &= ~O_NONBLOCK;
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 10;
-		fcntl(serialPortFD, F_SETFL, flags);
-		tcsetattr(serialPortFD, TCSANOW, &options);
+		retVal = ((fcntl(serialPortFD, F_SETFL, flags) == -1) || (ioctl(serialPortFD, TCSETS, &options) == -1)) ?
+				JNI_FALSE : JNI_TRUE;
 		if (baudRateCode == 0)					// Set custom baud rate
 			setBaudRate(serialPortFD, baudRate);
 	}
 	else
-		Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj, serialPortFD);
+		retVal = Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj, serialPortFD);
 
 	// Apply changes
-	return JNI_TRUE;
+	return retVal;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortFD)
@@ -315,7 +336,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	FD_SET(serialPortFD, &waitingSet);
 
 	// Wait for a serial port event
-	int retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout);
+	int retVal;
+	do { retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout); } while ((retVal < 0) && (errno == EINTR));
 	if (retVal <= 0)
 		return 0;
 	return (FD_ISSET(serialPortFD, &waitingSet)) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
@@ -326,7 +348,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	// Close port
 	if (serialPortFD <= 0)
 		return JNI_TRUE;
-	close(serialPortFD);
+	while ((close(serialPortFD) == -1) && (errno != EBADF));
 	serialPortFD = -1;
 	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -359,10 +381,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		// While there are more bytes we are supposed to read
 		while (bytesRemaining > 0)
 		{
-			if ((numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining)) == -1)
+			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
+			if (numBytesRead == -1)
 			{
 				// Problem reading, close port
-				close(serialPortFD);
+				while ((close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -389,10 +412,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		// While there are more bytes we are supposed to read and the timeout has not elapsed
 		do
 		{
-			if ((numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining)) == -1)
+			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
+			if (numBytesRead == -1)
 			{
 				// Problem reading, close port
-				close(serialPortFD);
+				while ((close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -411,10 +435,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	else		// Semi- or non-blocking specified
 	{
 		// Read from port
-		if ((numBytesRead = read(serialPortFD, readBuffer, bytesToRead)) == -1)
+		do { numBytesRead = read(serialPortFD, readBuffer, bytesToRead); } while ((numBytesRead < 0) && (errno == EINTR));
+		if (numBytesRead == -1)
 		{
 			// Problem reading, close port
-			close(serialPortFD);
+			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
 			(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -437,10 +462,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	int numBytesWritten;
 
 	// Write to port
-	if ((numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite)) == -1)
+	do { numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
+	if (numBytesWritten == -1)
 	{
 		// Problem writing, close port
-		close(serialPortFD);
+		while ((close(serialPortFD) == -1) && (errno != EBADF));
 		serialPortFD = -1;
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);

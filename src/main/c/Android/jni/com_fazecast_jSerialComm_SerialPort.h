@@ -89,6 +89,14 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    associateNativeHandle
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_associateNativeHandle
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    closePortNative
  * Signature: (J)Z
  */

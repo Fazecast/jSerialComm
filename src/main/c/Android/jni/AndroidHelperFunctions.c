@@ -32,6 +32,8 @@
 #include <fcntl.h>
 #include <asm/termios.h>
 #include <asm/ioctls.h>
+#include <linux/usbdevice_fs.h>
+#include <asm/byteorder.h>
 #ifndef BOTHER
 #include <termios.h>
 #endif
@@ -245,18 +247,23 @@ void setBaudRate(int portFD, int baudRate)
 {
 #ifdef BOTHER
 	struct termios2 options = { 0 };
-	ioctl(portFD, TCGETS2, &options);
+
+	if (isatty(portFD))
+		ioctl(portFD, TCGETS2, &options);
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
 	options.c_ispeed = baudRate;
 	options.c_ospeed = baudRate;
-	ioctl(portFD, TCSETS2, &options);
+	if (isatty(portFD))
+		ioctl(portFD, TCSETS2, &options);
 #else
 	struct termios options = { 0 };
-	tcgetattr(portFD, &options);
+	if (isatty(portFD))
+		ioctl(portFD, TCGETS, &options);
 	cfsetispeed(&options, B38400);
 	cfsetospeed(&options, B38400);
-	tcsetattr(portFD, TCSANOW, &options);
+	if (isatty(portFD))
+		ioctl(portFD, TCSETS, &options);
 #endif
 }
 
