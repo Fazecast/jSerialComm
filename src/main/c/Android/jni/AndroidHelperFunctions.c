@@ -250,20 +250,28 @@ void setBaudRate(int portFD, int baudRate)
 
 	if (isatty(portFD))
 		ioctl(portFD, TCGETS2, &options);
+	else
+		return;
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
 	options.c_ispeed = baudRate;
 	options.c_ospeed = baudRate;
 	if (isatty(portFD))
 		ioctl(portFD, TCSETS2, &options);
+	else
+		return;
 #else
 	struct termios options = { 0 };
 	if (isatty(portFD))
 		ioctl(portFD, TCGETS, &options);
+	else
+		return;
 	cfsetispeed(&options, B38400);
 	cfsetospeed(&options, B38400);
 	if (isatty(portFD))
 		ioctl(portFD, TCSETS, &options);
+	else
+		return;
 #endif
 }
 

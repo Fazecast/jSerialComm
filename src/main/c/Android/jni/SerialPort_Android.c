@@ -164,6 +164,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Set raw-mode to allow the use of ioctl()
 	if (isatty(serialPortFD))
 		ioctl(serialPortFD, TCGETS, &options);
+	else
+		return JNI_FALSE;
 	cfmakeraw(&options);
 
 	// Set updated port parameters
@@ -188,6 +190,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int retVal = -1;
 	if (isatty(serialPortFD))
 		retVal = ioctl(serialPortFD, TCSETS, &options);
+	else
+		return JNI_FALSE;
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -211,6 +215,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 	// Retrieve existing port configuration
 	if (isatty(serialPortFD))
 		ioctl(serialPortFD, TCGETS, &options);
+	else
+		return JNI_FALSE;
 
 	// Set updated port parameters
 	options.c_cflag |= CTSRTSEnabled;
@@ -220,6 +226,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 	int retVal = -1;
 	if (isatty(serialPortFD))
 		retVal = ioctl(serialPortFD, TCSETS, &options);
+	else
+		return JNI_FALSE;
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -239,6 +247,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	struct termios options = { 0 };
 	if (isatty(serialPortFD))
 		ioctl(serialPortFD, TCGETS, &options);
+	else
+		return JNI_FALSE;
 	int flags = fcntl(serialPortFD, F_GETFL);
 	if (flags == -1)
 		return JNI_FALSE;
@@ -283,8 +293,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Apply changes
 	int retVal = fcntl(serialPortFD, F_SETFL, flags);
-	if ((retVal != -1) && isatty(serialPortFD))
-		retVal = ioctl(serialPortFD, TCSETS, &options);
+	if (retVal != -1)
+	{
+		if (isatty(serialPortFD))
+			retVal = ioctl(serialPortFD, TCSETS, &options);
+		else
+			return JNI_FALSE;
+	}
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
