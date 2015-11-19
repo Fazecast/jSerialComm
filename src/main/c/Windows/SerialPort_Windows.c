@@ -500,7 +500,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 
 	// Close port
-	while (!CloseHandle(serialPortHandle));
+	int numRetries = 10;
+	while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
 	serialPortHandle = INVALID_HANDLE_VALUE;
 	env->SetLongField(obj, serialPortHandleField, -1l);
 	env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
@@ -518,7 +519,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
 		return -1;
 	DWORD numBytesAvailable = commInfo.cbInQue;
-	
+
 	return (jint)numBytesAvailable;
 }
 
