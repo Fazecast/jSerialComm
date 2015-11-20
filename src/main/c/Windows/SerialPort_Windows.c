@@ -469,7 +469,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	}
 
 	// Wait for a serial port event
-	DWORD eventMask, numBytesRead;
+	DWORD eventMask, numBytesRead, readResult = WAIT_FAILED;
 	if (WaitCommEvent(serialPortHandle, &eventMask, &overlappedStruct) == FALSE)
 	{
 		if (GetLastError() != ERROR_IO_PENDING)			// Problem occurred
@@ -481,8 +481,17 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		}
-		else if (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, TRUE) == FALSE)
-			numBytesRead = 0;
+		else
+		{
+			BOOL continueWaiting = TRUE;
+			while (continueWaiting)
+			{
+				readResult = waitForSingleObject(overlappedStruct.hEvent, 750);
+				continueWaiting = ((readResult == WAIT_TIMEOUT) && (env->GetIntField(obj, eventFlagsField) != 0));
+			}
+			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, TRUE) == FALSE))
+				numBytesRead = 0;
+		}
 	}
 
 	// Return type of event if successful
