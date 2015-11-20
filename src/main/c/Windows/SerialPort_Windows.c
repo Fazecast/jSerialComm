@@ -486,7 +486,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 			BOOL continueWaiting = TRUE;
 			while (continueWaiting)
 			{
-				readResult = waitForSingleObject(overlappedStruct.hEvent, 750);
+				readResult = WaitForSingleObject(overlappedStruct.hEvent, 750);
 				continueWaiting = ((readResult == WAIT_TIMEOUT) && (env->GetIntField(obj, eventFlagsField) != 0));
 			}
 			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, TRUE) == FALSE))
