@@ -211,7 +211,7 @@ public final class SerialPort
 			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
 		else if (portDescriptor.contains("/pts/"))
 			portDescriptor = "/dev/pts/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
-		else
+		else if (!((new File(portDescriptor)).exists()))
 			portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 
 		// Create SerialPort object
