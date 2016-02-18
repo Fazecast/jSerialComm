@@ -40,7 +40,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.10
+ * @version 1.3.11
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -181,6 +181,13 @@ public final class SerialPort
 		System.load(tempFileName);
 		initializeLibrary();
 	}
+	
+	// Static symbolic link testing function
+	private static boolean isSymbolicLink(File file) throws IOException
+	{
+		File canonicalFile = (file.getParent() == null) ? file : new File(file.getParentFile().getCanonicalFile(), file.getName());
+		return !canonicalFile.getCanonicalFile().equals(canonicalFile.getAbsoluteFile());
+	}
 
 	/**
 	 * Returns a list of all available serial ports on this machine.
@@ -207,12 +214,29 @@ public final class SerialPort
 	static public SerialPort getCommPort(String portDescriptor)
 	{
 		// Correct port descriptor, if needed
-		if (isWindows)
-			portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
-		else if (portDescriptor.contains("/pts/"))
-			portDescriptor = "/dev/pts/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
-		else if (!((new File(portDescriptor)).exists()))
-			portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
+		try
+		{
+			// Resolve home directory ~
+			if (portDescriptor.startsWith("~" + File.separator))
+				portDescriptor = System.getProperty("user.home") + portDescriptor.substring(1);
+			
+			// See what kind of descriptor was passed in
+			if (isWindows)
+				portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
+			else if (isSymbolicLink(new File(portDescriptor)))
+				portDescriptor = (new File(portDescriptor)).getCanonicalPath();
+			else if (portDescriptor.contains("/pts/"))
+				portDescriptor = "/dev/pts/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
+			else if (!((new File(portDescriptor)).exists()))
+				portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
+		}
+		catch (Exception e)
+		{
+			SerialPort serialPort = new SerialPort();
+			serialPort.comPort = "/dev/null";
+			serialPort.portString = "Bad Port";
+			return serialPort;
+		}
 
 		// Create SerialPort object
 		SerialPort serialPort = new SerialPort();
