@@ -170,6 +170,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	int serialPortFD = -1;
 	if ((serialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK)) > 0)
 	{
+		// Clear any serial port flags
+		fcntl(serialPortFD, F_SETFL, 0);
+
 		// Configure the port parameters and timeouts
 		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD) && Java_com_fazecast_jSerialComm_SerialPort_configFlowControl(env, obj, serialPortFD) &&
 				Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD))
@@ -203,9 +206,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
 	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-
-	// Clear any serial port flags
-	fcntl(serialPortFD, F_SETFL, 0);
 
 	// Set raw-mode to allow the use of tcsetattr() and ioctl()
 	tcgetattr(serialPortFD, &options);

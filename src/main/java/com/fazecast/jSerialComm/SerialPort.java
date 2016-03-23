@@ -40,7 +40,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.11
+ * @version 1.3.12
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -165,21 +165,29 @@ public final class SerialPort
 		try
 		{
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
-			FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-			byte transferBuffer[] = new byte[4096];
-			int numBytesRead;
-
-			while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-				destinationFileContents.write(transferBuffer, 0, numBytesRead);
-
-			fileContents.close();
-			destinationFileContents.close();
+			if (fileContents == null)
+			{
+				System.err.println("Could not locate or access the native jSerialComm shared library.");
+				System.err.println("If you are using multiple projects with interdependencies, you may need to fix your build settings to ensure that library resources are copied properly.");
+			}
+			else
+			{
+				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+				byte transferBuffer[] = new byte[4096];
+				int numBytesRead;
+	
+				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+					destinationFileContents.write(transferBuffer, 0, numBytesRead);
+	
+				fileContents.close();
+				destinationFileContents.close();
+				
+				// Load native library
+				System.load(tempFileName);
+				initializeLibrary();
+			}
 		}
 		catch (Exception e) { e.printStackTrace(); }
-
-		// Load native library
-		System.load(tempFileName);
-		initializeLibrary();
 	}
 	
 	// Static symbolic link testing function
@@ -337,7 +345,7 @@ public final class SerialPort
 			}
 		}
 
-		try { Thread.sleep(500); } catch (Exception e) { e.printStackTrace(); }
+		try { Thread.sleep(1000); } catch (Exception e) { e.printStackTrace(); }
 		if ((portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
