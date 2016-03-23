@@ -4,7 +4,7 @@ apply plugin: 'maven'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '1.3.11'
+version = '1.3.12'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
