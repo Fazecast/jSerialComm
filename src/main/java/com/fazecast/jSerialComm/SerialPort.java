@@ -389,7 +389,6 @@ public final class SerialPort
 	private final native long openPortNative();							// Opens serial port
 	private final native boolean closePortNative(long portHandle);		// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
-	private final native boolean configFlowControl(long portHandle);	// Changes/sets flow control parameters as defined by this class
 	private final native boolean configTimeouts(long portHandle);		// Changes/sets serial port timeouts as defined by this class
 	private final native boolean configEventFlags(long portHandle);		// Changes/sets which serial events to listen for as defined by this class
 	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
@@ -724,7 +723,7 @@ public final class SerialPort
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
-			configFlowControl(portHandle);
+			configPort(portHandle);
 		}
 	}
 

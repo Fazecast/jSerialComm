@@ -257,7 +257,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if ((serialPortHandle = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)
 	{
 		// Configure the port parameters and timeouts
-		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)serialPortHandle) && Java_com_fazecast_jSerialComm_SerialPort_configFlowControl(env, obj, (jlong)serialPortHandle) &&
+		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)serialPortHandle) &&
 				Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, (jlong)serialPortHandle))
 			env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
 		else
@@ -287,37 +287,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BYTE byteSize = (BYTE)env->GetIntField(obj, dataBitsField);
 	int stopBitsInt = env->GetIntField(obj, stopBitsField);
 	int parityInt = env->GetIntField(obj, parityField);
+	int flowControl = env->GetIntField(obj, flowControlField);
 	BYTE stopBits = (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS;
 	BYTE parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? NOPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? ODDPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? EVENPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? MARKPARITY : SPACEPARITY;
 	BOOL isParity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? FALSE : TRUE;
-
-	// Retrieve existing port configuration
-	if (!GetCommState(serialPortHandle, &dcbSerialParams))
-		return JNI_FALSE;
-
-	// Set updated port parameters
-	dcbSerialParams.BaudRate = baudRate;
-	dcbSerialParams.ByteSize = byteSize;
-	dcbSerialParams.StopBits = stopBits;
-	dcbSerialParams.Parity = parity;
-	dcbSerialParams.fParity = isParity;
-	dcbSerialParams.fBinary = TRUE;
-	dcbSerialParams.fAbortOnError = FALSE;
-
-	// Apply changes
-	return SetCommState(serialPortHandle, &dcbSerialParams);
-}
-
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowControl(JNIEnv *env, jobject obj, jlong serialPortFD)
-{
-	HANDLE serialPortHandle = (HANDLE)serialPortFD;
-	if (serialPortHandle == INVALID_HANDLE_VALUE)
-		return JNI_FALSE;
-	DCB dcbSerialParams = {0};
-	dcbSerialParams.DCBlength = sizeof(DCB);
-
-	// Get flow control parameters from Java class
-	int flowControl = env->GetIntField(obj, flowControlField);
 	BOOL CTSEnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ||
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0));
 	BOOL DSREnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DSR_ENABLED) > 0) ||
@@ -332,6 +305,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowCo
 		return JNI_FALSE;
 
 	// Set updated port parameters
+	dcbSerialParams.BaudRate = baudRate;
+	dcbSerialParams.ByteSize = byteSize;
+	dcbSerialParams.StopBits = stopBits;
+	dcbSerialParams.Parity = parity;
+	dcbSerialParams.fParity = isParity;
+	dcbSerialParams.fBinary = TRUE;
+	dcbSerialParams.fAbortOnError = FALSE;
 	dcbSerialParams.fRtsControl = RTSValue;
 	dcbSerialParams.fOutxCtsFlow = CTSEnabled;
 	dcbSerialParams.fOutxDsrFlow = DSREnabled;
@@ -511,11 +491,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	// Close port
 	int numRetries = 10;
 	while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
-	serialPortHandle = INVALID_HANDLE_VALUE;
-	env->SetLongField(obj, serialPortHandleField, -1l);
-	env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+	if (numRetries > 0)
+	{
+		serialPortHandle = INVALID_HANDLE_VALUE;
+		env->SetLongField(obj, serialPortHandleField, -1l);
+		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+		return JNI_TRUE;
+	}
 
-	return JNI_TRUE;
+	return JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(JNIEnv *env, jobject obj, jlong serialPortFD)

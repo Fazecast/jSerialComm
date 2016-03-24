@@ -113,14 +113,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    configFlowControl
- * Signature: (J)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configFlowControl
-  (JNIEnv *, jobject, jlong);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configTimeouts
  * Signature: (J)Z
  */
