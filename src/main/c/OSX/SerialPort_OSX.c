@@ -378,6 +378,15 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	return numBytesAvailable;
 }
 
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	int numBytesToWrite = -1;
+	if (serialPortFD > 0)
+		ioctl(serialPortFD, TIOCOUTQ, &numBytesToWrite);
+
+	return numBytesToWrite;
+}
+
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)
 {
 	// Get port handle and read timeout from Java class
