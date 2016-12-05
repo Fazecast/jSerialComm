@@ -1,6 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'maven'
+apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
@@ -12,10 +13,9 @@ javadoc.options.links("http://docs.oracle.com/javase/7/docs/api/")
 
 jar {
   manifest {
-    attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-	           'Implementation-Version': version,
-               'Implementation-Vendor': 'Fazecast, Inc.',
-               'Sealed': 'true'
+  	instruction 'Bundle-Vendor', 'Fazecast, Inc.'
+  	instruction 'Bundle-Description', 'Java Serial Communications Library'
+  	instruction 'Sealed', 'true'
   }
 }
 
