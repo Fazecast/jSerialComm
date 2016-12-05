@@ -2,10 +2,10 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Oct 09, 2015
+ *  Last Updated on:  Dec 05, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -118,6 +118,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(JNIEnv *env, jobject obj)
 {
+	// TODO: SET A FLAG SAYING THAT WE ARE NOT USING USBFS
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 
@@ -151,6 +152,29 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
 	return serialPortFD;
 }
+
+/*JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_associateNativeHandle(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	// TODO: SET A FLAG SAYING THAT WE ARE USING USBFS
+	// Attempt to determine which serial port file this descriptor belongs to
+	char serialPortFdChars[16];
+	sprintf(serialPortFdChars, "%d", (int)serialPortFD);
+	char* fileDescriptorName = (char*)malloc(256), *portName = (char*)malloc(256);
+	strcpy(fileDescriptorName, "/proc/self/fd/");
+	strcat(fileDescriptorName, serialPortFdChars);
+	ssize_t result = readlink(fileDescriptorName, portName, 256);
+	free(fileDescriptorName);
+	if (result < 0)
+	{
+		free(portName);
+		return JNI_FALSE;
+	}
+
+	// Set the port name in the Java object
+	(*env)->SetObjectField(env, obj, comPortField, (*env)->NewStringUTF(env, portName));
+	free(portName);
+	return JNI_TRUE;
+}*/
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
@@ -187,7 +211,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_iflag |= (XonXoffInEnabled | XonXoffOutEnabled);
 	}
 	else
-		return JNI_FALSE;
+		return JNI_FALSE;/*
+	{
+		struct usbdevfs_ioctl requestWrapper;
+		requestWrapper.ifno = 1;// TODO
+		requestWrapper.ioctl_code = TCGETS;
+		requestWrapper.data = &options;
+		ioctl(serialPortFD, USBDEVFS_IOCTL, &requestWrapper);
+	}*/
 
 	// Set baud rate
 	unsigned int baudRateCode = getBaudRateCode(baudRate);
@@ -202,7 +233,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (isatty(serialPortFD))
 		retVal = ioctl(serialPortFD, TCSETS, &options);
 	else
-		return JNI_FALSE;
+		return JNI_FALSE;/*
+	{
+		struct usbdevfs_ioctl requestWrapper;
+		requestWrapper.ifno = 1;// TODO
+		requestWrapper.ioctl_code = TCSETS;
+		requestWrapper.data = &options;
+		retVal = ioctl(serialPortFD, USBDEVFS_IOCTL, &requestWrapper);
+	}*/
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
@@ -223,7 +261,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	if (isatty(serialPortFD))
 		ioctl(serialPortFD, TCGETS, &options);
 	else
-		return JNI_FALSE;
+		return JNI_FALSE;/*
+	{
+		struct usbdevfs_ioctl requestWrapper;
+		requestWrapper.ifno = 1;// TODO
+		requestWrapper.ioctl_code = TCGETS;
+		requestWrapper.data = &options;
+		if (ioctl(serialPortFD, USBDEVFS_IOCTL, &requestWrapper) < 0)
+			LOGD("ERROR GETTING tcgetattr PORT SETTINGS = %d\n", errno);
+	}*/
 	int flags = fcntl(serialPortFD, F_GETFL);
 	if (flags == -1)
 		return JNI_FALSE;
@@ -273,7 +319,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		if (isatty(serialPortFD))
 			retVal = ioctl(serialPortFD, TCSETS, &options);
 		else
-			return JNI_FALSE;
+			return JNI_FALSE;/*
+		{
+			struct usbdevfs_ioctl requestWrapper;
+			requestWrapper.ifno = 1;// TODO
+			requestWrapper.ioctl_code = TCSETS;
+			requestWrapper.data = &options;
+			if (ioctl(serialPortFD, USBDEVFS_IOCTL, &requestWrapper) < 0)
+				LOGD("ERROR SETTING ioctl PORT SETTINGS = %d\n", errno);
+		}*/
 	}
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
@@ -353,6 +407,15 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 		ioctl(serialPortFD, FIONREAD, &numBytesAvailable);
 
 	return numBytesAvailable;
+}
+
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	int numBytesToWrite = -1;
+	if (serialPortFD > 0)
+		ioctl(serialPortFD, TIOCOUTQ, &numBytesToWrite);
+
+	return numBytesToWrite;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)

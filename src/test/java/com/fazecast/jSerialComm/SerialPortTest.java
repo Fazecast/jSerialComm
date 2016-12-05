@@ -2,10 +2,10 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  May 05, 2015
+ *  Last Updated on:  Dec 05, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 1.3.12
+ * @version 1.4.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -64,12 +64,20 @@ public class SerialPortTest
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
-		try { serialPortChoice = (new Scanner(System.in)).nextInt(); } catch (Exception e) {}
+		try {
+			Scanner inputScanner = new Scanner(System.in);
+			serialPortChoice = inputScanner.nextInt();
+			inputScanner.close();
+		} catch (Exception e) {}
 		if (serialPortChoice == -1)
 		{
 			String serialPortDescriptor = "";
 			System.out.print("\nSpecify your desired serial port descriptor: ");
-			try { serialPortDescriptor = (new Scanner(System.in)).nextLine(); } catch (Exception e) {}
+			try {
+				Scanner inputScanner = new Scanner(System.in);
+				serialPortDescriptor = inputScanner.nextLine();
+				inputScanner.close();
+			} catch (Exception e) {}
 			ubxPort = SerialPort.getCommPort(serialPortDescriptor);
 		}
 		else
@@ -180,7 +188,11 @@ public class SerialPortTest
 		SerialPort ubxPort2;
 		System.out.print("\nChoose your second desired serial port, or enter -1 to skip this test: ");
 		serialPortChoice = 0;
-		try { serialPortChoice = (new Scanner(System.in)).nextInt(); } catch (Exception e) {}
+		try {
+			Scanner inputScanner = new Scanner(System.in);
+			serialPortChoice = inputScanner.nextInt();
+			inputScanner.close();
+		} catch (Exception e) {}
 		if (serialPortChoice != -1)
 		{
 			ubxPort2 = ports[serialPortChoice];

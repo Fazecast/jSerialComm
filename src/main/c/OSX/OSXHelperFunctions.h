@@ -2,10 +2,10 @@
  * OSXHelperFunctions.h
  *
  *       Created on:  Jul 1, 2015
- *  Last Updated on:  Jul 1, 2015
+ *  Last Updated on:  Mar 25, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *

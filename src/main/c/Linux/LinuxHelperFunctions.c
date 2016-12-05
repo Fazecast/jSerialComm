@@ -2,10 +2,10 @@
  * LinuxHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Mar 10, 2015
+ *  Last Updated on:  Mar 25, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -132,7 +132,9 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 			if ((directoryEntry->d_name[0] != '.') && (strcmp(directoryEntry->d_name, "virtual") != 0))
 			{
 				// See if the directory names a potential serial port
-				if ((strlen(directoryEntry->d_name) > 3) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y'))
+				if ((strlen(directoryEntry->d_name) > 3) &&
+						(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y')) ||
+								((directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c'))))
 				{
 					// Determine system name of port
 					char* systemName = (char*)malloc(256);
@@ -160,7 +162,14 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 							int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
 							if (fd >= 0)
 							{
-								if (((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
+								if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
+										(directoryEntry->d_name[3] == 'o') && (directoryEntry->d_name[4] == 'm') && (directoryEntry->d_name[5] == 'm'))
+								{
+									strcpy(friendlyName, "Bluetooth Port ");
+									strcat(friendlyName, directoryEntry->d_name);
+									push_back(comPorts, systemName, friendlyName);
+								}
+								else if (((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
 										((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN)))
 								{
 									strcpy(friendlyName, "Physical Port ");
@@ -235,6 +244,26 @@ void lastDitchSearchForComPorts(charPairVector* comPorts)
 			// Set static friendly name
 			char* friendlyName = (char*)malloc(256);
 			strcpy(friendlyName, "USB-Based Serial Port");
+
+			// Determine if port is already in the list, and add it if not
+			if (!keyExists(comPorts, systemName))
+				push_back(comPorts, systemName, friendlyName);
+
+			// Clean up memory
+			free(systemName);
+			free(friendlyName);
+		}
+		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
+				(directoryEntry->d_name[3] == 'o') && (directoryEntry->d_name[4] == 'm') && (directoryEntry->d_name[5] == 'm'))
+		{
+			// Determine system name of port
+			char* systemName = (char*)malloc(256);
+			strcpy(systemName, "/dev/");
+			strcat(systemName, directoryEntry->d_name);
+
+			// Set static friendly name
+			char* friendlyName = (char*)malloc(256);
+			strcpy(friendlyName, "Bluetooth-Based Serial Port");
 
 			// Determine if port is already in the list, and add it if not
 			if (!keyExists(comPorts, systemName))

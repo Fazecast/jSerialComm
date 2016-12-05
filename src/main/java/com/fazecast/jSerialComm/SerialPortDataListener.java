@@ -5,7 +5,7 @@
  *  Last Updated on:  Mar 12, 2015
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,7 +31,7 @@ import java.util.EventListener;
  * This interface must be implemented to enable simple event-based serial port I/O.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.12
+ * @version 1.4.0
  * @see java.util.EventListener
  */
 public interface SerialPortDataListener extends EventListener
@@ -61,6 +61,8 @@ public interface SerialPortDataListener extends EventListener
 	
 	/**
 	 * Called whenever one of the serial port events specified by the {@link #getListeningEvents()} method occurs.
+	 * <p>
+	 * Note that your implementation of this function should always perform as little data processing as possible, as the speed at which this callback will fire is at the mercy of the underlying operating system. If you need to collect a large amount of data, application-level buffering should be implemented and data processing should occur on a separate thread.
 	 * 
 	 * @param event A {@link SerialPortEvent} object containing information and/or data about the serial event that occurred.
 	 * @see SerialPortEvent

@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 19, 2015
+ *  Last Updated on:  Dec 05, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -516,6 +516,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	return (jint)numBytesAvailable;
 }
 
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return -1;
+
+	COMSTAT commInfo;
+	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
+		return -1;
+	DWORD numBytesToWrite = commInfo.cbOutQue;
+
+	return (jint)numBytesToWrite;
+}
+
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)
 {
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
@@ -578,6 +592,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	DWORD numBytesWritten = 0;
 	BOOL result;
 
+	// Set the DTR line to high if using RS-422
+	//EscapeCommFunction(serialPortHandle, SETDTR);
+
 	// Write to serial port
 	if ((result = WriteFile(serialPortHandle, writeBuffer, bytesToWrite, &numBytesWritten, &overlappedStruct)) == FALSE)
 	{
@@ -600,6 +617,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		}
 	}
+
+	// Clear the DTR line if using RS-422
+	//COMSTAT commInfo;
+	//do { ClearCommError(serialPortHandle, NULL, &commInfo); } while (commInfo.cbOutQue > 0);
+	//EscapeCommFunction(serialPortHandle, CLRDTR);
 
 	// Return number of bytes written if successful
 	CloseHandle(overlappedStruct.hEvent);

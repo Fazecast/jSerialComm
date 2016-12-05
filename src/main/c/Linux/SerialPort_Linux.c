@@ -2,10 +2,10 @@
  * SerialPort_Linux.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 09, 2015
+ *  Last Updated on:  Dec 05, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -144,6 +144,11 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
 	return serialPortFD;
 }
+
+//JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_associateNativeHandle(JNIEnv *env, jobject obj, jlong serialPortFD)
+//{
+//	;
+//}
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
@@ -336,6 +341,15 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	return numBytesAvailable;
 }
 
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	int numBytesToWrite = -1;
+	if (serialPortFD > 0)
+		ioctl(serialPortFD, TIOCOUTQ, &numBytesToWrite);
+
+	return numBytesToWrite;
+}
+
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)
 {
 	// Get port handle and read timeout from Java class
@@ -438,6 +452,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
 	int numBytesWritten, result = 0;
 
+	// Set the DTR line to high if using RS-422
+	//ioctl(serialPortFD, TIOCMGET, &result);
+	//result |= TIOCM_DTR;
+	//ioctl(serialPortFD, TIOCMSET, &result);
+
 	// Write to port
 	do { numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
 	if (numBytesWritten == -1)
@@ -450,6 +469,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
+
+	// Clear the DTR line if using RS-422
+//#ifdef TIOCSERGETLSR
+	//do
+	//{
+		//result = ioctl(serialPortFD, TIOCSERGETLSR);
+		//if (result != TIOCSER_TEMT)
+			//usleep(100);
+	//} while (result != TIOCSER_TEMT);
+//#endif
+	//ioctl(serialPortFD, TIOCMGET, &result);
+	//result &= ~TIOCM_DTR;
+	//ioctl(serialPortFD, TIOCMSET, &result);
+	//do { result = tcflush(serialPortFD, TCIFLUSH); } while ((result < 0) && (errno == EINTR));
 
 	// Return number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);

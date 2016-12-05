@@ -5,7 +5,7 @@ apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '1.3.12'
+version = '1.4.0'
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
@@ -13,9 +13,12 @@ javadoc.options.links("http://docs.oracle.com/javase/7/docs/api/")
 
 jar {
   manifest {
-  	instruction 'Bundle-Vendor', 'Fazecast, Inc.'
-  	instruction 'Bundle-Description', 'Java Serial Communications Library'
-  	instruction 'Sealed', 'true'
+    instruction 'Bundle-Description', 'jSerialComm: Java Serial Communications Library'
+    instruction 'Bundle-Vendor', 'Fazecast, Inc.'
+    attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
+	           'Implementation-Version': version,
+               'Implementation-Vendor': 'Fazecast, Inc.',
+               'Sealed': 'true'
   }
 }
 

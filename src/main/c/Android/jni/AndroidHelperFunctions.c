@@ -2,10 +2,10 @@
  * AndroidHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Mar 10, 2015
+ *  Last Updated on:  Mar 25, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -252,6 +252,13 @@ void setBaudRate(int portFD, int baudRate)
 		ioctl(portFD, TCGETS2, &options);
 	else
 		return;
+//	{
+//		struct usbdevfs_ioctl requestWrapper;
+//		requestWrapper.ifno = 1;// TODO
+//		requestWrapper.ioctl_code = TCGETS2;
+//		requestWrapper.data = &options;
+//		ioctl(portFD, USBDEVFS_IOCTL, &requestWrapper);
+//	}
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
 	options.c_ispeed = baudRate;
@@ -260,18 +267,39 @@ void setBaudRate(int portFD, int baudRate)
 		ioctl(portFD, TCSETS2, &options);
 	else
 		return;
+//	{
+//		struct usbdevfs_ioctl requestWrapper;
+//		requestWrapper.ifno = 1;// TODO
+//		requestWrapper.ioctl_code = TCSETS2;
+//		requestWrapper.data = &options;
+//		ioctl(portFD, USBDEVFS_IOCTL, &requestWrapper);
+//	}
 #else
 	struct termios options = { 0 };
 	if (isatty(portFD))
 		ioctl(portFD, TCGETS, &options);
 	else
 		return;
+//	{
+//		struct usbdevfs_ioctl requestWrapper;
+//		requestWrapper.ifno = 1;// TODO
+//		requestWrapper.ioctl_code = TCGETS;
+//		requestWrapper.data = &options;
+//		ioctl(portFD, USBDEVFS_IOCTL, &requestWrapper);
+//	}
 	cfsetispeed(&options, B38400);
 	cfsetospeed(&options, B38400);
 	if (isatty(portFD))
 		ioctl(portFD, TCSETS, &options);
 	else
 		return;
+//	{
+//		struct usbdevfs_ioctl requestWrapper;
+//		requestWrapper.ifno = 1;// TODO
+//		requestWrapper.ioctl_code = TCSETS;
+//		requestWrapper.data = &options;
+//		ioctl(portFD, USBDEVFS_IOCTL, &requestWrapper);
+//	}
 #endif
 }
 

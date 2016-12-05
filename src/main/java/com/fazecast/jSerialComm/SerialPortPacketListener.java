@@ -5,7 +5,7 @@
  *  Last Updated on:  Mar 12, 2015
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,7 +31,7 @@ package com.fazecast.jSerialComm;
  * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.12
+ * @version 1.4.0
  * @see com.fazecast.jSerialComm.SerialPortDataListener
  * @see java.util.EventListener
  */

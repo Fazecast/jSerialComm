@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 18, 2015
+ *  Last Updated on:  Dec 05, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2015 Fazecast, Inc.
+ * Copyright (C) 2012-2017 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -40,7 +40,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.3.12
+ * @version 1.4.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -254,6 +254,40 @@ public final class SerialPort
 		return serialPort;
 	}
 
+//	/**
+//	 * Allocates a {@link SerialPort} object corresponding to a previously opened serial port file descriptor.
+//	 * <p>
+//	 * Using this method to create a {@link SerialPort} object may not allow you to change some port characteristics
+//	 * like baud rate, flow control, or parity, depending on the methodology that was used to initially open the native
+//	 * file descriptor.
+//	 * <p>
+//	 * Use of this constructor is not recommended <b>except</b> for use with Android-specific applications. In this
+//	 * case, you can use the Android USB Host APIs to allow the user to grant permission to use the port, and then
+//	 * return the native file descriptor to this library via the Android UsbDeviceConnection.getFileDescriptor() method.
+//	 * <p>
+//	 * For non-Android applications, any of the other constructors are recommended; however, this method may still be
+//	 * used if you have a specific need for it in your application.
+//	 *
+//	 * @param nativeFileDescriptor A pre-opened file descriptor corresponding to the serial port you would like to use with this library.
+//	 * @return A SerialPort object.
+//	 */
+/*	static public SerialPort getCommPort(long nativeFileDescriptor)
+	{
+		// Create SerialPort object and associate it with the native file descriptor
+		SerialPort serialPort = new SerialPort();
+		if (!serialPort.associateNativeHandle(nativeFileDescriptor))
+			serialPort.comPort = "UNKNOWN";
+		serialPort.portString = "User-Specified Port";
+		serialPort.portHandle = nativeFileDescriptor;
+		serialPort.isOpened = true;
+
+		// Create the Input/OutputStream interfaces
+		serialPort.inputStream = serialPort.new SerialPortInputStream();
+		serialPort.outputStream = serialPort.new SerialPortOutputStream();
+
+		return serialPort;
+	}*/
+
 	// Parity Values
 	static final public int NO_PARITY = 0;
 	static final public int ODD_PARITY = 1;
@@ -387,12 +421,14 @@ public final class SerialPort
 	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
 	private final native long openPortNative();							// Opens serial port
+	//private final native boolean associateNativeHandle(long portHandle);// Associates an already opened file descriptor with this class
 	private final native boolean closePortNative(long portHandle);		// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
 	private final native boolean configTimeouts(long portHandle);		// Changes/sets serial port timeouts as defined by this class
 	private final native boolean configEventFlags(long portHandle);		// Changes/sets which serial events to listen for as defined by this class
 	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
 	private final native int bytesAvailable(long portHandle);			// Returns number of bytes available for reading
+	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
 	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead);	// Reads bytes from serial port
 	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite);	// Write bytes to serial port
 
@@ -403,6 +439,13 @@ public final class SerialPort
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
 	public final int bytesAvailable() { return bytesAvailable(portHandle); }
+	
+	/**
+	 * Returns the number of bytes still waiting to be written in the device's output queue.
+	 *
+	 * @return The number of bytes currently waiting to be written, or -1 if the port is not open.
+	 */
+	public final int bytesAwaitingWrite() { return bytesAwaitingWrite(portHandle); }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
