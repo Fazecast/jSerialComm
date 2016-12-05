@@ -442,6 +442,8 @@ public final class SerialPort
 	
 	/**
 	 * Returns the number of bytes still waiting to be written in the device's output queue.
+	 * <p>
+	 * Note that this method is not required or guaranteed to be implemented by the underlying device driver. Use it carefully and test your application to ensure it is working as you expect.
 	 *
 	 * @return The number of bytes currently waiting to be written, or -1 if the port is not open.
 	 */
