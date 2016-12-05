@@ -657,6 +657,8 @@ public final class SerialPort
 			readTimeout = newReadTimeout;
 			writeTimeout = newWriteTimeout;
 		}
+		else if ((newReadTimeout > 0) && (newReadTimeout <= 100))
+			readTimeout = 100;
 		else
 			readTimeout = Math.round((float)newReadTimeout / 100.0f) * 100;
 
