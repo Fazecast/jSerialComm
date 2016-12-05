@@ -334,15 +334,16 @@ public final class SerialPort
 	private volatile boolean isOpened = false;
 
 	/**
-	 * Opens this serial port for reading and writing.
+	 * Opens this serial port for reading and writing with an optional delay time.
 	 * <p>
-	 * All serial port parameters or timeouts can be changed at any time after the port has been opened.
+	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
 	 * Note that calling this method on an already opened port will simply return a value of true.
 	 *
+	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
 	 * @return Whether the port was successfully opened.
 	 */
-	public final boolean openPort()
+	public final boolean openPort(int safetySleepTime)
 	{
 		// Return true if already opened
 		if (isOpened)
@@ -378,8 +379,11 @@ public final class SerialPort
 				try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); return false; }
 			}
 		}
-
-		try { Thread.sleep(1000); } catch (Exception e) { e.printStackTrace(); }
+		
+		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
+		if (safetySleepTime > 0)
+			try { Thread.sleep(safetySleepTime); } catch (Exception e) { e.printStackTrace(); }
+		
 		if ((portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
@@ -389,6 +393,19 @@ public final class SerialPort
 		}
 		return isOpened;
 	}
+	
+	/**
+	 * Opens this serial port for reading and writing.
+	 * <p>
+	 * This method is equivalent to calling {@link #openPort} with a value of 1000.
+	 * <p>
+	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
+	 * <p>
+	 * Note that calling this method on an already opened port will simply return a value of true.
+	 *
+	 * @return Whether the port was successfully opened.
+	 */
+	public final boolean openPort() { return openPort(1000); }
 
 	/**
 	 * Closes this serial port.
