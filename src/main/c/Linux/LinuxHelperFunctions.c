@@ -219,6 +219,20 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 	closedir(directoryIterator);
 }
 
+// Determines if the given devName names a serial port or not
+int isSerialPortName(const char *devName)
+{
+	// Other potential serial port device names in a Linux-based system
+	const char * portNames[] = {"ttyUSB", "ttyAMA", "ttyACM", "rfcomm", NULL};
+
+	for(int i=0; portNames[i] != NULL; i++)
+	{
+		if(strstr(devName, portNames[i]) != NULL)
+			return 1;
+	}
+	return 0;
+}
+
 void lastDitchSearchForComPorts(charPairVector* comPorts)
 {
 	// Open the linux dev directory
@@ -231,10 +245,7 @@ void lastDitchSearchForComPorts(charPairVector* comPorts)
 	while (directoryEntry)
 	{
 		// See if the file names a potential serial port
-		if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
-				(((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
-						((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'C') && (directoryEntry->d_name[5] == 'M')) ||
-						((directoryEntry->d_name[3] == 'U') && (directoryEntry->d_name[4] == 'S') && (directoryEntry->d_name[5] == 'B'))))
+		if (isSerialPortName(directoryEntry->d_name))
 		{
 			// Determine system name of port
 			char* systemName = (char*)malloc(256);
@@ -243,7 +254,7 @@ void lastDitchSearchForComPorts(charPairVector* comPorts)
 
 			// Set static friendly name
 			char* friendlyName = (char*)malloc(256);
-			strcpy(friendlyName, "USB-Based Serial Port");
+			strcpy(friendlyName, "USB-Based or Other Serial Port");
 
 			// Determine if port is already in the list, and add it if not
 			if (!keyExists(comPorts, systemName))
