@@ -27,12 +27,12 @@ package com.fazecast.jSerialComm;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.InputStreamReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Date;
 
@@ -1022,6 +1022,11 @@ public final class SerialPort
 	// InputStream interface class
 	private final class SerialPortInputStream extends InputStream
 	{
+		// a shared, re-usable, single-byte scratch buffer to avoid allocating
+		// a new byte[] when reading a single byte. not thread safe, but neither
+		// SerialPort nor its Input/Output streams are to begin with.
+		private final byte[] singleByteBuffer = new byte[1];
+
 		public SerialPortInputStream() {}
 
 		@Override
@@ -1036,23 +1041,30 @@ public final class SerialPort
 		@Override
 		public final int read() throws IOException
 		{
-			byte[] buffer = new byte[1];
 			int bytesRead;
 
 			while (isOpened)
 			{
-				bytesRead = readBytes(portHandle, buffer, 1l);
+				bytesRead = readBytes(portHandle, singleByteBuffer, 1L);
+
 				if (bytesRead > 0)
-					return ((int)buffer[0] & 0x000000FF);
-				try { Thread.sleep(1); } catch (Exception e) {}
+					return ((int) singleByteBuffer[0] & 0xFF);
+
+				sleep1();
 			}
+
 			throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
 
 		@Override
 		public final int read(byte[] b) throws IOException
 		{
-			return read(b, 0, b.length);
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			if (b.length == 0)
+				return 0;
+
+			return readBytes(portHandle, b, b.length);
 		}
 
 		@Override
@@ -1085,6 +1097,11 @@ public final class SerialPort
 	// OutputStream interface class
 	private final class SerialPortOutputStream extends OutputStream
 	{
+		// a shared, re-usable, single-byte scratch buffer to avoid allocating
+		// a new byte[] when writing a single byte. not thread safe, but neither
+		// SerialPort nor its Input/Output streams are to begin with.
+		private final byte[] singleByteBuffer = new byte[1];
+
 		public SerialPortOutputStream() {}
 
 		@Override
@@ -1093,28 +1110,40 @@ public final class SerialPort
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 
-			byte[] buffer = new byte[1];
-			buffer[0] = (byte)(b & 0x000000FF);
-			if (writeBytes(portHandle, buffer, 1l) < 0)
+			singleByteBuffer[0] = (byte) (b & 0xFF);
+
+			if (writeBytes(portHandle, singleByteBuffer, 1L) < 0)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
 
 		@Override
 		public final void write(byte[] b) throws IOException
 		{
-			write(b, 0, b.length);
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+
+			if (writeBytes(portHandle, b, b.length) < 0)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
 		}
 
 		@Override
 		public final void write(byte[] b, int off, int len) throws IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-
-			byte[] buffer = new byte[len];
-			System.arraycopy(b, off, buffer, 0, len);
-			if (writeBytes(portHandle, buffer, len) < 0)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+			if (off == 0 && len == b.length)
+			{
+				write(b);
+			}
+			else
+			{
+				byte[] buffer = new byte[len];
+				System.arraycopy(b, off, buffer, 0, len);
+				write(buffer);
+			}
 		}
 	}
+
+	private static void sleep1() {
+		try { Thread.sleep(1); } catch (Exception ignored) {}
+	}
+
 }
