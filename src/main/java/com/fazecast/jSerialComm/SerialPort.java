@@ -1107,23 +1107,50 @@ public final class SerialPort
 		@Override
 		public final void write(int b) throws IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+			int bytesWritten = 0;
 
-			singleByteBuffer[0] = (byte) (b & 0xFF);
+			do {
+				if (!isOpened)
+					throw new IOException("This port appears to have been shutdown or disconnected.");
 
-			if (writeBytes(portHandle, singleByteBuffer, 1L) < 0)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+				singleByteBuffer[0] = (byte) (b & 0xFF);
+
+				bytesWritten += writeBytes(portHandle, singleByteBuffer, 1L);
+
+				if (bytesWritten < 0)
+					throw new IOException("This port appears to have been shutdown or disconnected.");
+
+				if (bytesWritten == 0) sleep1();
+			} while (bytesWritten < 1);
 		}
 
 		@Override
 		public final void write(byte[] b) throws IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+			int bytesWritten = 0;
+			byte[] buffer = b;
 
-			if (writeBytes(portHandle, b, b.length) < 0)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+			do {
+				if (!isOpened)
+					throw new IOException("This port appears to have been shutdown or disconnected.");
+
+				int written = writeBytes(portHandle, buffer, 1L);
+
+				if (written < 0)
+					throw new IOException("This port appears to have been shutdown or disconnected.");
+
+				bytesWritten += written;
+
+				if (written == 0)
+				{
+					sleep1();
+				}
+				else
+				{
+					buffer = new byte[b.length - bytesWritten];
+					System.arraycopy(b, bytesWritten, buffer, 0, buffer.length);
+				}
+			} while (bytesWritten < b.length);
 		}
 
 		@Override
