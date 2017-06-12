@@ -989,18 +989,21 @@ public final class SerialPort
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
 							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length);
-							while (bytesRemaining >= (dataPacket.length - dataPacketIndex))
-							{
-								System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, dataPacket.length - dataPacketIndex);
-								bytesRemaining -= (dataPacket.length - dataPacketIndex);
-								newBytesIndex += (dataPacket.length - dataPacketIndex);
-								dataPacketIndex = 0;
-								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, dataPacket.clone()));
+							if(dataPacket.length == 0) {
+								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, newBytes.clone()));
 							}
-							if (bytesRemaining > 0)
-							{
-								System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, bytesRemaining);
-								dataPacketIndex += bytesRemaining;
+							else {
+								while (bytesRemaining >= (dataPacket.length - dataPacketIndex)) {
+									System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, dataPacket.length - dataPacketIndex);
+									bytesRemaining -= (dataPacket.length - dataPacketIndex);
+									newBytesIndex += (dataPacket.length - dataPacketIndex);
+									dataPacketIndex = 0;
+									userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, dataPacket.clone()));
+								}
+								if (bytesRemaining > 0) {
+									System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, bytesRemaining);
+									dataPacketIndex += bytesRemaining;
+								}
 							}
 						}
 					}
