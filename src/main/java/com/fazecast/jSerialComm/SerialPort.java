@@ -372,11 +372,11 @@ public final class SerialPort
 			{
 				if (process == null)
 					return false;
-				try { process.waitFor(); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+				try { process.waitFor(); } catch (InterruptedException e) { return false; }
 				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-				try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+				try { Thread.sleep(500); } catch (InterruptedException e) { return false; }
 			}
 		}
 		
