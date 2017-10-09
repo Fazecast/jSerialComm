@@ -145,6 +145,8 @@ public final class SerialPort
 				if (linkerFile.exists())
 					libraryPath += "-hf";
 			}
+			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
+				libraryPath = "Linux/armv8_64";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Linux/x86_64";
 			else
