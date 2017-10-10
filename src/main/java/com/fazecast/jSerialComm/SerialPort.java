@@ -1063,10 +1063,17 @@ public final class SerialPort
 			if (len == 0)
 				return 0;
 
-			byte[] buffer = new byte[len];
-			int numRead = readBytes(portHandle, buffer, len);
-			if (numRead > 0)
-				System.arraycopy(buffer, 0, b, off, numRead);
+                        byte[] buffer = new byte[len];
+
+                        int numRead;
+                        do
+                        {
+                            numRead = readBytes(portHandle, buffer, len);
+                        }
+                        while (numRead == 0);
+
+                        if (numRead > 0)
+                            System.arraycopy(buffer, 0, b, off, numRead);
 
 			return numRead;
 		}
