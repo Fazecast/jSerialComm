@@ -5,11 +5,11 @@ apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '1.4.0'
+version = '1.4.1'
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
-javadoc.options.links("http://docs.oracle.com/javase/7/docs/api/")
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+javadoc.options.links("http://docs.oracle.com/javase/8/docs/api/")
 
 jar {
   manifest {
