@@ -2,10 +2,10 @@
  * SerialPort_OSX.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 25, 2016
+ *  Last Updated on:  Jan 03, 2018
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2017 Fazecast, Inc.
+ * Copyright (C) 2012-2018 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -513,6 +513,52 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	// Return number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 	return numBytesWritten;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	return (ioctl(serialPortFD, TIOCSBRK) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	return (ioctl(serialPortFD, TIOCCBRK) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = TIOCM_RTS;
+	return (ioctl(serialPortFD, TIOCMBIS, &modemBits) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = TIOCM_RTS;
+	return (ioctl(serialPortFD, TIOCMBIC, &modemBits) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = TIOCM_DTR;
+	return (ioctl(serialPortFD, TIOCMBIS, &modemBits) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = TIOCM_DTR;
+	return (ioctl(serialPortFD, TIOCMBIC, &modemBits) == 0);
 }
 
 #endif

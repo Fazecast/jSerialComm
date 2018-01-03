@@ -450,12 +450,12 @@ public final class SerialPort
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
 	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead);	// Reads bytes from serial port
 	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite);	// Write bytes to serial port
-	private final native void setBreak(long portHandle);
-	private final native void clearBreak(long portHandle);
-	private final native void setRTS(long portHandle);
-	private final native void clearRTS(long portHandle);
-	private final native void setDTR(long portHandle);
-	private final native void clearDTR(long portHandle);
+	private final native boolean setBreak(long portHandle);				// Set BREAK status on serial line
+	private final native boolean clearBreak(long portHandle);			// Clear BREAK status on serial line
+	private final native boolean setRTS(long portHandle);				// Set RTS line to 1
+	private final native boolean clearRTS(long portHandle);				// Clear RTS line to 0
+	private final native boolean setDTR(long portHandle);				// Set DTR line to 1
+	private final native boolean clearDTR(long portHandle);				// Clear DTR line to 0
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
