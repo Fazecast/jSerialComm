@@ -2,10 +2,10 @@
  * SerialPortEvent.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Mar 12, 2015
+ *  Last Updated on:  Jan 03, 2018
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2017 Fazecast, Inc.
+ * Copyright (C) 2012-2018 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,7 +31,7 @@ import java.util.EventObject;
  * This class describes an asynchronous serial port event.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.4.0
+ * @version 2.0.0
  * @see java.util.EventObject
  */
 public final class SerialPortEvent extends EventObject

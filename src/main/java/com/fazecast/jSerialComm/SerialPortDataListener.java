@@ -2,10 +2,10 @@
  * SerialPortDataListener.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Mar 12, 2015
+ *  Last Updated on:  Jan 03, 2018
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2017 Fazecast, Inc.
+ * Copyright (C) 2012-2018 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,7 +31,7 @@ import java.util.EventListener;
  * This interface must be implemented to enable simple event-based serial port I/O.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.4.0
+ * @version 2.0.0
  * @see java.util.EventListener
  */
 public interface SerialPortDataListener extends EventListener
@@ -44,8 +44,6 @@ public interface SerialPortDataListener extends EventListener
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
-	 * <p>
-	 * If you choose to listen for the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} event, you should implement the sub-interface {@link SerialPortPacketListener} instead of this one.
 	 * <p>
 	 * Two or more events may be OR'd together to listen for multiple events; however, if {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} is OR'd with {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}, the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} flag will take precedence.
 	 * <p>

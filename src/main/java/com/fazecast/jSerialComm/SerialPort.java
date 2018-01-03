@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 05, 2016
+ *  Last Updated on:  Jan 03, 2018
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2017 Fazecast, Inc.
+ * Copyright (C) 2012-2018 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -40,7 +40,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 1.4.0
+ * @version 2.0.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -374,11 +374,11 @@ public final class SerialPort
 			{
 				if (process == null)
 					return false;
-				try { process.waitFor(); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+				try { process.waitFor(); } catch (InterruptedException e) { return false; }
 				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-				try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); return false; }
+				try { Thread.sleep(500); } catch (InterruptedException e) { return false; }
 			}
 		}
 		
@@ -504,13 +504,34 @@ public final class SerialPort
 	 */
 	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite); }
 
+	/**
+	 * Sets the BREAK signal on the serial control line.
+	 */
 	public final void setBreak()   { setBreak(portHandle); }
+
+	/**
+	 * Clears the BREAK signal from the serial control line.
+	 */
 	public final void clearBreak() { clearBreak(portHandle); }
 
+	/**
+	 * Sets the state of the RTS line to 1.
+	 */
 	public final void setRTS()   { setRTS(portHandle); }
+
+	/**
+	 * Clears the state of the RTS line to 0.
+	 */
 	public final void clearRTS() { clearRTS(portHandle); }
 
+	/**
+	 * Sets the state of the DTR line to 1.
+	 */
 	public final void setDTR()   { setDTR(portHandle); }
+
+	/**
+	 * Clears the state of the DTR line to 0.
+	 */
 	public final void clearDTR() { clearDTR(portHandle); }
 
 	// Default Constructor
@@ -966,7 +987,8 @@ public final class SerialPort
 			isListening = true;
 
 			dataPacketIndex = 0;
-			serialEventThread = new Thread(new Runnable() {
+			serialEventThread = new Thread(new Runnable()
+			{
 				@Override
 				public void run()
 				{
@@ -1006,18 +1028,20 @@ public final class SerialPort
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
 							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length);
-							if(dataPacket.length == 0) {
+							if(dataPacket.length == 0)
 								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, newBytes.clone()));
-							}
-							else {
-								while (bytesRemaining >= (dataPacket.length - dataPacketIndex)) {
+							else
+							{
+								while (bytesRemaining >= (dataPacket.length - dataPacketIndex))
+								{
 									System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, dataPacket.length - dataPacketIndex);
 									bytesRemaining -= (dataPacket.length - dataPacketIndex);
 									newBytesIndex += (dataPacket.length - dataPacketIndex);
 									dataPacketIndex = 0;
 									userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, dataPacket.clone()));
 								}
-								if (bytesRemaining > 0) {
+								if (bytesRemaining > 0)
+								{
 									System.arraycopy(newBytes, newBytesIndex, dataPacket, dataPacketIndex, bytesRemaining);
 									dataPacketIndex += bytesRemaining;
 								}
@@ -1068,7 +1092,7 @@ public final class SerialPort
 				bytesRead = readBytes(portHandle, singleByteBuffer, 1L);
 
 				if (bytesRead > 0)
-					return ((int) singleByteBuffer[0] & 0xFF);
+					return ((int)singleByteBuffer[0] & 0xFF);
 
 				sleep1();
 			}
@@ -1129,11 +1153,12 @@ public final class SerialPort
 		{
 			int bytesWritten = 0;
 
-			do {
+			do
+			{
 				if (!isOpened)
 					throw new IOException("This port appears to have been shutdown or disconnected.");
 
-				singleByteBuffer[0] = (byte) (b & 0xFF);
+				singleByteBuffer[0] = (byte)(b & 0xFF);
 
 				bytesWritten += writeBytes(portHandle, singleByteBuffer, 1L);
 
