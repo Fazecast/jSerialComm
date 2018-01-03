@@ -175,13 +175,13 @@ public final class SerialPort
 				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
 				byte transferBuffer[] = new byte[4096];
 				int numBytesRead;
-	
+
 				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
 					destinationFileContents.write(transferBuffer, 0, numBytesRead);
-	
+
 				fileContents.close();
 				destinationFileContents.close();
-				
+
 				// Load native library
 				System.load(tempFileName);
 				initializeLibrary();
@@ -189,7 +189,7 @@ public final class SerialPort
 		}
 		catch (Exception e) { e.printStackTrace(); }
 	}
-	
+
 	// Static symbolic link testing function
 	private static boolean isSymbolicLink(File file) throws IOException
 	{
@@ -227,7 +227,7 @@ public final class SerialPort
 			// Resolve home directory ~
 			if (portDescriptor.startsWith("~" + File.separator))
 				portDescriptor = System.getProperty("user.home") + portDescriptor.substring(1);
-			
+
 			// See what kind of descriptor was passed in
 			if (isWindows)
 				portDescriptor = "\\\\.\\" + portDescriptor.substring(portDescriptor.lastIndexOf('\\')+1);
@@ -448,6 +448,12 @@ public final class SerialPort
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
 	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead);	// Reads bytes from serial port
 	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite);	// Write bytes to serial port
+	private final native void setBreak(long portHandle);
+	private final native void clearBreak(long portHandle);
+	private final native void setRTS(long portHandle);
+	private final native void clearRTS(long portHandle);
+	private final native void setDTR(long portHandle);
+	private final native void clearDTR(long portHandle);
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
@@ -495,6 +501,15 @@ public final class SerialPort
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
 	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite); }
+
+	public final void setBreak()   { setBreak(portHandle); }
+	public final void clearBreak() { clearBreak(portHandle); }
+
+	public final void setRTS()   { setRTS(portHandle); }
+	public final void clearRTS() { clearRTS(portHandle); }
+
+	public final void setDTR()   { setDTR(portHandle); }
+	public final void clearDTR() { clearDTR(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}

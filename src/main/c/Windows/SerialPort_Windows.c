@@ -629,4 +629,52 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	return (result == TRUE) ? numBytesWritten : -1;
 }
 
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	SetCommBreak(serialPortHandle);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	ClearCommBreak(serialPortHandle);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	EscapeCommFunction(serialPortHandle, SETRTS);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	EscapeCommFunction(serialPortHandle, CLRRTS);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	EscapeCommFunction(serialPortHandle, SETDTR);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return;
+	EscapeCommFunction(serialPortHandle, CLRDTR);
+}
+
 #endif
