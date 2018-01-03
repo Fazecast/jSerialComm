@@ -1120,9 +1120,18 @@ public final class SerialPort
 				return 0;
 
 			byte[] buffer = new byte[len];
-			int numRead = readBytes(portHandle, buffer, len);
-			if (numRead > 0)
-				System.arraycopy(buffer, 0, b, off, numRead);
+			int numRead = 0;
+			while (isOpened) {
+				numRead = readBytes(portHandle, buffer, len);
+				if (numRead > 0) {
+					System.arraycopy(buffer, 0, b, off, numRead);
+					break;
+				}
+				try { Thread.sleep(1); } catch (Exception e) {}
+			}
+			if (numRead == 0) {
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			}
 
 			return numRead;
 		}
