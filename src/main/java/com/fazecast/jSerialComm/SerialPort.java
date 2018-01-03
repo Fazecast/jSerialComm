@@ -351,6 +351,10 @@ public final class SerialPort
 		if (isOpened)
 			return true;
 
+		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
+		if (safetySleepTime > 0)
+			try { Thread.sleep(safetySleepTime); } catch (Exception e) { e.printStackTrace(); }
+
 		// If this is an Android root application, we must explicitly allow serial port access to the library
 		if (isAndroid)
 		{
@@ -381,10 +385,6 @@ public final class SerialPort
 				try { Thread.sleep(500); } catch (InterruptedException e) { return false; }
 			}
 		}
-		
-		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
-		if (safetySleepTime > 0)
-			try { Thread.sleep(safetySleepTime); } catch (Exception e) { e.printStackTrace(); }
 		
 		if ((portHandle = openPortNative()) > 0)
 		{
