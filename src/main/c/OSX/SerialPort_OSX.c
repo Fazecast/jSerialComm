@@ -243,7 +243,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 	// Apply changes
 	ioctl(serialPortFD, TIOCEXCL);			// Block other non-root users from using this port
-	return ((tcsetattr(serialPortFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE);
+	jboolean rc = ((tcsetattr(serialPortFD, TCSANOW, &options) == 0) ? JNI_TRUE : JNI_FALSE);
+
+        if (baudRateCode == 0) {
+                // use IOSSIOSPEED to set non-standard baud rate
+                speed_t speed = (speed_t)baudRate;
+                ioctl(serialPortFD, IOSSIOSPEED, &speed);
+        }
+
+        return rc;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortFD)
