@@ -315,19 +315,47 @@ unsigned int getBaudRateCode(int baudRate)
 		case 38400:
 			return B38400;
 		case 57600:
+#ifdef B57600
 			return B57600;
+#else
+			return 0;
+#endif
 		case 115200:
+#ifdef B115200
 			return B115200;
+#else
+			return 0;
+#endif
 		case 230400:
+#ifdef B230400
 			return B230400;
+#else
+			return 0;
+#endif
 		case 460800:
+#ifdef B460800
 			return B460800;
+#else
+			return 0;
+#endif
 		case 500000:
+#ifdef B500000
 			return B500000;
+#else
+			return 0;
+#endif
 		case 576000:
+#ifdef B576000
 			return B576000;
+#else
+			return 0;
+#endif
 		case 921600:
+#ifdef B921600
 			return B921600;
+#else
+			return 0;
+#endif
 		default:
 			return 0;
 	}
@@ -337,6 +365,7 @@ unsigned int getBaudRateCode(int baudRate)
 
 void setBaudRate(int portFD, int baudRate)
 {
+#ifdef TCSETS2
 	struct termios2 options = { 0 };
 	ioctl(portFD, TCGETS2, &options);
 	options.c_cflag &= ~CBAUD;
@@ -344,6 +373,16 @@ void setBaudRate(int portFD, int baudRate)
 	options.c_ispeed = baudRate;
 	options.c_ospeed = baudRate;
 	ioctl(portFD, TCSETS2, &options);
+#else
+	struct serial_struct serInfo;
+	ioctl(portFD, TIOCGSERIAL, &serInfo);
+	serInfo.flags &= ~ASYNC_SPD_MASK;
+	serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
+	serInfo.custom_divisor = serInfo.baud_base / baudRate;
+	if (sersInfo.custom_divisor == 0)
+		serInfo.custom_divisor = 1;
+	ioctl(portFD, TIOCSSERIAL, &serInfo);
+#endif
 }
 
 #endif
