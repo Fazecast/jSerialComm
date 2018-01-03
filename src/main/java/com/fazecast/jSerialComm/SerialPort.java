@@ -1120,9 +1120,13 @@ public final class SerialPort
 				return 0;
 
 			byte[] buffer = new byte[len];
-			int numRead = readBytes(portHandle, buffer, len);
-			if (numRead > 0)
-				System.arraycopy(buffer, 0, b, off, numRead);
+			int numRead = 0;
+			while (isOpened && (numRead == 0))
+			{
+				numRead = readBytes(portHandle, buffer, len);
+				if (numRead > 0)
+					System.arraycopy(buffer, 0, buffer, off, numRead);
+			}
 
 			return numRead;
 		}
