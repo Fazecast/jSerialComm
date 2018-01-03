@@ -35,12 +35,12 @@ JAVA_CLASS		= $(JAVA_CLASS_DIR)\SerialPort.class
 all :
 	$(PRINT).
 	$(PRINT) Must specify a target (either win32 or win64), but not both at the same time since different versions of the Microsoft Compiler are required for difference architectures.
-	$(PRINT). 
+	$(PRINT).
 	$(PRINT) NOTE: Before attempting to use this Makefile, make sure that you have called 'vcvarsall.bat' for your intended architecture. This file can normally be found in "C:\Program Files (x86)\Microsoft Visual Studio [version]\VC\".
 	$(PRINT).
 	$(PRINT) Example: To build 64-bit Windows libraries, you would call:
 	$(PRINT)     C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat x64
-	$(PRINT)     nmake
+	$(PRINT)     nmake win64
 	$(PRINT).
 
 # Builds 32-bit Windows libraries
@@ -71,7 +71,7 @@ $(BUILD_DIR)\x86\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
 # Rule to build 64-bit library
 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
 	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
-	
+
 # Suffix rules to get from *.c -> *.obj
 $(OBJECTSx86_64) :
 	$(COMPILE) $(CFLAGS) $(INCLUDES) $(*B).c -Fo$@
