@@ -137,8 +137,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		}
 
 		// Configure the port parameters and timeouts
-		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD) &&
-				Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD))
+		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD))
 			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_TRUE);
 		else
 		{
@@ -243,7 +242,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	}*/
 	if (baudRateCode == 0)					// Set custom baud rate
 		setBaudRate(serialPortFD, baudRate);
-	return ((retVal == 0) ? JNI_TRUE : JNI_FALSE);
+	return ((retVal == 0) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD) ? JNI_TRUE : JNI_FALSE);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortFD)

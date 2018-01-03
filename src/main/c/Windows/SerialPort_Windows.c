@@ -257,8 +257,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if ((serialPortHandle = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)
 	{
 		// Configure the port parameters and timeouts
-		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)serialPortHandle) &&
-				Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, (jlong)serialPortHandle))
+		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)serialPortHandle))
 			env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
 		else
 		{
@@ -330,7 +329,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.XoffChar = (char)19;
 
 	// Apply changes
-	return SetCommState(serialPortHandle, &dcbSerialParams);
+	return SetCommState(serialPortHandle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortFD)
