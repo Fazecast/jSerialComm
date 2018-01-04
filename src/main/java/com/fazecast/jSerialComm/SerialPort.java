@@ -385,7 +385,7 @@ public final class SerialPort
 				try { Thread.sleep(500); } catch (InterruptedException e) { return false; }
 			}
 		}
-		
+
 		if ((portHandle = openPortNative()) > 0)
 		{
 			inputStream = new SerialPortInputStream();
@@ -395,7 +395,7 @@ public final class SerialPort
 		}
 		return isOpened;
 	}
-	
+
 	/**
 	 * Opens this serial port for reading and writing.
 	 * <p>
@@ -464,7 +464,7 @@ public final class SerialPort
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
 	public final int bytesAvailable() { return bytesAvailable(portHandle); }
-	
+
 	/**
 	 * Returns the number of bytes still waiting to be written in the device's output queue.
 	 * <p>
@@ -506,33 +506,39 @@ public final class SerialPort
 
 	/**
 	 * Sets the BREAK signal on the serial control line.
+	 * @return true if successful, false if not.
 	 */
-	public final void setBreak()   { setBreak(portHandle); }
+	public final boolean setBreak()   { return setBreak(portHandle); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
+	 * @return true if successful, false if not.
 	 */
-	public final void clearBreak() { clearBreak(portHandle); }
+	public final boolean clearBreak() { return clearBreak(portHandle); }
 
 	/**
 	 * Sets the state of the RTS line to 1.
+	 * @return true if successful, false if not.
 	 */
-	public final void setRTS()   { setRTS(portHandle); }
+	public final boolean setRTS()   { return setRTS(portHandle); }
 
 	/**
 	 * Clears the state of the RTS line to 0.
+	 * @return true if successful, false if not.
 	 */
-	public final void clearRTS() { clearRTS(portHandle); }
+	public final boolean clearRTS() { return clearRTS(portHandle); }
 
 	/**
 	 * Sets the state of the DTR line to 1.
+	 * @return true if successful, false if not.
 	 */
-	public final void setDTR()   { setDTR(portHandle); }
+	public final boolean setDTR()   { return setDTR(portHandle); }
 
 	/**
 	 * Clears the state of the DTR line to 0.
+	 * @return true if successful, false if not.
 	 */
-	public final void clearDTR() { clearDTR(portHandle); }
+	public final boolean clearDTR() { return clearDTR(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}
