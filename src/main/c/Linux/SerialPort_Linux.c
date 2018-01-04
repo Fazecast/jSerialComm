@@ -534,4 +534,20 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 	return (ioctl(serialPortFD, TIOCMBIC, &modemBits) == 0);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_CTS);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_LE);
+}
+
 #endif

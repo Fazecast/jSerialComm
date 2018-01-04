@@ -682,4 +682,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 	return EscapeCommFunction(serialPortHandle, CLRDTR);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	DWORD modemStatus = 0;
+	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_CTS_ON);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	DWORD modemStatus = 0;
+	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_DSR_ON);
+}
+
 #endif

@@ -456,6 +456,8 @@ public final class SerialPort
 	private final native boolean clearRTS(long portHandle);				// Clear RTS line to 0
 	private final native boolean setDTR(long portHandle);				// Set DTR line to 1
 	private final native boolean clearDTR(long portHandle);				// Clear DTR line to 0
+	private final native boolean getCTS(long portHandle);				// Returns whether the CTS signal is 1
+	private final native boolean getDSR(long portHandle);				// Returns whether the DSR signal is 1
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes} were to be called immediately
@@ -539,6 +541,16 @@ public final class SerialPort
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearDTR() { return clearDTR(portHandle); }
+
+	/**
+	 * @return Whether or not the CTS line is asserted.
+	 */
+	public final boolean getCTS() { return getCTS(portHandle); }
+
+	/**
+	 * @return Whether or not the DSR line is asserted.
+	 */
+	public final boolean getDSR() { return getDSR(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}
