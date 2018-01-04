@@ -7,13 +7,37 @@ group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
 version = '2.0.0'
 
+assert hasProperty('javaHome'): "Set the property 'javaHome' in your gradle.properties file pointing to a Java 6 JDK installation"
+
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 javadoc.options.links("http://docs.oracle.com/javase/8/docs/api/")
 
+def javaExecutablesPath = new File(javaHome, 'bin')
+def javaExecutables = [:].withDefault { execName ->
+  def executable = new File(javaExecutablesPath, execName)
+  executable
+}
+
+tasks.withType(AbstractCompile) {
+  options.with {
+    fork = true
+    forkOptions.javaHome = file(javaHome)
+  }
+}
+tasks.withType(Javadoc) {
+  executable = javaExecutables.javadoc
+}
+tasks.withType(Test) {
+  executable = javaExecutables.java
+}
+tasks.withType(JavaExec) {
+  executable = javaExecutables.java
+}
+
 jar {
   manifest {
-    instruction 'Bundle-Description', 'jSerialComm: Java Serial Communications Library'
+    instruction 'Bundle-Description', 'Java Serial Communications Library'
     instruction 'Bundle-Vendor', 'Fazecast, Inc.'
     attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
 	           'Implementation-Version': version,
