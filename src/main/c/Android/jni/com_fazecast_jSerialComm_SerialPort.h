@@ -89,14 +89,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    associateNativeHandle
- * Signature: (J)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_associateNativeHandle
-  (JNIEnv *, jobject, jlong);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    closePortNative
  * Signature: (J)Z
  */
@@ -166,6 +158,70 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
   (JNIEnv *, jobject, jlong, jbyteArray, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    setBreak
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    clearBreak
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    setRTS
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    clearRTS
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    setDTR
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    clearDTR
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getCTS
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getDSR
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR
+  (JNIEnv *, jobject, jlong);
 
 #ifdef __cplusplus
 }
