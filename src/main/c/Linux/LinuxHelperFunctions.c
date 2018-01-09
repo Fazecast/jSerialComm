@@ -33,7 +33,10 @@
 #include <dirent.h>
 #include <asm/termios.h>
 #include <asm/ioctls.h>
+#include <unistd.h>
 #include "LinuxHelperFunctions.h"
+
+extern int ioctl(int __fd, unsigned long int __request, ...) __THROW;
 
 void push_back(struct charPairVector* vector, const char* firstString, const char* secondString)
 {
