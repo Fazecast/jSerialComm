@@ -39,4 +39,6 @@ void getFriendlyName(const char* productFile, char* friendlyName);
 unsigned int getBaudRateCode(int baudRate);
 void setBaudRate(int portFD, int baudRate);
 
+extern int ioctl(int __fd, int __request, ...);
+
 #endif		// #ifndef __ANDROID_HELPER_FUNCTIONS_HEADER_H__

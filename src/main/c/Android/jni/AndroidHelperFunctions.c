@@ -34,6 +34,7 @@
 #include <asm/ioctls.h>
 #include <linux/usbdevice_fs.h>
 #include <asm/byteorder.h>
+#include <unistd.h>
 #ifndef BOTHER
 #include <termios.h>
 #endif
@@ -66,7 +67,7 @@ void getFriendlyName(const char* productFile, char* friendlyName)
 	if (input)
 	{
 		char ch = getc(input);
-		while ((ch != '\n') && (ch != EOF))
+		while ((ch != '\n') && ((int)ch != EOF))
 		{
 			friendlyName[friendlyNameLength++] = ch;
 			ch = getc(input);
