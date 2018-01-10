@@ -2,15 +2,15 @@
 COMPILE			:= gcc
 COMPILE_ARM32	:= arm32-unknown-linux-gnueabi-gcc
 COMPILE_ARM32HF	:= arm32hf-unknown-linux-gnueabi-gcc
-COMPILE_ARM64	:= arm64-unknown-linux-gnueabi-gcc
+COMPILE_ARM64	:= aarch64-unknown-linux-gnueabi-gcc
 LINK			:= gcc
 LINK_ARM32		:= arm32-unknown-linux-gnueabi-gcc
 LINK_ARM32HF	:= arm32hf-unknown-linux-gnueabi-gcc
-LINK_ARM64		:= arm64-unknown-linux-gnueabi-gcc
+LINK_ARM64		:= aarch64-unknown-linux-gnueabi-gcc
 CFLAGS			:= -fPIC -static-libgcc -Os -flto -fuse-linker-plugin
 LDFLAGS			:= -shared -static-libgcc -flto -fuse-linker-plugin -Os
 INCLUDES		:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux"
-LIBRARIES		:= 
+LIBRARIES		:=
 DELETE			:= @rm
 MKDIR			:= @mkdir
 COPY			:= @cp
@@ -32,20 +32,20 @@ OBJECTSarmv6	= $(BUILD_DIR)/armv6/SerialPort_Linux.o $(BUILD_DIR)/armv6/LinuxHel
 OBJECTSarmv6-hf	= $(BUILD_DIR)/armv6-hf/SerialPort_Linux.o $(BUILD_DIR)/armv6-hf/LinuxHelperFunctions.o
 OBJECTSarmv7	= $(BUILD_DIR)/armv7/SerialPort_Linux.o $(BUILD_DIR)/armv7/LinuxHelperFunctions.o
 OBJECTSarmv7-hf	= $(BUILD_DIR)/armv7-hf/SerialPort_Linux.o $(BUILD_DIR)/armv7-hf/LinuxHelperFunctions.o
-OBJECTSarmv8	= $(BUILD_DIR)/armv8/SerialPort_Linux.o $(BUILD_DIR)/armv8/LinuxHelperFunctions.o
+OBJECTSarmv8_32	= $(BUILD_DIR)/armv8_32/SerialPort_Linux.o $(BUILD_DIR)/armv8_32/LinuxHelperFunctions.o
 OBJECTSarmv8_64	= $(BUILD_DIR)/armv8_64/SerialPort_Linux.o $(BUILD_DIR)/armv8_64/LinuxHelperFunctions.o
 FLAGSarmv5		= -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
 FLAGSarmv6		= -marm -mthumb-interwork -march=armv6 -mfloat-abi=soft
 FLAGSarmv6hf	= -marm -mthumb-interwork -march=armv6 -mfloat-abi=hard
 FLAGSarmv7		= -mthumb -mthumb-interwork -march=armv7 -mfloat-abi=soft
 FLAGSarmv7hf	= -mthumb -mthumb-interwork -march=armv7 -mfloat-abi=hard
-FLAGSarmv8		= -mthumb -mthumb-interwork -march=armv8-a -mfloat-abi=hard
-FLAGSarmv8_64	= -mthumb -mthumb-interwork -march=armv8-a -mfloat-abi=hard
+FLAGSarmv8_32	= -mthumb -mthumb-interwork -march=armv8-a
+FLAGSarmv8_64	= -march=armv8-a
 JNI_HEADER		= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Define phony and suffix rules
-.PHONY: all checkdirs linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8 armv8_64
+.PHONY: all checkdirs linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
@@ -53,7 +53,7 @@ JAVA_CLASS		= $(JAVA_CLASS_DIR)/SerialPort.class
 all : linux32 linux64
 	$(DELETE) -rf `readlink -f $(BUILD_DIR)/..`
 	$(DELETE) -rf ../*.h
-	
+
 # Builds 32-bit Linux libraries
 linux32 : ARCH = -m32
 linux32 : checkdirs $(BUILD_DIR)/x86/$(LIBRARY_NAME)
@@ -67,7 +67,7 @@ linux64 : checkdirs $(BUILD_DIR)/x86_64/$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)/x86_64/*.* $(RESOURCE_DIR)/x86_64/
 
 # Build all ARM libraries
-arm : armv5 armv6 armv6-hf armv7 armv7-hf #armv8 armv8_64
+arm : armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64
 	$(DELETE) -rf `readlink -f $(BUILD_DIR)/..`
 	$(DELETE) -rf ../*.h
 armv5 : checkdirs $(BUILD_DIR)/armv5/$(LIBRARY_NAME)
@@ -85,15 +85,15 @@ armv7 : checkdirs $(BUILD_DIR)/armv7/$(LIBRARY_NAME)
 armv7-hf : checkdirs $(BUILD_DIR)/armv7-hf/$(LIBRARY_NAME)
 	$(DELETE) -rf $(BUILD_DIR)/armv7-hf/*.o
 	$(COPY) $(BUILD_DIR)/armv7-hf/*.* $(RESOURCE_DIR)/armv7-hf/
-armv8 : checkdirs $(BUILD_DIR)/armv8/$(LIBRARY_NAME)
-	$(DELETE) -rf $(BUILD_DIR)/armv8/*.o
-	$(COPY) $(BUILD_DIR)/armv8/*.* $(RESOURCE_DIR)/armv8/
+armv8_32 : checkdirs $(BUILD_DIR)/armv8_32/$(LIBRARY_NAME)
+	$(DELETE) -rf $(BUILD_DIR)/armv8_32/*.o
+	$(COPY) $(BUILD_DIR)/armv8_32/*.* $(RESOURCE_DIR)/armv8_32/
 armv8_64 : checkdirs $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME)
 	$(DELETE) -rf $(BUILD_DIR)/armv8_64/*.o
 	$(COPY) $(BUILD_DIR)/armv8_64/*.* $(RESOURCE_DIR)/armv8_64/
 
 # Rule to create build directories
-checkdirs : $(BUILD_DIR)/x86 $(BUILD_DIR)/x86_64 $(BUILD_DIR)/armv5 $(BUILD_DIR)/armv6 $(BUILD_DIR)/armv6-hf $(BUILD_DIR)/armv7 $(BUILD_DIR)/armv7-hf $(BUILD_DIR)/armv8 $(BUILD_DIR)/armv8_64 $(JAVA_CLASS_DIR)
+checkdirs : $(BUILD_DIR)/x86 $(BUILD_DIR)/x86_64 $(BUILD_DIR)/armv5 $(BUILD_DIR)/armv6 $(BUILD_DIR)/armv6-hf $(BUILD_DIR)/armv7 $(BUILD_DIR)/armv7-hf $(BUILD_DIR)/armv8_32 $(BUILD_DIR)/armv8_64 $(JAVA_CLASS_DIR)
 $(BUILD_DIR)/x86 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/x86_64 :
@@ -108,7 +108,7 @@ $(BUILD_DIR)/armv7 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv7-hf :
 	$(MKDIR) -p $@
-$(BUILD_DIR)/armv8 :
+$(BUILD_DIR)/armv8_32 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv8_64 :
 	$(MKDIR) -p $@
@@ -134,11 +134,11 @@ $(BUILD_DIR)/armv7/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv7)
 	$(LINK_ARM32) $(LDFLAGS) $(FLAGSarmv7) -o $@ $(OBJECTSarmv7) $(LIBRARIES)
 $(BUILD_DIR)/armv7-hf/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv7-hf)
 	$(LINK_ARM32HF) $(LDFLAGS) $(FLAGSarmv7-hf) -o $@ $(OBJECTSarmv7-hf) $(LIBRARIES)
-$(BUILD_DIR)/armv8/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv8)
-	$(LINK_ARM32) $(LDFLAGS) $(FLAGSarmv8) -o $@ $(OBJECTSarmv8) $(LIBRARIES)
+$(BUILD_DIR)/armv8_32/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv8_32)
+	$(LINK_ARM32) $(LDFLAGS) $(FLAGSarmv8_32) -o $@ $(OBJECTSarmv8_32) $(LIBRARIES)
 $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv8_64)
 	$(LINK_ARM64) $(LDFLAGS) $(FLAGSarmv8_64) -o $@ $(OBJECTSarmv8_64) $(LIBRARIES)
-	
+
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/x86/%.o : %.c
 	$(COMPILE) $(INCLUDES) $(CFLAGS) $(ARCH) -c $< -o $@
@@ -154,8 +154,8 @@ $(BUILD_DIR)/armv7/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv7) -c $< -o $@
 $(BUILD_DIR)/armv7-hf/%.o : %.c
 	$(COMPILE_ARM32HF) $(INCLUDES) $(CFLAGS) $(FLAGSarmv7-hf) -c $< -o $@
-$(BUILD_DIR)/armv8/%.o : %.c
-	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv8) -c $< -o $@
+$(BUILD_DIR)/armv8_32/%.o : %.c
+	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(FLAGSarmv8_32) -c $< -o $@
 $(BUILD_DIR)/armv8_64/%.o : %.c
 	$(COMPILE_ARM64) $(INCLUDES) $(CFLAGS) $(FLAGSarmv8_64) -c $< -o $@
 

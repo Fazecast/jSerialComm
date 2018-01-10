@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Jan 09, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -25,6 +25,7 @@
 
 package com.fazecast.jSerialComm;
 
+import java.lang.ProcessBuilder;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -131,20 +132,38 @@ public final class SerialPort
 							libraryPath = "Linux/armv" + line.substring(line.indexOf("ARMv")+4, line.indexOf("ARMv")+5);
 							break;
 						}
+						else if (line.contains("aarch"))
+						{
+							libraryPath = "Linux/armv8";
+							break;
+						}
 					}
 					cpuPropertiesFile.close();
 				}
 				catch (Exception e) { e.printStackTrace(); }
 
-				// Ensure that there was no error
+				// Ensure that there was no error, and see if we need to use the hard-float dynamic linker
 				if (libraryPath.isEmpty())
 					libraryPath = "Linux/armv6";
-
-				// See if we need to use the hard-float dynamic linker
-				File linkerFile = new File("/lib/ld-linux-armhf.so.3");
-				if (linkerFile.exists())
-					libraryPath += "-hf";
+				else if (libraryPath.contains("Linux/armv8"))
+					libraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "_64" : "_32";
+				else
+				{
+					try
+					{
+						ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
+						Process p = pb.start();
+						p.waitFor();
+						BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+						String linkLoader = br.readLine();
+						if (linkLoader.contains("armhf"))
+							libraryPath += "-hf";
+					}
+					catch (Exception e) { e.printStackTrace(); }
+				}
 			}
+			else if (System.getProperty("os.arch").indexOf("aarch32") >= 0)
+				libraryPath = "Linux/armv8_32";
 			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
 				libraryPath = "Linux/armv8_64";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
