@@ -1127,10 +1127,11 @@ public final class SerialPort
 
 		@Override
 		public int available() throws IOException {
-			if (!isOpen()) {
-				return 0;
+			final int available = serialPort.bytesAvailable();
+			if (available < 0) {
+				throw new IOException("Port closed");
 			}
-			return serialPort.bytesAvailable();
+			return available;
 		}
 
 		@Override
@@ -1152,10 +1153,9 @@ public final class SerialPort
 			final int size = Math.min(len, maxReadBufferSize);
 			final byte[] buffer = new byte[size]; // TODO highly inefficient; reuse an instance byte[] of size maxReadBufferSize? could the drop singleByteBuffer, too...
 			final int read = read(buffer, size);
-			if (read < 0) {
-				return -1;
+			if (read > 0) {
+				System.arraycopy(buffer, 0, b, off, read);
 			}
-			System.arraycopy(buffer, 0, b, off, read);
 			return read;
 		}
 		
@@ -1168,8 +1168,8 @@ public final class SerialPort
 		 *         underlying port is closed or 0 iif <code>len</code> is
 		 *         <code>0</code>.
 		 * @exception IOException
-		 *                If the some I/O error occurs while the underlying port
-		 *                is still open.
+		 *                If the underlying port was closed or some other 
+		 *                I/O error occurred while reading.
 		 * @exception NullPointerException
 		 *                If <code>b</code> is <code>null</code>.
 		 * @exception IndexOutOfBoundsException
@@ -1177,24 +1177,23 @@ public final class SerialPort
 		 *                is greater than <code>b.length</code>
 		 */
 		protected int read(final byte[] b, final int len) throws IOException {
-	        if (b == null) {
-	            throw new NullPointerException();
-	        } else if (len < 0 || len > b.length) {
-	            throw new IndexOutOfBoundsException();
-	        } else if (len == 0) {
-	            return 0;
-	        }
-			while (isOpen()) {
-				if (serialPort.bytesAvailable() > 0) { // to avoid blocking (see next line's comment)
-					final int read = serialPort.readBytes(b, len); // [ISSUE?!] could still BLOCK FOREVER (in blocking mode), if port was closed since last isOpen check
+			if (b == null) {
+				throw new NullPointerException();
+			}
+			if (len < 0 || len > b.length) {
+				throw new IndexOutOfBoundsException();
+			}
+			if (len == 0) {
+				return 0;
+			}
+			while (true) {
+				if (available() > 0) { // implicitly asserts open and avoids blocking (see next line's comment)
+					final int read = serialPort.readBytes(b, len); // [ISSUE?!] could still BLOCK FOREVER (in blocking mode, if port was closed by another thread between this and last line)
 					if (read > 0) {
 						return read;
 					}
 					if (read < 0) {
-						if (isOpen()) { // stream still open?
-							throw new IOException();
-						}
-						break;
+						throw new IOException();
 					}
 				}
 				try {
@@ -1202,13 +1201,7 @@ public final class SerialPort
 				} catch (final Exception ignored) {
 				}
 			}
-			return -1;
 		}
-
-		protected boolean isOpen() {
-			return serialPort.isOpen();
-		}
-
 	}
 
 	// OutputStream interface class
