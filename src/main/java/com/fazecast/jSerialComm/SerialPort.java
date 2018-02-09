@@ -1104,25 +1104,26 @@ public final class SerialPort
 	public static class SerialPortInputStream extends InputStream {
 
 		private static final long DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE = 10;
-		private static final int DEFAULT_MAX_READ_BUFFER_SIZE = 2048;
-
-		// a shared, re-usable, single-byte scratch buffer to avoid allocating
-		// a new byte[] when reading a single byte. not thread safe, but neither
-		// SerialPort nor its Input/Output streams are to begin with.
-		private final byte[] singleByteBuffer = new byte[1];
+		private static final int DEFAULT_READ_BUFFER_LENGTH = 2048;
 
 		private final SerialPort serialPort;
 		private final long sleepIfNoDataAvailable;
-		private final int maxReadBufferSize;
+		private final byte[] readBuffer;
 
 		public SerialPortInputStream(final SerialPort serialPort) {
-			this(serialPort, DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE, DEFAULT_MAX_READ_BUFFER_SIZE);
+			this(serialPort, DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE, DEFAULT_READ_BUFFER_LENGTH);
 		}
 
-		public SerialPortInputStream(final SerialPort serialPort, final long sleepIfNoDataAvailable, final int maxReadBufferSize) {
+		public SerialPortInputStream(final SerialPort serialPort, final long sleepIfNoDataAvailable, final int readBufferLength) {
+			if (serialPort == null) {
+				throw new NullPointerException();
+			}
+			if (sleepIfNoDataAvailable < 1 || readBufferLength < 1) {
+				throw new IllegalArgumentException();
+			}
 			this.serialPort = serialPort;
 			this.sleepIfNoDataAvailable = sleepIfNoDataAvailable;
-			this.maxReadBufferSize = maxReadBufferSize;
+			readBuffer = new byte[readBufferLength];
 		}
 
 		@Override
@@ -1137,7 +1138,7 @@ public final class SerialPort
 		@Override
 		public int read() throws IOException {
 			// read will only return -1 or +1
-			return read(singleByteBuffer, 1) < 0 ? -1 : (singleByteBuffer[0] & 0xFF);
+			return read(readBuffer, 1) < 0 ? -1 : (readBuffer[0] & 0xFF);
 		}
 
 		@Override
@@ -1150,11 +1151,9 @@ public final class SerialPort
 			if (off == 0) {
 				return read(b, len);
 			}
-			final int size = Math.min(len, maxReadBufferSize);
-			final byte[] buffer = new byte[size]; // TODO highly inefficient; reuse an instance byte[] of size maxReadBufferSize? could the drop singleByteBuffer, too...
-			final int read = read(buffer, size);
+			final int read = read(readBuffer, Math.min(len, readBuffer.length));
 			if (read > 0) {
-				System.arraycopy(buffer, 0, b, off, read);
+				System.arraycopy(readBuffer, 0, b, off, read);
 			}
 			return read;
 		}
