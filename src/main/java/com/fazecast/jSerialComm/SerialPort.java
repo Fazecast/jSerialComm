@@ -407,7 +407,7 @@ public final class SerialPort
 
 		if ((portHandle = openPortNative()) > 0)
 		{
-			inputStream = new SerialPortInputStream();
+			inputStream = new SerialPortInputStream(this);
 			outputStream = new SerialPortOutputStream();
 			if (serialEventListener != null)
 				serialEventListener.startListening();
@@ -1101,82 +1101,114 @@ public final class SerialPort
 	}
 
 	// InputStream interface class
-	private final class SerialPortInputStream extends InputStream
-	{
+	public static class SerialPortInputStream extends InputStream {
+
+		private static final long DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE = 10;
+		private static final int DEFAULT_MAX_READ_BUFFER_SIZE = 2048;
+
 		// a shared, re-usable, single-byte scratch buffer to avoid allocating
 		// a new byte[] when reading a single byte. not thread safe, but neither
 		// SerialPort nor its Input/Output streams are to begin with.
 		private final byte[] singleByteBuffer = new byte[1];
 
-		public SerialPortInputStream() {}
+		private final SerialPort serialPort;
+		private final long sleepIfNoDataAvailable;
+		private final int maxReadBufferSize;
 
-		@Override
-		public final int available() throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+		public SerialPortInputStream(final SerialPort serialPort) {
+			this(serialPort, DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE, DEFAULT_MAX_READ_BUFFER_SIZE);
+		}
 
-			return bytesAvailable(portHandle);
+		public SerialPortInputStream(final SerialPort serialPort, final long sleepIfNoDataAvailable, final int maxReadBufferSize) {
+			this.serialPort = serialPort;
+			this.sleepIfNoDataAvailable = sleepIfNoDataAvailable;
+			this.maxReadBufferSize = maxReadBufferSize;
 		}
 
 		@Override
-		public final int read() throws IOException
-		{
-			int bytesRead;
-
-			while (isOpened)
-			{
-				bytesRead = readBytes(portHandle, singleByteBuffer, 1L);
-
-				if (bytesRead > 0)
-					return ((int)singleByteBuffer[0] & 0xFF);
-
-				sleep1();
-			}
-
-			throw new IOException("This port appears to have been shutdown or disconnected.");
-		}
-
-		@Override
-		public final int read(byte[] b) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			if (b.length == 0)
+		public int available() throws IOException {
+			if (!isOpen()) {
 				return 0;
-
-			return readBytes(portHandle, b, b.length);
-		}
-
-		@Override
-		public final int read(byte[] b, int off, int len) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			if (len == 0)
-				return 0;
-
-			byte[] buffer = new byte[len];
-			int numRead = 0;
-			while (isOpened && (numRead == 0))
-			{
-				numRead = readBytes(portHandle, buffer, len);
-				if (numRead > 0)
-					System.arraycopy(buffer, 0, buffer, off, numRead);
 			}
-
-			return numRead;
+			return serialPort.bytesAvailable();
 		}
 
 		@Override
-		public final long skip(long n) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-
-			byte[] buffer = new byte[(int)n];
-			return readBytes(portHandle, buffer, n);
+		public int read() throws IOException {
+			// read will only return -1 or +1
+			return read(singleByteBuffer, 1) < 0 ? -1 : (singleByteBuffer[0] & 0xFF);
 		}
+
+		@Override
+		public int read(final byte[] b) throws IOException {
+			return read(b, b.length);
+		}
+
+		@Override
+		public int read(final byte[] b, final int off, final int len) throws IOException {
+			if (off == 0) {
+				return read(b, len);
+			}
+			final int size = Math.min(len, maxReadBufferSize);
+			final byte[] buffer = new byte[size]; // TODO highly inefficient; reuse an instance byte[] of size maxReadBufferSize? could the drop singleByteBuffer, too...
+			final int read = read(buffer, size);
+			if (read < 0) {
+				return -1;
+			}
+			System.arraycopy(buffer, 0, b, off, read);
+			return read;
+		}
+		
+		/**
+		 * Reads up to <code>len</code> bytes of data from the input stream into
+		 * an array of bytes.
+		 * 
+		 * @return the total number of bytes read into the buffer,
+		 *         <code>-1</code> if there is no more data because the
+		 *         underlying port is closed or 0 iif <code>len</code> is
+		 *         <code>0</code>.
+		 * @exception IOException
+		 *                If the some I/O error occurs while the underlying port
+		 *                is still open.
+		 * @exception NullPointerException
+		 *                If <code>b</code> is <code>null</code>.
+		 * @exception IndexOutOfBoundsException
+		 *                If <code>len</code> is negative, or <code>len</code>
+		 *                is greater than <code>b.length</code>
+		 */
+		protected int read(final byte[] b, final int len) throws IOException {
+	        if (b == null) {
+	            throw new NullPointerException();
+	        } else if (len < 0 || len > b.length) {
+	            throw new IndexOutOfBoundsException();
+	        } else if (len == 0) {
+	            return 0;
+	        }
+			while (isOpen()) {
+				if (serialPort.bytesAvailable() > 0) { // to avoid blocking (see next line's comment)
+					final int read = serialPort.readBytes(b, len); // [ISSUE?!] could still BLOCK FOREVER (in blocking mode), if port was closed since last isOpen check
+					if (read > 0) {
+						return read;
+					}
+					if (read < 0) {
+						if (isOpen()) { // stream still open?
+							throw new IOException();
+						}
+						break;
+					}
+				}
+				try {
+					Thread.sleep(sleepIfNoDataAvailable);
+				} catch (final Exception ignored) {
+				}
+			}
+			return -1;
+		}
+
+		protected boolean isOpen() {
+			return serialPort.isOpen();
+		}
+
 	}
 
 	// OutputStream interface class
