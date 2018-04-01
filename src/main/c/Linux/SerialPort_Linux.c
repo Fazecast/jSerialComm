@@ -2,7 +2,7 @@
  * SerialPort_Linux.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Apr 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -44,7 +44,8 @@ jclass serialCommClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortFdField;
 jfieldID comPortField;
-jfieldID portStringField;
+jfieldID friendlyNameField;
+jfieldID portDescriptionField;
 jfieldID isOpenedField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
@@ -59,7 +60,7 @@ jfieldID eventFlagsField;
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
 	// Enumerate serial ports on machine
-	charPairVector serialPorts = { (char**)malloc(1), (char**)malloc(1), 0 };
+	charTupleVector serialPorts = { (char**)malloc(1), (char**)malloc(1), (char**)malloc(1), 0 };
 	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
 	lastDitchSearchForComPorts(&serialPorts);
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
@@ -68,16 +69,19 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	{
 		// Create new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		(*env)->SetObjectField(env, serialCommObject, portStringField, (*env)->NewStringUTF(env, serialPorts.second[i]));
+		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, serialPorts.third[i]));
+		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, serialPorts.second[i]));
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, serialPorts.first[i]));
 		free(serialPorts.first[i]);
 		free(serialPorts.second[i]);
+		free(serialPorts.third[i]);
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
 	}
 	free(serialPorts.first);
 	free(serialPorts.second);
+	free(serialPorts.third);
 
 	return arrayObject;
 }
@@ -91,7 +95,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	// Cache
 	serialPortFdField = (*env)->GetFieldID(env, serialCommClass, "portHandle", "J");
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
-	portStringField = (*env)->GetFieldID(env, serialCommClass, "portString", "Ljava/lang/String;");
+	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
+	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
 	isOpenedField = (*env)->GetFieldID(env, serialCommClass, "isOpened", "Z");
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
