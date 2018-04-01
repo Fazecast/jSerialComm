@@ -64,15 +64,15 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	DWORD subKeyLength1, subKeyLength2, subKeyLength3, friendlyNameLength;
 
 	// Enumerate serial ports on machine
-	charTupleVector serialCommPorts = { (char**)malloc(1), (char**)malloc(1), (char**)malloc(1), 0 };
-	if ((RegOpenKeyEx(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
-			(RegQueryInfoKey(keyHandle1, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, &maxValueLength, &maxComPortLength, NULL, NULL) == ERROR_SUCCESS))
+	charTupleVector serialCommPorts = { (wchar_t**)malloc(sizeof(wchar_t*)), (wchar_t**)malloc(sizeof(wchar_t*)), (wchar_t**)malloc(sizeof(wchar_t*)), 0 };
+	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
+			(RegQueryInfoKeyW(keyHandle1, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, &maxValueLength, &maxComPortLength, NULL, NULL) == ERROR_SUCCESS))
 	{
 		// Allocate memory
 		++maxValueLength;
 		++maxComPortLength;
-		CHAR *valueName = (CHAR*)malloc(maxValueLength);
-		CHAR *comPort = (CHAR*)malloc(maxComPortLength);
+		WCHAR *valueName = (WCHAR*)malloc(maxValueLength*sizeof(WCHAR));
+		WCHAR *comPort = (WCHAR*)malloc(maxComPortLength*sizeof(WCHAR));
 
 		// Iterate through all COM ports
 		for (DWORD i = 0; i < numValues; ++i)
@@ -80,13 +80,13 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			// Get serial port name and COM value
 			valueLength = maxValueLength;
 			comPortLength = maxComPortLength;
-			memset(valueName, 0, valueLength);
-			memset(comPort, 0, comPortLength);
-			if ((RegEnumValue(keyHandle1, i, valueName, &valueLength, NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+			memset(valueName, 0, valueLength*sizeof(WCHAR));
+			memset(comPort, 0, comPortLength*sizeof(WCHAR));
+			if ((RegEnumValueW(keyHandle1, i, valueName, &valueLength, NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
 			{
 				// Set port name and description
-				char* comPortString = (comPort[0] == '\\') ? (strrchr(comPort, '\\') + 1) : comPort;
-				char* descriptionString = strrchr(valueName, '\\') ? (strrchr(valueName, '\\') + 1) : valueName;
+				wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
+				wchar_t* descriptionString = wcsrchr(valueName, L'\\') ? (wcsrchr(valueName, L'\\') + 1) : valueName;
 
 				// Add new SerialComm object to vector
 				push_back(&serialCommPorts, comPortString, descriptionString, descriptionString);
@@ -100,72 +100,72 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	RegCloseKey(keyHandle1);
 
 	// Enumerate all devices on machine
-	if ((RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Enum", 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
-			(RegQueryInfoKey(keyHandle1, NULL, NULL, NULL, &numSubKeys1, &maxSubKeyLength1, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
+	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum", 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
+			(RegQueryInfoKeyW(keyHandle1, NULL, NULL, NULL, &numSubKeys1, &maxSubKeyLength1, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 	{
 		// Allocate memory
 		++maxSubKeyLength1;
-		CHAR *subKeyName1 = (CHAR*)malloc(maxSubKeyLength1);
+		WCHAR *subKeyName1 = (WCHAR*)malloc(maxSubKeyLength1*sizeof(WCHAR));
 
 		// Enumerate sub-keys
 		for (DWORD i1 = 0; i1 < numSubKeys1; ++i1)
 		{
 			subKeyLength1 = maxSubKeyLength1;
-			if ((RegEnumKeyEx(keyHandle1, i1, subKeyName1, &subKeyLength1, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-					(RegOpenKeyEx(keyHandle1, subKeyName1, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle2) == ERROR_SUCCESS) &&
-					(RegQueryInfoKey(keyHandle2, NULL, NULL, NULL, &numSubKeys2, &maxSubKeyLength2, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
+			if ((RegEnumKeyExW(keyHandle1, i1, subKeyName1, &subKeyLength1, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
+					(RegOpenKeyExW(keyHandle1, subKeyName1, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle2) == ERROR_SUCCESS) &&
+					(RegQueryInfoKeyW(keyHandle2, NULL, NULL, NULL, &numSubKeys2, &maxSubKeyLength2, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 			{
 				// Allocate memory
 				++maxSubKeyLength2;
-				CHAR *subKeyName2 = (CHAR*)malloc(maxSubKeyLength2);
+				WCHAR *subKeyName2 = (WCHAR*)malloc(maxSubKeyLength2*sizeof(WCHAR));
 
 				// Enumerate sub-keys
 				for (DWORD i2 = 0; i2 < numSubKeys2; ++i2)
 				{
 					subKeyLength2 = maxSubKeyLength2;
-					if ((RegEnumKeyEx(keyHandle2, i2, subKeyName2, &subKeyLength2, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-							(RegOpenKeyEx(keyHandle2, subKeyName2, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle3) == ERROR_SUCCESS) &&
-							(RegQueryInfoKey(keyHandle3, NULL, NULL, NULL, &numSubKeys3, &maxSubKeyLength3, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
+					if ((RegEnumKeyExW(keyHandle2, i2, subKeyName2, &subKeyLength2, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
+							(RegOpenKeyExW(keyHandle2, subKeyName2, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle3) == ERROR_SUCCESS) &&
+							(RegQueryInfoKeyW(keyHandle3, NULL, NULL, NULL, &numSubKeys3, &maxSubKeyLength3, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 					{
 						// Allocate memory
 						++maxSubKeyLength3;
-						CHAR *subKeyName3 = (CHAR*)malloc(maxSubKeyLength3);
+						WCHAR *subKeyName3 = (WCHAR*)malloc(maxSubKeyLength3*sizeof(WCHAR));
 
 						// Enumerate sub-keys
 						for (DWORD i3 = 0; i3 < numSubKeys3; ++i3)
 						{
 							subKeyLength3 = maxSubKeyLength3;
-							if ((RegEnumKeyEx(keyHandle3, i3, subKeyName3, &subKeyLength3, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-									(RegOpenKeyEx(keyHandle3, subKeyName3, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle4) == ERROR_SUCCESS) &&
-									(RegQueryInfoKey(keyHandle4, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
+							if ((RegEnumKeyExW(keyHandle3, i3, subKeyName3, &subKeyLength3, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
+									(RegOpenKeyExW(keyHandle3, subKeyName3, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle4) == ERROR_SUCCESS) &&
+									(RegQueryInfoKeyW(keyHandle4, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
 							{
 								// Allocate memory
 								friendlyNameLength = valueLength + 1;
-								CHAR *friendlyName = (CHAR*)malloc(friendlyNameLength);
+								WCHAR *friendlyName = (WCHAR*)malloc(friendlyNameLength*sizeof(WCHAR));
 
-								if ((RegOpenKeyEx(keyHandle4, "Device Parameters", 0, KEY_QUERY_VALUE, &keyHandle5) == ERROR_SUCCESS) &&
-									(RegQueryInfoKey(keyHandle5, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
+								if ((RegOpenKeyExW(keyHandle4, L"Device Parameters", 0, KEY_QUERY_VALUE, &keyHandle5) == ERROR_SUCCESS) &&
+									(RegQueryInfoKeyW(keyHandle5, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
 								{
 									// Allocate memory
 									comPortLength = valueLength + 1;
-									CHAR *comPort = (CHAR*)malloc(comPortLength);
+									WCHAR *comPort = (WCHAR*)malloc(comPortLength*sizeof(WCHAR));
 
 									// Attempt to get COM value and friendly port name
-									if ((RegQueryValueEx(keyHandle5, "PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
-											(RegQueryValueEx(keyHandle4, "FriendlyName", NULL, &keyType, (BYTE*)friendlyName, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+									if ((RegQueryValueExW(keyHandle5, L"PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
+											(RegQueryValueExW(keyHandle4, L"FriendlyName", NULL, &keyType, (BYTE*)friendlyName, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
 									{
 										// Set port name and description
-										char* comPortString = (comPort[0] == '\\') ? (strrchr(comPort, '\\') + 1) : comPort;
-										char* descriptionString = friendlyName;
+										wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
+										wchar_t* descriptionString = friendlyName;
 
 										// Update friendly name if COM port is actually connected and present in the port list
 										int i;
 										for (i = 0; i < serialCommPorts.length; ++i)
-											if (strcmp(serialCommPorts.first[i], comPortString) == 0)
+											if (wcscmp(serialCommPorts.first[i], comPortString) == 0)
 											{
 												free(serialCommPorts.second[i]);
-												serialCommPorts.second[i] = (char*)malloc(strlen(descriptionString)+1);
-												strcpy(serialCommPorts.second[i], descriptionString);
+												serialCommPorts.second[i] = (wchar_t*)malloc((wcslen(descriptionString)+1)*sizeof(wchar_t));
+												wcscpy(serialCommPorts.second[i], descriptionString);
 												break;
 											}
 									}
@@ -200,19 +200,70 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		free(subKeyName1);
 	}
 
+	// Attempt to locate any device-specified port descriptions
+	HDEVINFO devList = SetupDiGetClassDevsW(NULL, L"USB", NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+	if (devList != INVALID_HANDLE_VALUE)
+	{
+		// Iterate through all USB-connected devices
+		DWORD devInterfaceIndex = 0;
+		DEVPROPTYPE devInfoPropType;
+		SP_DEVINFO_DATA devInfoData;
+		devInfoData.cbSize = sizeof(devInfoData);
+		WCHAR comPort[128];
+		while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
+		{
+			// Fetch the corresponding COM port for this device
+			wchar_t* comPortString = NULL;
+			comPortLength = sizeof(comPort) / sizeof(WCHAR);
+			keyHandle5 = SetupDiOpenDevRegKey(devList, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_QUERY_VALUE);
+			if ((keyHandle5 != INVALID_HANDLE_VALUE) && (RegQueryValueExW(keyHandle5, L"PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+				comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
+			if (keyHandle5 != INVALID_HANDLE_VALUE)
+				RegCloseKey(keyHandle5);
+
+			// Fetch the length of the "Bus-Reported Device Description"
+			if (comPortString && !SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &valueLength, 0)  && (GetLastError() == ERROR_INSUFFICIENT_BUFFER))
+			{
+				// Allocate memory
+				++valueLength;
+				WCHAR *portDescription = (WCHAR*)malloc(valueLength);
+
+				// Retrieve the "Bus-Reported Device Description"
+				if (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescription, valueLength, NULL, 0))
+				{
+					// Update port description if COM port is actually connected and present in the port list
+					int i;
+					for (i = 0; i < serialCommPorts.length; ++i)
+						if (wcscmp(serialCommPorts.first[i], comPortString) == 0)
+						{
+							free(serialCommPorts.third[i]);
+							serialCommPorts.third[i] = (wchar_t*)malloc((wcslen(portDescription)+1)*sizeof(wchar_t));
+							wcscpy(serialCommPorts.third[i], portDescription);
+							break;
+						}
+				}
+
+				// Clean up memory
+				free(portDescription);
+			}
+			devInfoData.cbSize = sizeof(devInfoData);
+		}
+		SetupDiDestroyDeviceInfoList(devList);
+	}
+
 	// Get relevant SerialComm methods and fill in com port array
 	jobjectArray arrayObject = env->NewObjectArray(serialCommPorts.length, serialCommClass, 0);
-	char systemPortName[128];
+	wchar_t systemPortName[128];
 	int i;
 	for (i = 0; i < serialCommPorts.length; ++i)
 	{
 		// Create new SerialComm object containing the enumerated values
 		jobject serialCommObject = env->NewObject(serialCommClass, serialCommConstructor);
-		strcpy(systemPortName, "\\\\.\\");
-		strcat(systemPortName, serialCommPorts.first[i]);
-		env->SetObjectField(serialCommObject, comPortField, env->NewStringUTF(systemPortName));
-		env->SetObjectField(serialCommObject, friendlyNameField, env->NewStringUTF(serialCommPorts.second[i]));
-		env->SetObjectField(serialCommObject, portDescriptionField, env->NewStringUTF(serialCommPorts.third[i]));
+		wcscpy(systemPortName, L"\\\\.\\");
+		wcscat(systemPortName, serialCommPorts.first[i]);
+		env->SetObjectField(serialCommObject, comPortField, env->NewString((jchar*)systemPortName, wcslen(systemPortName)));
+		env->SetObjectField(serialCommObject, friendlyNameField, env->NewString((jchar*)serialCommPorts.second[i], wcslen(serialCommPorts.second[i])));
+		env->SetObjectField(serialCommObject, portDescriptionField, env->NewString((jchar*)serialCommPorts.third[i], wcslen(serialCommPorts.third[i])));
 		free(serialCommPorts.first[i]);
 		free(serialCommPorts.second[i]);
 		free(serialCommPorts.third[i]);
