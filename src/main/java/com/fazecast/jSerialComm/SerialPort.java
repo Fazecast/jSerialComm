@@ -704,30 +704,23 @@ public final class SerialPort
 	 * <p>
 	 * <i>Note that write timeouts are only available on Windows-based systems. There is no functionality to set a write timeout on other operating systems.</i>
 	 * <p>
-	 * The built-in timeout mode constants should be used ({@link #TIMEOUT_NONBLOCKING}, {@link #TIMEOUT_READ_SEMI_BLOCKING},
-	 * {@link #TIMEOUT_WRITE_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING}, {@link #TIMEOUT_WRITE_BLOCKING}, {@link #TIMEOUT_SCANNER}) to specify how
-	 * timeouts are to be handled.
+	 * The built-in timeout mode constants should be used ({@link #TIMEOUT_NONBLOCKING}, {@link #TIMEOUT_READ_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING},
+	 * {@link #TIMEOUT_SCANNER}) to specify how timeouts are to be handled.
 	 * <p>
 	 * Valid modes are:
 	 * <p>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Non-blocking: {@link #TIMEOUT_NONBLOCKING}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Non-blocking: {@link #TIMEOUT_NONBLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Semi-blocking: {@link #TIMEOUT_READ_SEMI_BLOCKING}<br>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read/Write Semi-blocking: {@link #TIMEOUT_READ_SEMI_BLOCKING} | {@link #TIMEOUT_WRITE_SEMI_BLOCKING}<br>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Semi-Blocking/Write Full-blocking: {@link #TIMEOUT_READ_SEMI_BLOCKING} | {@link #TIMEOUT_WRITE_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Full-blocking: {@link #TIMEOUT_READ_BLOCKING}<br>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Full-blocking/Write Semi-blocking: {@link #TIMEOUT_READ_BLOCKING} | {@link #TIMEOUT_WRITE_SEMI_BLOCKING}<br>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read/Write Full-blocking: {@link #TIMEOUT_READ_BLOCKING} | {@link #TIMEOUT_WRITE_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scanner: {@link #TIMEOUT_SCANNER}<br>
 	 * <p>
-	 * The {@link #TIMEOUT_NONBLOCKING} mode specifies that the corresponding {@link #readBytes(byte[],long)} or {@link #writeBytes(byte[],long)} call
-	 * will return immediately with any available data.
+	 * The {@link #TIMEOUT_NONBLOCKING} mode specifies that the corresponding {@link #readBytes(byte[],long)} call will return immediately with any available data.
 	 * <p>
-	 * The {@link #TIMEOUT_READ_SEMI_BLOCKING} or {@link #TIMEOUT_WRITE_SEMI_BLOCKING} modes specify that the corresponding calls will block until either
-	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds of inactivity have elapsed or at least 1 byte of data can be written or read.
+	 * The {@link #TIMEOUT_READ_SEMI_BLOCKING} mode specifies that the corresponding call will block until either <i>newReadTimeout</i> milliseconds of inactivity
+	 * have elapsed or at least 1 byte of data can be read.
 	 * <p>
-	 * The {@link #TIMEOUT_READ_BLOCKING} or {@link #TIMEOUT_WRITE_BLOCKING} modes specify that the corresponding call will block until either
-	 * <i>newReadTimeout</i> or <i>newWriteTimeout</i> milliseconds have elapsed since the start of the call or the total number of requested bytes can be written or
-	 * returned.
+	 * The {@link #TIMEOUT_READ_BLOCKING} mode specifies that the corresponding call will block until either <i>newReadTimeout</i> milliseconds have elapsed since
+	 * the start of the call or the total number of requested bytes can be returned.
 	 * <p>
 	 * The {@link #TIMEOUT_SCANNER} mode is intended for use with the Java {@link java.util.Scanner} class for reading from the serial port. In this mode,
 	 * manually specified timeouts are ignored to ensure compatibility with the Java specification.
