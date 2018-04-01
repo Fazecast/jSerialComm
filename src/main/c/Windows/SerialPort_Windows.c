@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Apr 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -24,13 +24,16 @@
  */
 
 #ifdef _WIN32
-#define WINVER _WIN32_WINNT_WINXP
-#define _WIN32_WINNT _WIN32_WINNT_WINXP
-#define NTDDI_VERSION NTDDI_WINXP
+#define WINVER _WIN32_WINNT_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#define NTDDI_VERSION NTDDI_VISTA
 #define WIN32_LEAN_AND_MEAN
+#include <initguid.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
+#include <setupapi.h>
+#include <devpkey.h>
 #include "../com_fazecast_jSerialComm_SerialPort.h"
 #include "WindowsHelperFunctions.h"
 
@@ -39,7 +42,8 @@ jclass serialCommClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortHandleField;
 jfieldID comPortField;
-jfieldID portStringField;
+jfieldID friendlyNameField;
+jfieldID portDescriptionField;
 jfieldID isOpenedField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
@@ -60,7 +64,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	DWORD subKeyLength1, subKeyLength2, subKeyLength3, friendlyNameLength;
 
 	// Enumerate serial ports on machine
-	charPairVector serialCommPorts = { (char**)malloc(1), (char**)malloc(1), 0 };
+	charTupleVector serialCommPorts = { (char**)malloc(1), (char**)malloc(1), (char**)malloc(1), 0 };
 	if ((RegOpenKeyEx(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
 			(RegQueryInfoKey(keyHandle1, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, &maxValueLength, &maxComPortLength, NULL, NULL) == ERROR_SUCCESS))
 	{
@@ -85,7 +89,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				char* descriptionString = strrchr(valueName, '\\') ? (strrchr(valueName, '\\') + 1) : valueName;
 
 				// Add new SerialComm object to vector
-				push_back(&serialCommPorts, comPortString, descriptionString);
+				push_back(&serialCommPorts, comPortString, descriptionString, descriptionString);
 			}
 		}
 
@@ -207,15 +211,18 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		strcpy(systemPortName, "\\\\.\\");
 		strcat(systemPortName, serialCommPorts.first[i]);
 		env->SetObjectField(serialCommObject, comPortField, env->NewStringUTF(systemPortName));
-		env->SetObjectField(serialCommObject, portStringField, env->NewStringUTF(serialCommPorts.second[i]));
+		env->SetObjectField(serialCommObject, friendlyNameField, env->NewStringUTF(serialCommPorts.second[i]));
+		env->SetObjectField(serialCommObject, portDescriptionField, env->NewStringUTF(serialCommPorts.third[i]));
 		free(serialCommPorts.first[i]);
 		free(serialCommPorts.second[i]);
+		free(serialCommPorts.third[i]);
 
 		// Add new SerialComm object to array
 		env->SetObjectArrayElement(arrayObject, i, serialCommObject);
 	}
 	free(serialCommPorts.first);
 	free(serialCommPorts.second);
+	free(serialCommPorts.third);
 	return arrayObject;
 }
 
@@ -228,7 +235,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	// Cache
 	serialPortHandleField = env->GetFieldID(serialCommClass, "portHandle", "J");
 	comPortField = env->GetFieldID(serialCommClass, "comPort", "Ljava/lang/String;");
-	portStringField = env->GetFieldID(serialCommClass, "portString", "Ljava/lang/String;");
+	friendlyNameField = env->GetFieldID(serialCommClass, "friendlyName", "Ljava/lang/String;");
+	portDescriptionField = env->GetFieldID(serialCommClass, "portDescription", "Ljava/lang/String;");
 	isOpenedField = env->GetFieldID(serialCommClass, "isOpened", "Z");
 	baudRateField = env->GetFieldID(serialCommClass, "baudRate", "I");
 	dataBitsField = env->GetFieldID(serialCommClass, "dataBits", "I");

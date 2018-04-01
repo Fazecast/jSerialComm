@@ -2,7 +2,7 @@
  * SerialPort_OSX.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Apr 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -46,7 +46,8 @@ jclass serialCommClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortFdField;
 jfieldID comPortField;
-jfieldID portStringField;
+jfieldID friendlyNameField;
+jfieldID portDescriptionField;
 jfieldID isOpenedField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
@@ -63,7 +64,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	io_object_t serialPort;
 	io_iterator_t serialPortIterator;
 	int numValues = 0;
-	char portString[1024], comPortCu[1024], comPortTty[1024];
+	char friendlyName[1024], comPortCu[1024], comPortTty[1024], portDescription[1024];
 
 	// Enumerate serial ports on machine
 	IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
@@ -78,14 +79,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	{
 		// Get serial port information
 		serialPort = IOIteratorNext(serialPortIterator);
-		portString[0] = '\0';
+		friendlyName[0] = '\0';
 		io_registry_entry_t parent = 0;
 		io_registry_entry_t service = serialPort;
 		while (service)
 		{
 			if (IOObjectConformsTo(service, "IOUSBDevice"))
 			{
-				IORegistryEntryGetName(service, portString);
+				IORegistryEntryGetName(service, friendlyName);
 				break;
 			}
 
@@ -99,11 +100,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			IOObjectRelease(service);
 
 		// Get serial port name and COM value
-		if (portString[0] == '\0')
+		if (friendlyName[0] == '\0')
 		{
-			CFStringRef portStringRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOTTYDeviceKey), kCFAllocatorDefault, 0);
-			CFStringGetCString(portStringRef, portString, sizeof(portString), kCFStringEncodingUTF8);
-			CFRelease(portStringRef);
+			CFStringRef friendlyNameRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOTTYDeviceKey), kCFAllocatorDefault, 0);
+			CFStringGetCString(friendlyNameRef, friendlyName, sizeof(friendlyName), kCFStringEncodingUTF8);
+			CFRelease(friendlyNameRef);
 		}
 		CFStringRef comPortRef = (CFStringRef)IORegistryEntryCreateCFProperty(serialPort, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
 		CFStringGetCString(comPortRef, comPortCu, sizeof(comPortCu), kCFStringEncodingUTF8);
@@ -114,15 +115,17 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 		// Create new SerialComm callout object containing the enumerated values and add to array
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		(*env)->SetObjectField(env, serialCommObject, portStringField, (*env)->NewStringUTF(env, portString));
+		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, friendlyName));
+		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, friendlyName));
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, comPortCu));
 		(*env)->SetObjectArrayElement(env, arrayObject, i*2, serialCommObject);
 		(*env)->DeleteLocalRef(env, serialCommObject);
 
 		// Create new SerialComm dialin object containing the enumerated values and add to array
-		strcat(portString, " (Dial-In)");
+		strcat(friendlyName, " (Dial-In)");
 		serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		(*env)->SetObjectField(env, serialCommObject, portStringField, (*env)->NewStringUTF(env, portString));
+		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, friendlyName));
+		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, friendlyName));
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, comPortTty));
 		(*env)->SetObjectArrayElement(env, arrayObject, i*2 + 1, serialCommObject);
 		(*env)->DeleteLocalRef(env, serialCommObject);
@@ -142,7 +145,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	// Cache
 	serialPortFdField = (*env)->GetFieldID(env, serialCommClass, "portHandle", "J");
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
-	portStringField = (*env)->GetFieldID(env, serialCommClass, "portString", "Ljava/lang/String;");
+	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
+	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
 	isOpenedField = (*env)->GetFieldID(env, serialCommClass, "isOpened", "Z");
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
