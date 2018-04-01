@@ -263,14 +263,16 @@ public final class SerialPort
 		{
 			SerialPort serialPort = new SerialPort();
 			serialPort.comPort = "/dev/null";
-			serialPort.portString = "Bad Port";
+			serialPort.friendlyName = "Bad Port";
+			serialPort.portDescription = "Bad Port";
 			return serialPort;
 		}
 
 		// Create SerialPort object
 		SerialPort serialPort = new SerialPort();
 		serialPort.comPort = portDescriptor;
-		serialPort.portString = "User-Specified Port";
+		serialPort.friendlyName = "User-Specified Port";
+		serialPort.portDescription = "User-Specified Port";
 
 		return serialPort;
 	}
@@ -351,7 +353,7 @@ public final class SerialPort
 	private volatile SerialPortOutputStream outputStream = null;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
-	private volatile String portString, comPort;
+	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean isOpened = false;
 
 	/**
@@ -898,7 +900,7 @@ public final class SerialPort
 	 *
 	 * @return A descriptive string representing this serial port.
 	 */
-	public final String getDescriptivePortName() { return portString.trim(); }
+	public final String getDescriptivePortName() { return friendlyName.trim(); }
 
 	/**
 	 * Gets the operating system-defined device name corresponding to this serial port.
@@ -907,6 +909,16 @@ public final class SerialPort
 	 */
 	public final String getSystemPortName() { return (isWindows ? comPort.substring(comPort.lastIndexOf('\\')+1) : comPort.substring(comPort.lastIndexOf('/')+1)); }
 
+	/**
+	 * Gets a description of the port as reported by the device itself.
+	 * <p>
+	 * This will only be available for USB-connected devices that report a product description.
+	 * Otherwise, it will return the same value as {@link #getDescriptivePortName()}.
+	 * 
+	 * @return The port description as reported by the device itself.
+	 */
+	public final String getPortDescription() { return portDescription.trim(); }
+	
 	/**
 	 * Gets the current baud rate of the serial port.
 	 *

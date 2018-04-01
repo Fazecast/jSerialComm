@@ -26,17 +26,17 @@
 #ifndef __LINUX_HELPER_FUNCTIONS_HEADER_H__
 #define __LINUX_HELPER_FUNCTIONS_HEADER_H__
 
-typedef struct charPairVector
+typedef struct charTupleVector
 {
-	char **first, **second;
+	char **first, **second, **third;
 	size_t length;
-} charPairVector;
-void push_back(struct charPairVector* vector, const char* firstString, const char* secondString);
-char keyExists(struct charPairVector* vector, const char* key);
+} charTupleVector;
+void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString);
+char keyExists(struct charTupleVector* vector, const char* key);
 
 void getDriverName(const char* directoryToSearch, char* friendlyName);
-void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch);
-void lastDitchSearchForComPorts(charPairVector* comPorts);
+void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch);
+void lastDitchSearchForComPorts(charTupleVector* comPorts);
 void getFriendlyName(const char* productFile, char* friendlyName);
 unsigned int getBaudRateCode(int baudRate);
 void setBaudRate(int portFD, int baudRate);

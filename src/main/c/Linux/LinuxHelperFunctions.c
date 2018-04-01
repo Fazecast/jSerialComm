@@ -38,7 +38,7 @@
 
 extern int ioctl(int __fd, unsigned long int __request, ...) __THROW;
 
-void push_back(struct charPairVector* vector, const char* firstString, const char* secondString)
+void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString)
 {
 	// Allocate memory for new string storage
 	vector->length++;
@@ -48,15 +48,20 @@ void push_back(struct charPairVector* vector, const char* firstString, const cha
 	newMemory = (char**)realloc(vector->second, vector->length*sizeof(char*));
 	if (newMemory)
 		vector->second = newMemory;
+	newMemory = (char**)realloc(vector->third, vector->length*sizeof(char*));
+	if (newMemory)
+		vector->third = newMemory;
 
 	// Store new strings
 	vector->first[vector->length-1] = (char*)malloc(strlen(firstString)+1);
 	vector->second[vector->length-1] = (char*)malloc(strlen(secondString)+1);
+	vector->third[vector->length-1] = (char*)malloc(strlen(thirdString)+1);
 	strcpy(vector->first[vector->length-1], firstString);
 	strcpy(vector->second[vector->length-1], secondString);
+	strcpy(vector->third[vector->length-1], thirdString);
 }
 
-char keyExists(struct charPairVector* vector, const char* key)
+char keyExists(struct charTupleVector* vector, const char* key)
 {
 	size_t i;
 	for (i = 0; i < vector->length; ++i)
@@ -117,7 +122,7 @@ void getDriverName(const char* directoryToSearch, char* friendlyName)
 	closedir(directoryIterator);
 }
 
-void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch)
+void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch)
 {
 	// Open the directory
 	DIR *directoryIterator = opendir(fullPathToSearch);
@@ -170,23 +175,23 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 								{
 									strcpy(friendlyName, "Bluetooth Port ");
 									strcat(friendlyName, directoryEntry->d_name);
-									push_back(comPorts, systemName, friendlyName);
+									push_back(comPorts, systemName, friendlyName, friendlyName);
 								}
 								else if (((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
 										((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN)))
 								{
 									strcpy(friendlyName, "Physical Port ");
 									strcat(friendlyName, directoryEntry->d_name+3);
-									push_back(comPorts, systemName, friendlyName);
+									push_back(comPorts, systemName, friendlyName, friendlyName);
 								}
 								close(fd);
 							}
 						}
 						else
-							push_back(comPorts, systemName, friendlyName);
+							push_back(comPorts, systemName, friendlyName, friendlyName);
 					}
 					else
-						push_back(comPorts, systemName, friendlyName);
+						push_back(comPorts, systemName, friendlyName, friendlyName);
 
 					// Clean up memory
 					free(productFile);
@@ -196,7 +201,7 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 				else
 				{
 					// Search for more serial ports within the directory
-					charPairVector newComPorts = { (char**)malloc(1), (char**)malloc(1), 0 };
+					charTupleVector newComPorts = { (char**)malloc(1), (char**)malloc(1), (char**)malloc(1), 0 };
 					char* nextDirectory = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 5);
 					strcpy(nextDirectory, fullPathToSearch);
 					strcat(nextDirectory, directoryEntry->d_name);
@@ -206,12 +211,14 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					int i;
 					for (i = 0; i < newComPorts.length; ++i)
 					{
-						push_back(comPorts, newComPorts.first[i], newComPorts.second[i]);
+						push_back(comPorts, newComPorts.first[i], newComPorts.second[i], newComPorts.third[i]);
 						free(newComPorts.first[i]);
 						free(newComPorts.second[i]);
+						free(newComPorts.third[i]);
 					}
 					free(newComPorts.first);
 					free(newComPorts.second);
+					free(newComPorts.third);
 				}
 			}
 		}
@@ -222,7 +229,7 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 	closedir(directoryIterator);
 }
 
-void lastDitchSearchForComPorts(charPairVector* comPorts)
+void lastDitchSearchForComPorts(charTupleVector* comPorts)
 {
 	// Open the linux dev directory
 	DIR *directoryIterator = opendir("/dev/");
@@ -250,7 +257,7 @@ void lastDitchSearchForComPorts(charPairVector* comPorts)
 
 			// Determine if port is already in the list, and add it if not
 			if (!keyExists(comPorts, systemName))
-				push_back(comPorts, systemName, friendlyName);
+				push_back(comPorts, systemName, friendlyName, friendlyName);
 
 			// Clean up memory
 			free(systemName);
@@ -270,7 +277,7 @@ void lastDitchSearchForComPorts(charPairVector* comPorts)
 
 			// Determine if port is already in the list, and add it if not
 			if (!keyExists(comPorts, systemName))
-				push_back(comPorts, systemName, friendlyName);
+				push_back(comPorts, systemName, friendlyName, friendlyName);
 
 			// Clean up memory
 			free(systemName);

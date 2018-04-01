@@ -40,7 +40,7 @@
 #endif
 #include "AndroidHelperFunctions.h"
 
-void push_back(struct charPairVector* vector, const char* firstString, const char* secondString)
+void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString)
 {
 	// Allocate memory for new string storage
 	vector->length++;
@@ -50,12 +50,26 @@ void push_back(struct charPairVector* vector, const char* firstString, const cha
 	newMemory = (char**)realloc(vector->second, vector->length*sizeof(char*));
 	if (newMemory)
 		vector->second = newMemory;
+	newMemory = (char**)realloc(vector->third, vector->length*sizeof(char*));
+	if (newMemory)
+		vector->third = newMemory;
 
 	// Store new strings
 	vector->first[vector->length-1] = (char*)malloc(strlen(firstString)+1);
 	vector->second[vector->length-1] = (char*)malloc(strlen(secondString)+1);
+	vector->third[vector->length-1] = (char*)malloc(strlen(thirdString)+1);
 	strcpy(vector->first[vector->length-1], firstString);
 	strcpy(vector->second[vector->length-1], secondString);
+	strcpy(vector->third[vector->length-1], thirdString);
+}
+
+char keyExists(struct charTupleVector* vector, const char* key)
+{
+	size_t i;
+	for (i = 0; i < vector->length; ++i)
+		if (strcmp(key, vector->first[i]) == 0)
+			return 1;
+	return 0;
 }
 
 void getFriendlyName(const char* productFile, char* friendlyName)
@@ -110,7 +124,7 @@ void getDriverName(const char* directoryToSearch, char* friendlyName)
 	closedir(directoryIterator);
 }
 
-void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathToSearch)
+void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch)
 {
 	// Open the directory
 	DIR *directoryIterator = opendir(fullPathToSearch);
@@ -150,10 +164,10 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 						strcat(productFile, "/driver/module/drivers");
 						getDriverName(productFile, friendlyName);
 						if (friendlyName[0] != '\0')
-							push_back(comPorts, systemName, friendlyName);
+							push_back(comPorts, systemName, friendlyName, friendlyName);
 					}
 					else
-						push_back(comPorts, systemName, friendlyName);
+						push_back(comPorts, systemName, friendlyName, friendlyName);
 
 					// Clean up memory
 					free(productFile);
@@ -163,7 +177,7 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 				else
 				{
 					// Search for more serial ports within the directory
-					charPairVector newComPorts = { (char**)malloc(1), (char**)malloc(1), 0 };
+					charTupleVector newComPorts = { (char**)malloc(1), (char**)malloc(1), (char**)malloc(1), 0 };
 					char* nextDirectory = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 5);
 					strcpy(nextDirectory, fullPathToSearch);
 					strcat(nextDirectory, directoryEntry->d_name);
@@ -173,12 +187,14 @@ void recursiveSearchForComPorts(charPairVector* comPorts, const char* fullPathTo
 					int i;
 					for (i = 0; i < newComPorts.length; ++i)
 					{
-						push_back(comPorts, newComPorts.first[i], newComPorts.second[i]);
+						push_back(comPorts, newComPorts.first[i], newComPorts.second[i], newComPorts.third[i]);
 						free(newComPorts.first[i]);
 						free(newComPorts.second[i]);
+						free(newComPorts.third[i]);
 					}
 					free(newComPorts.first);
 					free(newComPorts.second);
+					free(newComPorts.third);
 				}
 			}
 		}

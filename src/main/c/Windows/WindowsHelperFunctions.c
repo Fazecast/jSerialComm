@@ -28,7 +28,7 @@
 #include <string.h>
 #include "WindowsHelperFunctions.h"
 
-void push_back(struct charPairVector* vector, const char* firstString, const char* secondString)
+void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString)
 {
 	// Allocate memory for new string storage
 	vector->length++;
@@ -38,12 +38,26 @@ void push_back(struct charPairVector* vector, const char* firstString, const cha
 	newMemory = (char**)realloc(vector->second, vector->length*sizeof(char*));
 	if (newMemory)
 		vector->second = newMemory;
+	newMemory = (char**)realloc(vector->third, vector->length*sizeof(char*));
+	if (newMemory)
+		vector->third = newMemory;
 
 	// Store new strings
 	vector->first[vector->length-1] = (char*)malloc(strlen(firstString)+1);
 	vector->second[vector->length-1] = (char*)malloc(strlen(secondString)+1);
+	vector->third[vector->length-1] = (char*)malloc(strlen(thirdString)+1);
 	strcpy(vector->first[vector->length-1], firstString);
 	strcpy(vector->second[vector->length-1], secondString);
+	strcpy(vector->third[vector->length-1], thirdString);
+}
+
+char keyExists(struct charTupleVector* vector, const char* key)
+{
+	size_t i;
+	for (i = 0; i < vector->length; ++i)
+		if (strcmp(key, vector->first[i]) == 0)
+			return 1;
+	return 0;
 }
 
 #endif
