@@ -409,7 +409,7 @@ public final class SerialPort
 
 		if ((portHandle = openPortNative()) > 0)
 		{
-			inputStream = new SerialPortInputStream();
+			inputStream = new SerialPortInputStream(this);
 			outputStream = new SerialPortOutputStream();
 			if (serialEventListener != null)
 				serialEventListener.startListening();
@@ -1106,81 +1106,105 @@ public final class SerialPort
 	}
 
 	// InputStream interface class
-	private final class SerialPortInputStream extends InputStream
-	{
-		// a shared, re-usable, single-byte scratch buffer to avoid allocating
-		// a new byte[] when reading a single byte. not thread safe, but neither
-		// SerialPort nor its Input/Output streams are to begin with.
-		private final byte[] singleByteBuffer = new byte[1];
+	public static class SerialPortInputStream extends InputStream {
 
-		public SerialPortInputStream() {}
+		private static final long DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE = 10;
+		private static final int DEFAULT_READ_BUFFER_LENGTH = 2048;
 
-		@Override
-		public final int available() throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+		private final SerialPort serialPort;
+		private final long sleepIfNoDataAvailable;
+		private final byte[] readBuffer;
 
-			return bytesAvailable(portHandle);
+		public SerialPortInputStream(final SerialPort serialPort) {
+			this(serialPort, DEFAULT_SLEEP_IF_NO_DATA_AVAILABLE, DEFAULT_READ_BUFFER_LENGTH);
 		}
 
-		@Override
-		public final int read() throws IOException
-		{
-			int bytesRead;
-
-			while (isOpened)
-			{
-				bytesRead = readBytes(portHandle, singleByteBuffer, 1L);
-
-				if (bytesRead > 0)
-					return ((int)singleByteBuffer[0] & 0xFF);
-
-				sleep1();
+		public SerialPortInputStream(final SerialPort serialPort, final long sleepIfNoDataAvailable, final int readBufferLength) {
+			if (serialPort == null) {
+				throw new NullPointerException();
 			}
-
-			throw new IOException("This port appears to have been shutdown or disconnected.");
-		}
-
-		@Override
-		public final int read(byte[] b) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			if (b.length == 0)
-				return 0;
-
-			return readBytes(portHandle, b, b.length);
-		}
-
-		@Override
-		public final int read(byte[] b, int off, int len) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			if (len == 0)
-				return 0;
-
-			byte[] buffer = new byte[len];
-			int numRead = 0;
-			while (isOpened && (numRead == 0))
-			{
-				numRead = readBytes(portHandle, buffer, len);
-				if (numRead > 0)
-					System.arraycopy(buffer, 0, buffer, off, numRead);
+			if (sleepIfNoDataAvailable < 1 || readBufferLength < 1) {
+				throw new IllegalArgumentException();
 			}
-
-			return numRead;
+			this.serialPort = serialPort;
+			this.sleepIfNoDataAvailable = sleepIfNoDataAvailable;
+			readBuffer = new byte[readBufferLength];
 		}
 
 		@Override
-		public final long skip(long n) throws IOException
-		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+		public int available() throws IOException {
+			final int available = serialPort.bytesAvailable();
+			if (available < 0) {
+				throw new IOException("Port closed");
+			}
+			return available;
+		}
 
-			byte[] buffer = new byte[(int)n];
-			return readBytes(portHandle, buffer, n);
+		@Override
+		public int read() throws IOException {
+			// read will only return -1 or +1
+			return read(readBuffer, 1) < 0 ? -1 : (readBuffer[0] & 0xFF);
+		}
+
+		@Override
+		public int read(final byte[] b) throws IOException {
+			return read(b, b.length);
+		}
+
+		@Override
+		public int read(final byte[] b, final int off, final int len) throws IOException {
+			if (off == 0) {
+				return read(b, len);
+			}
+			final int read = read(readBuffer, Math.min(len, readBuffer.length));
+			if (read > 0) {
+				System.arraycopy(readBuffer, 0, b, off, read);
+			}
+			return read;
+		}
+		
+		/**
+		 * Reads up to <code>len</code> bytes of data from the input stream into
+		 * an array of bytes.
+		 * 
+		 * @return the total number of bytes read into the buffer,
+		 *         <code>-1</code> if there is no more data because the
+		 *         underlying port is closed or 0 iif <code>len</code> is
+		 *         <code>0</code>.
+		 * @exception IOException
+		 *                If the underlying port was closed or some other 
+		 *                I/O error occurred while reading.
+		 * @exception NullPointerException
+		 *                If <code>b</code> is <code>null</code>.
+		 * @exception IndexOutOfBoundsException
+		 *                If <code>len</code> is negative, or <code>len</code>
+		 *                is greater than <code>b.length</code>
+		 */
+		protected int read(final byte[] b, final int len) throws IOException {
+			if (b == null) {
+				throw new NullPointerException();
+			}
+			if (len < 0 || len > b.length) {
+				throw new IndexOutOfBoundsException();
+			}
+			if (len == 0) {
+				return 0;
+			}
+			while (true) {
+				if (available() > 0) { // implicitly asserts open and avoids blocking (see next line's comment)
+					final int read = serialPort.readBytes(b, len); // [ISSUE?!] could still BLOCK FOREVER (in blocking mode, if port was closed by another thread between this and last line)
+					if (read > 0) {
+						return read;
+					}
+					if (read < 0) {
+						throw new IOException();
+					}
+				}
+				try {
+					Thread.sleep(sleepIfNoDataAvailable);
+				} catch (final Exception ignored) {
+				}
+			}
 		}
 	}
 
