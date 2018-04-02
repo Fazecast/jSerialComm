@@ -272,9 +272,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 					for (j = 0; j < serialCommPorts.length; ++j)
 						if (wcscmp(serialCommPorts.first[j], comPortString) == 0)
 						{
-							size_t descLength = strlen(devInfo[i].Description);
+							size_t descLength = 8+strlen(devInfo[i].Description);
 							free(serialCommPorts.third[j]);
-							serialCommPorts.third[j] = (wchar_t*)malloc((descLength+1)*sizeof(wchar_t));
+							serialCommPorts.third[j] = (wchar_t*)malloc(descLength*sizeof(wchar_t));
 							MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialCommPorts.third[j], descLength);
 							break;
 						}
