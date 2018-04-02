@@ -38,6 +38,7 @@ void getDriverName(const char* directoryToSearch, char* friendlyName);
 void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch);
 void lastDitchSearchForComPorts(charTupleVector* comPorts);
 void getFriendlyName(const char* productFile, char* friendlyName);
+void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription);
 unsigned int getBaudRateCode(int baudRate);
 void setBaudRate(int portFD, int baudRate);
 

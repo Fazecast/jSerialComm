@@ -2,7 +2,7 @@
  * LinuxHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Mar 25, 2016
+ *  Last Updated on:  Apr 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -85,6 +85,25 @@ void getFriendlyName(const char* productFile, char* friendlyName)
 			ch = getc(input);
 		}
 		friendlyName[friendlyNameLength] = '\0';
+		fclose(input);
+	}
+}
+
+void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription)
+{
+	int interfaceDescriptionLength = 0;
+	interfaceDescription[0] = '\0';
+
+	FILE *input = fopen(interfaceFile, "rb");
+	if (input)
+	{
+		char ch = getc(input);
+		while ((ch != '\n') && (ch != EOF))
+		{
+			interfaceDescription[interfaceDescriptionLength++] = ch;
+			ch = getc(input);
+		}
+		interfaceDescription[interfaceDescriptionLength] = '\0';
 		fclose(input);
 	}
 }
@@ -188,10 +207,54 @@ void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathT
 							}
 						}
 						else
-							push_back(comPorts, systemName, friendlyName, friendlyName);
+						{
+							// Attempt to read from the device interface file
+							char* interfaceDescription = (char*)malloc(256);
+							char* interfaceFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
+							strcpy(interfaceFile, fullPathToSearch);
+							strcat(interfaceFile, directoryEntry->d_name);
+							strcat(interfaceFile, "/../interface");
+							getInterfaceDescription(interfaceFile, interfaceDescription);
+							if (interfaceDescription[0] == '\0')
+							{
+								strcpy(interfaceFile, fullPathToSearch);
+								strcat(interfaceFile, directoryEntry->d_name);
+								strcat(interfaceFile, "/device/../interface");
+								getInterfaceDescription(interfaceFile, interfaceDescription);
+							}
+							if (interfaceDescription[0] == '\0')
+								strcpy(interfaceDescription, friendlyName);
+							push_back(comPorts, systemName, friendlyName, interfaceDescription);
+
+							// Clean up memory
+							free(interfaceFile);
+							free(interfaceDescription);
+						}
 					}
 					else
-						push_back(comPorts, systemName, friendlyName, friendlyName);
+					{
+						// Attempt to read from the device interface file
+						char* interfaceDescription = (char*)malloc(256);
+						char* interfaceFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
+						strcpy(interfaceFile, fullPathToSearch);
+						strcat(interfaceFile, directoryEntry->d_name);
+						strcat(interfaceFile, "/../interface");
+						getInterfaceDescription(interfaceFile, interfaceDescription);
+						if (interfaceDescription[0] == '\0')
+						{
+							strcpy(interfaceFile, fullPathToSearch);
+							strcat(interfaceFile, directoryEntry->d_name);
+							strcat(interfaceFile, "/device/../interface");
+							getInterfaceDescription(interfaceFile, interfaceDescription);
+						}
+						if (interfaceDescription[0] == '\0')
+							strcpy(interfaceDescription, friendlyName);
+						push_back(comPorts, systemName, friendlyName, interfaceDescription);
+
+						// Clean up memory
+						free(interfaceFile);
+						free(interfaceDescription);
+					}
 
 					// Clean up memory
 					free(productFile);
