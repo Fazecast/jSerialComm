@@ -180,11 +180,37 @@ public final class SerialPort
 		}
 
 		// Get path of native library and copy file to working directory
-		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName;
-		File tempNativeLibrary = new File(tempFileName);
+		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName, ftdiFileName = "";
+		File tempNativeLibrary = new File(tempFileName), tempFtdiLibrary = null;
 		tempNativeLibrary.deleteOnExit();
+		if (isWindows)
+		{
+			ftdiFileName = tempFileDirectory + (new Date()).getTime() + "-ftd2xx.dll";
+			tempFtdiLibrary = new File(ftdiFileName);
+			tempFtdiLibrary.deleteOnExit();
+		}
 		try
 		{
+			// Load the FTDI library if on Windows
+			if (isWindows)
+			{
+				InputStream ftdiContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/ftd2xx.dll");
+				if (ftdiContents != null)
+				{
+					FileOutputStream destinationFileContents = new FileOutputStream(tempFtdiLibrary);
+					byte transferBuffer[] = new byte[4096];
+					int numBytesRead;
+
+					while ((numBytesRead = ftdiContents.read(transferBuffer)) > 0)
+						destinationFileContents.write(transferBuffer, 0, numBytesRead);
+
+					ftdiContents.close();
+					destinationFileContents.close();
+					System.load(ftdiFileName);
+				}
+			}
+			
+			// Load the native jSerialComm library
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
 			if (fileContents == null)
 			{
@@ -203,7 +229,7 @@ public final class SerialPort
 				fileContents.close();
 				destinationFileContents.close();
 
-				// Load native library
+				// Load and initialize native library
 				System.load(tempFileName);
 				initializeLibrary();
 			}

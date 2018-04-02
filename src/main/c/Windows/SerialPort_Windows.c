@@ -34,6 +34,7 @@
 #include <string.h>
 #include <setupapi.h>
 #include <devpkey.h>
+#include "ftdi/ftd2xx.h"
 #include "../com_fazecast_jSerialComm_SerialPort.h"
 #include "WindowsHelperFunctions.h"
 
@@ -249,6 +250,38 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			devInfoData.cbSize = sizeof(devInfoData);
 		}
 		SetupDiDestroyDeviceInfoList(devList);
+	}
+
+	// Attempt to locate any FTDI-specified port descriptions
+	DWORD numDevs;
+	if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
+	{
+		FT_DEVICE_LIST_INFO_NODE *devInfo = (FT_DEVICE_LIST_INFO_NODE*)malloc(sizeof(FT_DEVICE_LIST_INFO_NODE)*numDevs);
+		if (FT_GetDeviceInfoList(devInfo, &numDevs) == FT_OK)
+		{
+			int i, j;
+			wchar_t comPortString[128];
+			for (i = 0; i < numDevs; ++i)
+			{
+				LONG comPortNumber = 0;
+				if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
+				{
+					// Update port description if COM port is actually connected and present in the port list
+					FT_Close(devInfo[i].ftHandle);
+					swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
+					for (j = 0; j < serialCommPorts.length; ++j)
+						if (wcscmp(serialCommPorts.first[j], comPortString) == 0)
+						{
+							size_t descLength = strlen(devInfo[i].Description);
+							free(serialCommPorts.third[j]);
+							serialCommPorts.third[j] = (wchar_t*)malloc((descLength+1)*sizeof(wchar_t));
+							MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialCommPorts.third[j], descLength);
+							break;
+						}
+				}
+			}
+		}
+		free(devInfo);
 	}
 
 	// Get relevant SerialComm methods and fill in com port array

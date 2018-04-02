@@ -47,6 +47,7 @@ all :
 win32 : checkdirs $(BUILD_DIR)\x86\$(LIBRARY_NAME)
 	$(DELETE) $(BUILD_DIR)\x86\*.obj
 	$(COPY) $(BUILD_DIR)\x86\*.* $(RESOURCE_DIR)\x86
+	$(COPY) ftdi\ftd2xx32.dll $(RESOURCE_DIR)\x86\ftd2xx.dll
 	$(DELETE) ..\*.h
 	$(RMDIR) $(BUILD_DIR)\..
 
@@ -54,6 +55,7 @@ win32 : checkdirs $(BUILD_DIR)\x86\$(LIBRARY_NAME)
 win64 : checkdirs $(BUILD_DIR)\x86_64\$(LIBRARY_NAME)
 	$(DELETE) $(BUILD_DIR)\x86_64\*.obj
 	$(COPY) $(BUILD_DIR)\x86_64\*.* $(RESOURCE_DIR)\x86_64
+	$(COPY) ftdi\ftd2xx64.dll $(RESOURCE_DIR)\x86_64\ftd2xx.dll
 	$(DELETE) ..\*.h
 	$(RMDIR) $(BUILD_DIR)\..
 
@@ -66,11 +68,11 @@ $(BUILD_DIR)\x86_64 :
 
 # Rule to build 32-bit library
 $(BUILD_DIR)\x86\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
-	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
+	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES) ftdi/ftd2xx32.lib
 
 # Rule to build 64-bit library
 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
-	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
+	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES) ftdi/ftd2xx64.lib
 
 # Suffix rules to get from *.c -> *.obj
 $(OBJECTSx86_64) :
