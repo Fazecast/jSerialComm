@@ -1108,10 +1108,7 @@ public final class SerialPort
 	// InputStream interface class
 	private final class SerialPortInputStream extends InputStream
 	{
-		// a shared, re-usable, single-byte scratch buffer to avoid allocating
-		// a new byte[] when reading a single byte. not thread safe, but neither
-		// SerialPort nor its Input/Output streams are to begin with.
-		private final byte[] singleByteBuffer = new byte[1];
+		private byte[] byteBuffer = new byte[1];
 
 		public SerialPortInputStream() {}
 
@@ -1120,56 +1117,44 @@ public final class SerialPort
 		{
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
-
 			return bytesAvailable(portHandle);
 		}
 
 		@Override
 		public final int read() throws IOException
 		{
-			int bytesRead;
-
-			while (isOpened)
-			{
-				bytesRead = readBytes(portHandle, singleByteBuffer, 1L);
-
-				if (bytesRead > 0)
-					return ((int)singleByteBuffer[0] & 0xFF);
-
-				sleep1();
-			}
-
-			throw new IOException("This port appears to have been shutdown or disconnected.");
+			return (readBytes(portHandle, byteBuffer, 1L) < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
 		}
 
 		@Override
-		public final int read(byte[] b) throws IOException
+		public final int read(byte[] b) throws NullPointerException, IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			if (b.length == 0)
-				return 0;
-
 			return readBytes(portHandle, b, b.length);
 		}
 
 		@Override
-		public final int read(byte[] b, int off, int len) throws IOException
+		public final int read(byte[] b, int off, int len) throws NullPointerException, IndexOutOfBoundsException, IOException
 		{
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
+			// Perform error checking
+			if (b == null)
+				throw new NullPointerException("A null pointer was passed in for the read buffer.");
+			if ((len < 0) || (off < 0) || (len > (b.length - off)))
+				throw new IndexOutOfBoundsException("The specified read offset plus length extends past the end of the specified buffer.");
 			if (len == 0)
 				return 0;
-
-			byte[] buffer = new byte[len];
-			int numRead = 0;
-			while (isOpened && (numRead == 0))
-			{
-				numRead = readBytes(portHandle, buffer, len);
-				if (numRead > 0)
-					System.arraycopy(buffer, 0, buffer, off, numRead);
-			}
-
+			
+			// Ensure that read buffer is large enough and the port is open
+			if (len > byteBuffer.length)
+				byteBuffer = new byte[len];
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			
+			// Read from the serial port
+			int numRead = readBytes(portHandle, byteBuffer, len);
+			if (numRead > 0)
+				System.arraycopy(byteBuffer, 0, b, off, numRead);
+			else if (numRead == 0)
+				throw new IOException("The read operation timed out before any data was returned.");
 			return numRead;
 		}
 
@@ -1178,7 +1163,6 @@ public final class SerialPort
 		{
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
-
 			byte[] buffer = new byte[(int)n];
 			return readBytes(portHandle, buffer, n);
 		}
@@ -1187,81 +1171,58 @@ public final class SerialPort
 	// OutputStream interface class
 	private final class SerialPortOutputStream extends OutputStream
 	{
-		// a shared, re-usable, single-byte scratch buffer to avoid allocating
-		// a new byte[] when writing a single byte. not thread safe, but neither
-		// SerialPort nor its Input/Output streams are to begin with.
-		private final byte[] singleByteBuffer = new byte[1];
+		private byte[] byteBuffer = new byte[1];
 
 		public SerialPortOutputStream() {}
 
 		@Override
 		public final void write(int b) throws IOException
 		{
-			int bytesWritten = 0;
-
-			do
-			{
-				if (!isOpened)
-					throw new IOException("This port appears to have been shutdown or disconnected.");
-
-				singleByteBuffer[0] = (byte)(b & 0xFF);
-
-				bytesWritten += writeBytes(portHandle, singleByteBuffer, 1L);
-
-				if (bytesWritten < 0)
-					throw new IOException("This port appears to have been shutdown or disconnected.");
-
-				if (bytesWritten == 0) sleep1();
-			} while (bytesWritten < 1);
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			byteBuffer[0] = (byte)(b & 0xFF);
+			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L);
+			if (bytesWritten < 0)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			else if (bytesWritten == 0)
+				throw new IOException("The write operation timed out before all data was written.");
 		}
 
 		@Override
-		public final void write(byte[] b) throws IOException
+		public final void write(byte[] b) throws NullPointerException, IOException
 		{
-			int bytesWritten = 0;
-			byte[] buffer = b;
+			write(b, 0, b.length);
+		}
 
+		@Override
+		public final void write(byte[] b, int off, int len) throws NullPointerException, IndexOutOfBoundsException, IOException
+		{
+			// Perform error checking
+			if (b == null)
+				throw new NullPointerException("A null pointer was passed in for the write buffer.");
+			if ((len < 0) || (off < 0) || ((off + len) > b.length))
+				throw new IndexOutOfBoundsException("The specified write offset plus length extends past the end of the specified buffer.");
+			if (len == 0)
+				return;
+			
+			// Ensure that write buffer is large enough and the port is open
+			if (len > byteBuffer.length)
+				byteBuffer = new byte[len];
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			
+			// Write to the serial port
+			int numWritten, totalNumWritten = 0, bytesRemaining = len;
 			do {
-				if (!isOpened)
+				System.arraycopy(b, off + totalNumWritten, byteBuffer, 0, bytesRemaining);
+				numWritten = writeBytes(portHandle, byteBuffer, bytesRemaining);
+				totalNumWritten += numWritten;
+				bytesRemaining -= numWritten;
+				if (numWritten < 0)
 					throw new IOException("This port appears to have been shutdown or disconnected.");
-
-				int written = writeBytes(portHandle, buffer, 1L);
-
-				if (written < 0)
-					throw new IOException("This port appears to have been shutdown or disconnected.");
-
-				bytesWritten += written;
-
-				if (written == 0)
-				{
-					sleep1();
-				}
-				else
-				{
-					buffer = new byte[b.length - bytesWritten];
-					System.arraycopy(b, bytesWritten, buffer, 0, buffer.length);
-				}
-			} while (bytesWritten < b.length);
-		}
-
-		@Override
-		public final void write(byte[] b, int off, int len) throws IOException
-		{
-			if (off == 0 && len == b.length)
-			{
-				write(b);
-			}
-			else
-			{
-				byte[] buffer = new byte[len];
-				System.arraycopy(b, off, buffer, 0, len);
-				write(buffer);
-			}
+				else if (numWritten == 0)
+					throw new IOException("The write operation timed out before all data was written.");
+			} while (bytesRemaining > 0);
 		}
 	}
-
-	private static void sleep1() {
-		try { Thread.sleep(1); } catch (Exception ignored) {}
-	}
-
 }
