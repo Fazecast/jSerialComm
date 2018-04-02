@@ -33,7 +33,7 @@ tasks.withType(JavaCompile) {
   }
 }
 tasks.withType(Javadoc) {
-  executable = java6Executables.javadoc
+  executable = java9Executables.javadoc
 }
 tasks.withType(Test) {
   executable = java6Executables.java
