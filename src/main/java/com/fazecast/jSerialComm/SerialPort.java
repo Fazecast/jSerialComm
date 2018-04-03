@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 09, 2018
+ *  Last Updated on:  Apr 03, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -29,6 +29,7 @@ import java.lang.ProcessBuilder;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -197,17 +198,20 @@ public final class SerialPort
 				InputStream ftdiContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/ftd2xx.dll");
 				if (ftdiContents != null)
 				{
-					FileOutputStream destinationFileContents = new FileOutputStream(tempFtdiLibrary);
-					byte transferBuffer[] = new byte[4096];
-					int numBytesRead;
+					try
+					{
+						FileOutputStream destinationFileContents = new FileOutputStream(tempFtdiLibrary);
+						byte transferBuffer[] = new byte[4096];
+						int numBytesRead;
 
-					while ((numBytesRead = ftdiContents.read(transferBuffer)) > 0)
-						destinationFileContents.write(transferBuffer, 0, numBytesRead);
-
+						while ((numBytesRead = ftdiContents.read(transferBuffer)) > 0)
+							destinationFileContents.write(transferBuffer, 0, numBytesRead);
+						destinationFileContents.close();
+					}
+					catch (FileNotFoundException e) {};
 					ftdiContents.close();
-					destinationFileContents.close();
-					System.load(ftdiFileName);
 				}
+				System.load(ftdiFileName);
 			}
 			
 			// Load the native jSerialComm library
