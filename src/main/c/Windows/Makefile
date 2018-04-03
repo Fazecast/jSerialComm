@@ -2,9 +2,9 @@
 COMPILE			= cl
 LINK			= link
 CFLAGS			= /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TP
-LDFLAGS			= /DLL /LTCG /NOASSEMBLY /NOLOGO
+LDFLAGS			= /DLL /LTCG /NOASSEMBLY /NOLOGO /DELAYLOAD:ftd2xx.dll
 INCLUDES		= /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32"
-LIBRARIES		= Advapi32.lib SetupAPI.lib
+LIBRARIES		= Advapi32.lib SetupAPI.lib DelayImp.lib
 DELETE			= @del /q /f
 RMDIR			= @rd /q /s
 MKDIR			= @md

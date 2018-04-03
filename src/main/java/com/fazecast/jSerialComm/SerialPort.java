@@ -41,7 +41,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.0.0
+ * @version 2.0.1
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -185,7 +185,7 @@ public final class SerialPort
 		tempNativeLibrary.deleteOnExit();
 		if (isWindows)
 		{
-			ftdiFileName = tempFileDirectory + (new Date()).getTime() + "-ftd2xx.dll";
+			ftdiFileName = tempFileDirectory + "ftd2xx.dll";
 			tempFtdiLibrary = new File(ftdiFileName);
 			tempFtdiLibrary.deleteOnExit();
 		}

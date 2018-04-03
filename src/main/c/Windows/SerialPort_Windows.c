@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 01, 2018
+ *  Last Updated on:  Apr 03, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -30,6 +30,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <initguid.h>
 #include <windows.h>
+#include <delayimp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <setupapi.h>
@@ -55,6 +56,38 @@ jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
+
+// FTDI DLL library loader
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+HINSTANCE hDllInstance = (HINSTANCE)&__ImageBase;
+HMODULE LocalLoadLibrary(LPCSTR pszModuleName)
+{
+	CHAR szPath[MAX_PATH] = "";
+	DWORD cchPath = GetModuleFileNameA(hDllInstance, szPath, MAX_PATH);
+	while (cchPath > 0)
+	{
+		switch(szPath[cchPath - 1])
+		{
+			case '\\':
+			case '/':
+			case ':':
+				break;
+			default:
+				--cchPath;
+				continue;
+		}
+		break;
+	}
+	lstrcpynA(szPath + cchPath, pszModuleName, MAX_PATH - cchPath);
+	return LoadLibraryA(szPath);
+}
+FARPROC WINAPI DllLoadNotifyHook(unsigned dliNotify, PDelayLoadInfo pdli)
+{
+	if (dliNotify == dliNotePreLoadLibrary)
+		return (FARPROC)LocalLoadLibrary(pdli->szDll);
+	return NULL;
+}
+extern "C" const PfnDliHook __pfnDliNotifyHook2 = DllLoadNotifyHook;
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
