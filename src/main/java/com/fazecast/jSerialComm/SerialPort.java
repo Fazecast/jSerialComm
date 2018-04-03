@@ -42,7 +42,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.0.1
+ * @version 2.0.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -181,20 +181,16 @@ public final class SerialPort
 		}
 
 		// Get path of native library and copy file to working directory
-		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName, ftdiFileName = "";
-		File tempNativeLibrary = new File(tempFileName), tempFtdiLibrary = null;
+		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName;
+		File tempNativeLibrary = new File(tempFileName);
 		tempNativeLibrary.deleteOnExit();
-		if (isWindows)
-		{
-			ftdiFileName = tempFileDirectory + "ftd2xx.dll";
-			tempFtdiLibrary = new File(ftdiFileName);
-			tempFtdiLibrary.deleteOnExit();
-		}
 		try
 		{
-			// Load the FTDI library if on Windows
+			// Copy the FTDI driver library to the system temp directory if on Windows
 			if (isWindows)
 			{
+				String ftdiFileName = tempFileDirectory + "ftd2xx.dll";
+				File tempFtdiLibrary = new File(ftdiFileName);
 				InputStream ftdiContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/ftd2xx.dll");
 				if (ftdiContents != null)
 				{
@@ -211,7 +207,6 @@ public final class SerialPort
 					catch (FileNotFoundException e) {};
 					ftdiContents.close();
 				}
-				System.load(ftdiFileName);
 			}
 			
 			// Load the native jSerialComm library
@@ -223,15 +218,19 @@ public final class SerialPort
 			}
 			else
 			{
-				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-				byte transferBuffer[] = new byte[4096];
-				int numBytesRead;
+				// Copy the native library to the system temp directory
+				try
+				{
+					FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+					byte transferBuffer[] = new byte[4096];
+					int numBytesRead;
 
-				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-					destinationFileContents.write(transferBuffer, 0, numBytesRead);
-
+					while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+						destinationFileContents.write(transferBuffer, 0, numBytesRead);
+					destinationFileContents.close();
+				}
+				catch (FileNotFoundException e) {};
 				fileContents.close();
-				destinationFileContents.close();
 
 				// Load and initialize native library
 				System.load(tempFileName);
