@@ -2,7 +2,7 @@
  * SerialPort_Linux.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 01, 2018
+ *  Last Updated on:  Apr 23, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -129,6 +129,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		fcntl(serialPortFD, F_SETFL, 0);
 		tcgetattr(serialPortFD, &options);
 		cfmakeraw(&options);
+		options.c_iflag |= BRKINT;
 		tcsetattr(serialPortFD, TCSANOW, &options);
 
 		// Configure the port parameters and timeouts
