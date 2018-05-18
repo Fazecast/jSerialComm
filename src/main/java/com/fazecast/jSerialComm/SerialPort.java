@@ -77,20 +77,27 @@ public final class SerialPort
 		{
 			try
 			{
-				BufferedReader buildPropertiesFile = new BufferedReader(new FileReader("/system/build.prop"));
+				Process getprop = Runtime.getRuntime().exec("getprop");
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(getprop.getInputStream()));
 				String line;
-				while ((line = buildPropertiesFile.readLine()) != null)
+				while ((line = reader.readLine()) != null)
 				{
-					if (!line.contains("#") &&
-							(line.contains("ro.product.cpu.abi") || line.contains("ro.product.cpu.abi2") || line.contains("ro.product.cpu.abilist") ||
-									line.contains("ro.product.cpu.abilist64") || line.contains("ro.product.cpu.abilist32")))
+					if((line.contains("[ro.product.cpu.abi]: ")
+							|| line.contains("[ro.product.cpu.abi2]: ")
+							|| line.contains("[ro.product.cpu.abilist]: ")
+							|| line.contains("[ro.product.cpu.abilist64]: ")
+							|| line.contains("[ro.product.cpu.abilist32]: ")))
 					{
-						libraryPath = (line.indexOf(',') == -1) ? "Android/" + line.substring(line.indexOf('=')+1) :
-							"Android/" + line.substring(line.indexOf('=')+1, line.indexOf(','));
+						String fullAbi = line.split(":")[1].trim().replace("[","").replace("]","");
+						String firstAbi = fullAbi.split(",")[0];
+						libraryPath = "Android/" + firstAbi;
 						break;
+
 					}
 				}
-				buildPropertiesFile.close();
+				getprop.waitFor();
+				reader.close();
 			}
 			catch (Exception e) { e.printStackTrace(); }
 
