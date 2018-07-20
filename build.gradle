@@ -79,6 +79,7 @@ jar {
   manifest {
     instruction 'Bundle-Description', 'Java Serial Communications Library'
     instruction 'Bundle-Vendor', 'Fazecast, Inc.'
+    instruction 'Require-Capability', 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"'
     attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
 	           'Implementation-Version': version,
                'Implementation-Vendor': 'Fazecast, Inc.',
