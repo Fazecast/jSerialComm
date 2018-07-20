@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 03, 2018
+ *  Last Updated on:  Jul 20, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -42,7 +42,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.0.2
+ * @version 2.0.3
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -152,12 +152,13 @@ public final class SerialPort
 				{
 					try
 					{
+						File linkerFile = new File("/lib/ld-linux-armhf.so.3");
 						ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
 						Process p = pb.start();
 						p.waitFor();
 						BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 						String linkLoader = br.readLine();
-						if (linkLoader.contains("armhf"))
+						if (linkerFile.exists() || linkLoader.contains("armhf"))
 							libraryPath += "-hf";
 					}
 					catch (Exception e) { e.printStackTrace(); }
