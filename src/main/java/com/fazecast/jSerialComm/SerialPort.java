@@ -249,6 +249,17 @@ public final class SerialPort
 	}
 
 	/**
+	 * Returns the same output as calling {@link #getPortDescription()}.  This may be useful for display containers which call a Java Object's default toString() method.
+	 *
+	 * @return The port description as reported by the device itself.
+	 */
+	@Override
+    public String toString()
+	{
+		return getPortDescription();
+    }
+
+	/**
 	 * Returns a list of all available serial ports on this machine.
 	 * <p>
 	 * The serial ports can be accessed by iterating through each of the SerialPort objects in this array.
