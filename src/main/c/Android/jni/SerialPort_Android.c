@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Apr 01, 2018
+ *  Last Updated on:  Jul 27, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -393,14 +393,24 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
-	// Close port
+	// Ensure that the port is open
 	if (serialPortFD <= 0)
 		return JNI_TRUE;
-	while ((close(serialPortFD) == -1) && (errno != EBADF));
-	serialPortFD = -1;
-	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 
+	// Force the port to enter non-blocking mode to ensure that any current reads return
+	struct termios options;
+	tcgetattr(serialPortFD, &options);
+	int flags = fcntl(serialPortFD, F_GETFL);
+	flags |= O_NONBLOCK;
+	options.c_cc[VMIN] = 0;
+	options.c_cc[VTIME] = 0;
+	int retVal = fcntl(serialPortFD, F_SETFL, flags);
+	tcsetattr(serialPortFD, TCSANOW, &options);
+
+	// Close the port
+	while ((close(serialPortFD) == -1) && (errno != EBADF));
+	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 	return JNI_TRUE;
 }
 
@@ -422,7 +432,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	return numBytesToWrite;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead, jlong offset)
 {
 	// Get port handle and read timeout from Java class
 	if (serialPortFD <= 0)
@@ -506,12 +516,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	}
 
 	// Return number of bytes read if successful
-	(*env)->SetByteArrayRegion(env, buffer, 0, numBytesReadTotal, (jbyte*)readBuffer);
+	(*env)->SetByteArrayRegion(env, buffer, offset, numBytesReadTotal, (jbyte*)readBuffer);
 	free(readBuffer);
-	return (numBytesRead == -1) ? -1 : numBytesReadTotal;
+	return (numBytesRead == -1) || !((*env)->GetBooleanField(env, obj, isOpenedField)) ? -1 : numBytesReadTotal;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite, jlong offset)
 {
 	if (serialPortFD <= 0)
 		return -1;
@@ -519,7 +529,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	int numBytesWritten;
 
 	// Write to port
-	do { numBytesWritten = write(serialPortFD, writeBuffer, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
+	do { numBytesWritten = write(serialPortFD, writeBuffer+offset, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
 	if (numBytesWritten == -1)
 	{
 		// Problem writing, close port

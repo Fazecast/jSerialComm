@@ -146,18 +146,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    readBytes
- * Signature: (J[BJ)I
+ * Signature: (J[BJJ)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    writeBytes
- * Signature: (J[BJ)I
+ * Signature: (J[BJJ)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort

@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 03, 2018
+ *  Last Updated on:  Jul 27, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -596,16 +596,26 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 		return JNI_TRUE;
 	PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 
-	// Close port
+	// Force the port to enter non-blocking mode to ensure that any current reads return
+	COMMTIMEOUTS timeouts = {0};
+	timeouts.WriteTotalTimeoutMultiplier = 0;
+	timeouts.ReadIntervalTimeout = MAXDWORD;
+	timeouts.ReadTotalTimeoutMultiplier = 0;
+	timeouts.ReadTotalTimeoutConstant = 0;
+	timeouts.WriteTotalTimeoutConstant = 0;
+	SetCommTimeouts(serialPortHandle, &timeouts);
+
+	// Close the port
 	int numRetries = 10;
+	env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 	while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
 	if (numRetries > 0)
 	{
-		serialPortHandle = INVALID_HANDLE_VALUE;
 		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		return JNI_TRUE;
 	}
+	else
+		env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
 
 	return JNI_FALSE;
 }
@@ -638,7 +648,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	return (jint)numBytesToWrite;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead, jlong offset)
 {
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
@@ -681,12 +691,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 
     // Return number of bytes read if successful
     CloseHandle(overlappedStruct.hEvent);
-    env->SetByteArrayRegion(buffer, 0, numBytesRead, (jbyte*)readBuffer);
+    env->SetByteArrayRegion(buffer, offset, numBytesRead, (jbyte*)readBuffer);
     free(readBuffer);
-	return (result == TRUE) ? numBytesRead : -1;
+	return (result == TRUE) && (env->GetBooleanField(obj, isOpenedField)) ? numBytesRead : -1;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite, jlong offset)
 {
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
@@ -706,7 +716,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	//EscapeCommFunction(serialPortHandle, SETDTR);
 
 	// Write to serial port
-	if ((result = WriteFile(serialPortHandle, writeBuffer, bytesToWrite, &numBytesWritten, &overlappedStruct)) == FALSE)
+	if ((result = WriteFile(serialPortHandle, writeBuffer+offset, bytesToWrite, &numBytesWritten, &overlappedStruct)) == FALSE)
 	{
 		if (GetLastError() != ERROR_IO_PENDING)
 		{
