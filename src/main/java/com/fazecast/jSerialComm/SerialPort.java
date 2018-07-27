@@ -605,11 +605,13 @@ public final class SerialPort
 	public final boolean clearDTR() { return clearDTR(portHandle); }
 
 	/**
+	 * Returns whether the CTS line is currently asserted.
 	 * @return Whether or not the CTS line is asserted.
 	 */
 	public final boolean getCTS() { return getCTS(portHandle); }
 
 	/**
+	 * Returns whether the DSR line is currently asserted.
 	 * @return Whether or not the DSR line is asserted.
 	 */
 	public final boolean getDSR() { return getDSR(portHandle); }

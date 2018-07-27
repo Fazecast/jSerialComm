@@ -14,6 +14,7 @@ assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.pr
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 javadoc.options.links("http://docs.oracle.com/javase/8/docs/api/")
+javadoc.options.addBooleanOption('html4', true)
 
 def java6ExecutablesPath = new File(java6Home, 'bin')
 def java9ExecutablesPath = new File(java9Home, 'bin')
