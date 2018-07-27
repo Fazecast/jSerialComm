@@ -502,7 +502,6 @@ public final class SerialPort
 	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
 	private final native long openPortNative();							// Opens serial port
-	//private final native boolean associateNativeHandle(long portHandle);// Associates an already opened file descriptor with this class
 	private final native boolean closePortNative(long portHandle);		// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
 	private final native boolean configTimeouts(long portHandle);		// Changes/sets serial port timeouts as defined by this class
@@ -510,8 +509,8 @@ public final class SerialPort
 	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
 	private final native int bytesAvailable(long portHandle);			// Returns number of bytes available for reading
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
-	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead);	// Reads bytes from serial port
-	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite);	// Write bytes to serial port
+	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead, long offset);		// Reads bytes from serial port
+	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite, long offset);	// Write bytes to serial port
 	private final native boolean setBreak(long portHandle);				// Set BREAK status on serial line
 	private final native boolean clearBreak(long portHandle);			// Clear BREAK status on serial line
 	private final native boolean setRTS(long portHandle);				// Set RTS line to 1
@@ -551,7 +550,23 @@ public final class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, long bytesToRead) { return readBytes(portHandle, buffer, bytesToRead); }
+	public final int readBytes(byte[] buffer, long bytesToRead) { return readBytes(portHandle, buffer, bytesToRead, 0); }
+
+	/**
+	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
+	 * <p>
+	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToRead</i>
+	 * <p>
+	 * If no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully read from the serial port.
+	 * Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout have elapsed,
+	 * whichever comes first, regardless of the availability of more data.
+	 *
+	 * @param buffer The buffer into which the raw data is read.
+	 * @param bytesToRead The number of bytes to read from the serial port.
+	 * @param offset The read buffer index into which to begin storing data.
+	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
+	 */
+	public final int readBytes(byte[] buffer, long bytesToRead, long offset) { return readBytes(portHandle, buffer, bytesToRead, offset); }
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -566,7 +581,23 @@ public final class SerialPort
 	 * @param bytesToWrite The number of bytes to write to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite); }
+	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite, 0); }
+
+	/**
+	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port starting at the indicated offset.
+	 * <p>
+	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToWrite</i>
+	 * <p>
+	 * If no timeouts were specified or the write timeout was set to 0, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written the serial port.
+	 * Otherwise, this method will return after <i>bytesToWrite</i> bytes of data have been written or the number of milliseconds specified by the write timeout have elapsed,
+	 * whichever comes first, regardless of the availability of more data.
+	 *
+	 * @param buffer The buffer containing the raw data to write to the serial port.
+	 * @param bytesToWrite The number of bytes to write to the serial port.
+	 * @param offset The buffer index from which to begin writing to the serial port.
+	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
+	 */
+	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset) { return writeBytes(portHandle, buffer, bytesToWrite, offset); }
 
 	/**
 	 * Sets the BREAK signal on the serial control line.
@@ -1112,7 +1143,7 @@ public final class SerialPort
 						{
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
-							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length);
+							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length, 0);
 							if(dataPacket.length == 0)
 								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, newBytes.clone()));
 							else
@@ -1166,13 +1197,13 @@ public final class SerialPort
 		@Override
 		public final int read() throws IOException
 		{
-			return (readBytes(portHandle, byteBuffer, 1L) < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
+			return (readBytes(portHandle, byteBuffer, 1L, 0) < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
 		}
 
 		@Override
 		public final int read(byte[] b) throws NullPointerException, IOException
 		{
-			return readBytes(portHandle, b, b.length);
+			return readBytes(portHandle, b, b.length, 0);
 		}
 
 		@Override
@@ -1183,20 +1214,14 @@ public final class SerialPort
 				throw new NullPointerException("A null pointer was passed in for the read buffer.");
 			if ((len < 0) || (off < 0) || (len > (b.length - off)))
 				throw new IndexOutOfBoundsException("The specified read offset plus length extends past the end of the specified buffer.");
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
 			if (len == 0)
 				return 0;
 			
-			// Ensure that read buffer is large enough and the port is open
-			if (len > byteBuffer.length)
-				byteBuffer = new byte[len];
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			
 			// Read from the serial port
-			int numRead = readBytes(portHandle, byteBuffer, len);
-			if (numRead > 0)
-				System.arraycopy(byteBuffer, 0, b, off, numRead);
-			else if (numRead == 0)
+			int numRead = readBytes(portHandle, b, len, off);
+			if (numRead == 0)
 				throw new IOException("The read operation timed out before any data was returned.");
 			return numRead;
 		}
@@ -1207,7 +1232,7 @@ public final class SerialPort
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			byte[] buffer = new byte[(int)n];
-			return readBytes(portHandle, buffer, n);
+			return readBytes(portHandle, buffer, n, 0);
 		}
 	}
 
@@ -1224,7 +1249,7 @@ public final class SerialPort
 			if (!isOpened)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			byteBuffer[0] = (byte)(b & 0xFF);
-			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L);
+			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L, 0);
 			if (bytesWritten < 0)
 				throw new IOException("This port appears to have been shutdown or disconnected.");
 			else if (bytesWritten == 0)
@@ -1245,27 +1270,17 @@ public final class SerialPort
 				throw new NullPointerException("A null pointer was passed in for the write buffer.");
 			if ((len < 0) || (off < 0) || ((off + len) > b.length))
 				throw new IndexOutOfBoundsException("The specified write offset plus length extends past the end of the specified buffer.");
+			if (!isOpened)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
 			if (len == 0)
 				return;
 			
-			// Ensure that write buffer is large enough and the port is open
-			if (len > byteBuffer.length)
-				byteBuffer = new byte[len];
-			if (!isOpened)
-				throw new IOException("This port appears to have been shutdown or disconnected.");
-			
 			// Write to the serial port
-			int numWritten, totalNumWritten = 0, bytesRemaining = len;
-			do {
-				System.arraycopy(b, off + totalNumWritten, byteBuffer, 0, bytesRemaining);
-				numWritten = writeBytes(portHandle, byteBuffer, bytesRemaining);
-				totalNumWritten += numWritten;
-				bytesRemaining -= numWritten;
-				if (numWritten < 0)
-					throw new IOException("This port appears to have been shutdown or disconnected.");
-				else if (numWritten == 0)
-					throw new IOException("The write operation timed out before all data was written.");
-			} while (bytesRemaining > 0);
+			int numWritten = writeBytes(portHandle, b, len, off);
+			if (numWritten < 0)
+				throw new IOException("This port appears to have been shutdown or disconnected.");
+			else if (numWritten == 0)
+				throw new IOException("The write operation timed out before all data was written.");
 		}
 	}
 }
