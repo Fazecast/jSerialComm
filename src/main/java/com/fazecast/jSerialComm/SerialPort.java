@@ -77,20 +77,21 @@ public final class SerialPort
 		{
 			try
 			{
-				BufferedReader buildPropertiesFile = new BufferedReader(new FileReader("/system/build.prop"));
+				Process getpropProcess = Runtime.getRuntime().exec("getprop");
+				BufferedReader buildProperties = new BufferedReader(new InputStreamReader(getpropProcess.getInputStream()));
 				String line;
-				while ((line = buildPropertiesFile.readLine()) != null)
+				while ((line = buildProperties.readLine()) != null)
 				{
-					if (!line.contains("#") &&
-							(line.contains("ro.product.cpu.abi") || line.contains("ro.product.cpu.abi2") || line.contains("ro.product.cpu.abilist") ||
-									line.contains("ro.product.cpu.abilist64") || line.contains("ro.product.cpu.abilist32")))
+					if((line.contains("[ro.product.cpu.abi]:") || line.contains("[ro.product.cpu.abi2]:") || line.contains("[ro.product.cpu.abilist]:") ||
+							line.contains("[ro.product.cpu.abilist64]:") || line.contains("[ro.product.cpu.abilist32]:")))
 					{
-						libraryPath = (line.indexOf(',') == -1) ? "Android/" + line.substring(line.indexOf('=')+1) :
-							"Android/" + line.substring(line.indexOf('=')+1, line.indexOf(','));
+						libraryPath = "Android/" + line.split(":")[1].trim().replace("[", "").replace("]", "").split(",")[0];
 						break;
+
 					}
 				}
-				buildPropertiesFile.close();
+				getpropProcess.waitFor();
+				buildProperties.close();
 			}
 			catch (Exception e) { e.printStackTrace(); }
 
