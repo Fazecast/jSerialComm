@@ -342,15 +342,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	if (serialPortFD <= 0)
 		return 0;
 
-	// Initialize the waiting set and the timeouts
-	struct timeval timeout = { 1, 0 };
+	// Initialize the waiting set
 	fd_set waitingSet;
 	FD_ZERO(&waitingSet);
 	FD_SET(serialPortFD, &waitingSet);
 
 	// Wait for a serial port event
 	int retVal;
-	do { retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout); } while ((retVal < 0) && (errno == EINTR));
+	do
+	{
+		struct timeval timeout = { 1, 0 };
+		retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout);
+	} while ((retVal < 0) && ((errno == EINTR) || (errno == EAGAIN)));
 	if (retVal <= 0)
 		return 0;
 	return (FD_ISSET(serialPortFD, &waitingSet)) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
