@@ -78,7 +78,6 @@ function getHighlightedText(item) {
 }
 var watermark = 'Search';
 $(function() {
-    $("#search").val('');
     $("#search").prop("disabled", false);
     $("#reset").prop("disabled", false);
     $("#search").val(watermark).addClass('watermark');
@@ -87,7 +86,7 @@ $(function() {
             $(this).val(watermark).addClass('watermark');
         }
     });
-    $("#search").on('click keydown', function() {
+    $("#search").keydown(function() {
         if ($(this).val() == watermark) {
             $(this).val('').removeClass('watermark');
         }
