@@ -1171,7 +1171,8 @@ public final class SerialPort
 				}
 				case LISTENING_EVENT_DATA_WRITTEN:
 				{
-					userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_WRITTEN));
+					if ((eventFlags & LISTENING_EVENT_DATA_WRITTEN) > 0)
+						userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_WRITTEN));
 					break;
 				}
 				default:
