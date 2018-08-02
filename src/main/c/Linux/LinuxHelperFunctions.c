@@ -2,7 +2,7 @@
  * LinuxHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Apr 01, 2018
+ *  Last Updated on:  Aug 02, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -36,7 +36,16 @@
 #include <unistd.h>
 #include "LinuxHelperFunctions.h"
 
+// Remove reliance on newer glibc features
 extern int ioctl(int __fd, unsigned long int __request, ...) __THROW;
+void __chk_fail (void) __attribute__((__noreturn__));
+long int __fdelt_warn(long int a)
+{
+        if (a >= FD_SETSIZE)
+                __chk_fail();
+        return a / __NFDBITS;
+}
+long int __fdelt_chk(long int) __attribute__((weak, alias("__fdelt_warn")));
 
 void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString)
 {
