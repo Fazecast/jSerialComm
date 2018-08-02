@@ -42,7 +42,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.1.0
+ * @version 2.1.1
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -416,7 +416,7 @@ public final class SerialPort
 
 		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
 		if (safetySleepTime > 0)
-			try { Thread.sleep(safetySleepTime); } catch (Exception e) { e.printStackTrace(); }
+			try { Thread.sleep(safetySleepTime); } catch (Exception e) {}
 
 		// If this is an Android root application, we must explicitly allow serial port access to the library
 		if (isAndroid)
