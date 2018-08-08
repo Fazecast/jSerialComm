@@ -235,7 +235,7 @@ public final class SerialPort
 				fileContents.close();
 
 				// Load and initialize native library
-				System.load(tempFileName);
+				System.load(tempNativeLibrary.getAbsolutePath());
 				initializeLibrary();
 			}
 		}
