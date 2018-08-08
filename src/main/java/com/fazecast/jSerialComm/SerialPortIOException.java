@@ -32,7 +32,7 @@ import java.io.IOException;
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
  * @version 2.2.0
- * @see java.util.EventObject
+ * @see java.io.IOException
  */
 public final class SerialPortIOException extends IOException
 {

@@ -212,7 +212,9 @@ public class SerialPortTest
 					System.out.print((char)in.read());
 				in.close();
 				in2.close();
-			} catch (Exception e) { e.printStackTrace(); }
+			}
+			catch (SerialPortIOException e) { e.printStackTrace(); }
+			catch (Exception e) { e.printStackTrace(); }
 		}
 		System.out.println("\n\nEntering Java-based InputStream in Scanner mode and reading 200 lines\n");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_SCANNER, 0, 0);
