@@ -5,7 +5,7 @@ apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.1.2'
+version = '2.2.0'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
@@ -13,7 +13,7 @@ assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.pr
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
-javadoc.options.links("http://docs.oracle.com/javase/8/docs/api/")
+javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
 javadoc.options.addBooleanOption('html4', true)
 
 def java6ExecutablesPath = new File(java6Home, 'bin')
