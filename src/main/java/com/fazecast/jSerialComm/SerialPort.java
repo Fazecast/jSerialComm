@@ -714,6 +714,14 @@ public final class SerialPort
 	 * <p>
 	 * Allows for easier read access of the underlying data stream and abstracts away many low-level read details.
 	 * <p>
+	 * Note that any time a method is marked as throwable for an {@link java.io.IOException} in the official Java 
+	 * {@link java.io.InputStream} documentation, you can catch this exception directly, or you can choose to catch
+	 * either a {@link SerialPortIOException} or a {@link SerialPortTimeoutException} (or both) which may make it
+	 * easier for your code to determine why the exception was thrown. In general, a {@link SerialPortIOException}
+	 * means that the port is having connectivity issues, while a {@link SerialPortTimeoutException} indicates that
+	 * a user timeout has been reached before valid data was able to be returned (as specified in the
+	 * {@link #setComPortTimeouts(int, int, int)} method).
+	 * <p>
 	 * Make sure to call the {@link java.io.InputStream#close()} method when you are done using this stream.
 	 *
 	 * @return An {@link java.io.InputStream} object associated with this serial port.
@@ -725,6 +733,14 @@ public final class SerialPort
 	 * Returns an {@link java.io.OutputStream} object associated with this serial port.
 	 * <p>
 	 * Allows for easier write access to the underlying data stream and abstracts away many low-level writing details.
+	 * <p>
+	 * Note that any time a method is marked as throwable for an {@link java.io.IOException} in the official Java 
+	 * {@link java.io.InputStream} documentation, you can catch this exception directly, or you can choose to catch
+	 * either a {@link SerialPortIOException} or a {@link SerialPortTimeoutException} (or both) which may make it
+	 * easier for your code to determine why the exception was thrown. In general, a {@link SerialPortIOException}
+	 * means that the port is having connectivity issues, while a {@link SerialPortTimeoutException} indicates that
+	 * a user timeout has been reached before valid data was able to be returned (as specified in the
+	 * {@link #setComPortTimeouts(int, int, int)} method).
 	 * <p>
 	 * Make sure to call the {@link java.io.OutputStream#close()} method when you are done using this stream.
 	 *
