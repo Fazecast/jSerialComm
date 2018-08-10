@@ -7,7 +7,7 @@ LINK			:= gcc
 LINK_ARM32		:= arm32-unknown-linux-gnueabi-gcc
 LINK_ARM32HF	:= arm32hf-unknown-linux-gnueabi-gcc
 LINK_ARM64		:= aarch64-unknown-linux-gnueabi-gcc
-CFLAGS			:= -fPIC -static-libgcc -Os -flto -fuse-linker-plugin
+CFLAGS			:= -fPIC -static-libgcc -Os -flto -fuse-linker-plugin -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LDFLAGS			:= -shared -static-libgcc -flto -fuse-linker-plugin -Os
 INCLUDES		:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux"
 LIBRARIES		:=
