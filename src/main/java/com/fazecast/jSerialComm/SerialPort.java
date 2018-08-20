@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Aug 08, 2018
+ *  Last Updated on:  Aug 20, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -120,7 +120,9 @@ public final class SerialPort
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
 		{
-			if (System.getProperty("os.arch").indexOf("arm") >= 0)
+			if (!System.getProperty("os.arch_full").isEmpty())
+				libraryPath = "Linux/" + System.getProperty("os.arch_full").toLowerCase();
+			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
 			{
 				// Determine the specific ARM architecture of this device
 				try
@@ -154,13 +156,26 @@ public final class SerialPort
 					try
 					{
 						File linkerFile = new File("/lib/ld-linux-armhf.so.3");
-						ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
-						Process p = pb.start();
-						p.waitFor();
-						BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-						String linkLoader = br.readLine();
-						if (linkerFile.exists() || linkLoader.contains("armhf"))
+						if (linkerFile.exists())
 							libraryPath += "-hf";
+						else
+						{
+							ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", "ls /lib/ld-linux*");
+							Process p = pb.start();
+							p.waitFor();
+							BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+							if (br.readLine().contains("armhf"))
+								libraryPath += "-hf";
+							else
+							{
+								pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
+								p = pb.start();
+								p.waitFor();
+								br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+								if (br.readLine().contains("armhf"))
+									libraryPath += "-hf";
+							}
+						}
 					}
 					catch (Exception e) { e.printStackTrace(); }
 				}
