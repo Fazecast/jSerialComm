@@ -31,7 +31,7 @@ import java.io.IOException;
  * This class describes a serial port IO exception.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.2.0
+ * @version 2.2.1
  * @see java.io.IOException
  */
 public final class SerialPortIOException extends IOException

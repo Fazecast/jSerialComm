@@ -2,7 +2,7 @@
  * SerialPortTimeoutException.java
  *
  *       Created on:  Aug 08, 2018
- *  Last Updated on:  Aug 08, 2018
+ *  Last Updated on:  Aug 20, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2018-2018 Fazecast, Inc.
@@ -25,16 +25,16 @@
 
 package com.fazecast.jSerialComm;
 
-import java.io.IOException;
+import java.io.InterruptedIOException;
 
 /**
  * This class describes a serial port timeout exception.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.2.0
- * @see java.io.IOException
+ * @version 2.2.1
+ * @see java.io.InterruptedIOException
  */
-public final class SerialPortTimeoutException extends IOException
+public final class SerialPortTimeoutException extends InterruptedIOException
 {
 	private static final long serialVersionUID = 3209035213903386044L;
 
@@ -44,6 +44,7 @@ public final class SerialPortTimeoutException extends IOException
 	public SerialPortTimeoutException()
 	{
 		super();
+		bytesTransferred = 0;
 	}
 
 	/**
@@ -54,30 +55,6 @@ public final class SerialPortTimeoutException extends IOException
 	public SerialPortTimeoutException(String message)
 	{
 		super(message);
-	}
-
-	/**
-	 * Constructs a {@link SerialPortTimeoutException} with the specified detail message and cause.
-	 * <p>
-	 * Note that the detail message associated with {@link cause} is <i>not</i> automatically incorporated into this exception's detail message.
-	 * 
-	 * @param message message The detail message (which is saved for later retrieval by the {@link getMessage()} method).
-	 * @param cause The cause (which is saved for later retrieval by the {@link getCause()} method). (A null value is permitted, and indicates that the cause is nonexistent or unknown.)
-	 */
-	public SerialPortTimeoutException(String message, Throwable cause)
-	{
-		super(message, cause);
-	}
-
-	/**
-	 * Constructs a {@link SerialPortTimeoutException} with the specified cause and a detail message of {@code (cause==null ? null : cause.toString()) }
-	 * (which typically contains the class and detail message of {@code cause}). This constructor is useful for IO exceptions that are little more
-	 * than wrappers for other throwables.
-	 * 
-	 * @param cause The cause (which is saved for later retrieval by the {@link getCause()} method). (A null value is permitted, and indicates that the cause is nonexistent or unknown.)
-	 */
-	public SerialPortTimeoutException(Throwable cause)
-	{
-		super(cause);
+		bytesTransferred = 0;
 	}
 }
