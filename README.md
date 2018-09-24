@@ -70,6 +70,15 @@ One way to test this is to run your application as root or by using the
 application as ```root``` in the future or fix the permissions on your system.
 For further instructions, refer to the [Troubleshooting wiki](https://github.com/Fazecast/jSerialComm/wiki/Troubleshooting).
 
+On some very few systems which use custom ARM-based CPUs and/or have extremely
+restrictive permissions, the library may be unable to determine that the
+underlying system architecture is ARM. In this case, you can force the
+library to disable its auto-detect functionality and instead directly specify
+the architecture using the Java ```os.arch_full``` system property. Acceptable
+values for this property are currently one of: ``armv5``, ``armv6``,
+``armv6-hf``, ``armv7``, ``armv7-hf``, ``armv8_32``, ``armv8_64``,
+``x86``, or ``x86_64``.
+
 An additional note for Linux users:  If you are operating this library in
 event-based mode, the ```LISTENING_EVENT_DATA_WRITTEN``` event will never occur.
 This is not a bug, but rather a limitation of the Linux operating system.
