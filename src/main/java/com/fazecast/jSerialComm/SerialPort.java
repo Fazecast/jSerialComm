@@ -120,7 +120,7 @@ public final class SerialPort
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
 		{
-			if (!System.getProperty("os.arch_full").isEmpty())
+			if (!System.getProperty("os.arch_full", "").isEmpty())
 				libraryPath = "Linux/" + System.getProperty("os.arch_full").toLowerCase();
 			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
 			{
