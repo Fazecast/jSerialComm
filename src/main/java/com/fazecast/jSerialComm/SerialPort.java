@@ -25,7 +25,6 @@
 
 package com.fazecast.jSerialComm;
 
-import java.lang.ProcessBuilder;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -412,6 +411,9 @@ public final class SerialPort
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean isOpened = false;
+	
+	private volatile int sendBufferSize = 4096;
+	private volatile int receiveBufferSize = 4096;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time.
@@ -960,6 +962,34 @@ public final class SerialPort
 	{
 		flowControl = newFlowControlSettings;
 
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			configPort(portHandle);
+		}
+	}
+	
+	/**
+	 * @param sendBufferSize the size to which the serial port's internal send buffer should be set. Defaults to 4096.
+	 */
+	public final void setSendBufferSize(int sendBufferSize)
+	{
+		this.sendBufferSize = sendBufferSize; 
+		
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			configPort(portHandle);
+		}
+	}
+	
+	/**
+	 * @param receiveBufferSize the size to which the serial port's internal receive buffer should be set. Defaults to 4096.
+	 */
+	public final void setReceiveBufferSize(int receiveBufferSize)
+	{
+		this.receiveBufferSize = receiveBufferSize; 
+		
 		if (isOpened)
 		{
 			try { Thread.sleep(200); } catch (Exception e) {}
