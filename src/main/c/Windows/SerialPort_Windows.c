@@ -56,6 +56,7 @@ jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
+jfieldID ignoreErrorsField;
 
 // FTDI DLL library loader
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -364,6 +365,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	readTimeoutField = env->GetFieldID(serialCommClass, "readTimeout", "I");
 	writeTimeoutField = env->GetFieldID(serialCommClass, "writeTimeout", "I");
 	eventFlagsField = env->GetFieldID(serialCommClass, "eventFlags", "I");
+	ignoreErrorsField = env->GetFieldID(serialCommClass, "ignoreErrors", "B");
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
@@ -386,12 +388,22 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
 		else
 		{
-			// Close the port if there was a problem setting the parameters
-			int numRetries = 10;
-			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
-			serialPortHandle = INVALID_HANDLE_VALUE;
-			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+		    // Check if errors are to be ignored
+		    jboolean ignoreErrors = env->GetBooleanField(obj, ignoreErrorsField);
+
+		    if (ignoreErrors == JNI_TRUE)
+		    {
+    			env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
+		    }
+		    else
+		    {
+                // Close the port if there was a problem setting the parameters
+                int numRetries = 10;
+                PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
+                while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+                serialPortHandle = INVALID_HANDLE_VALUE;
+                env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+			}
 		}
 	}
 
