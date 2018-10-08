@@ -1,41 +1,46 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'maven'
-apply plugin: 'osgi'
+//apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.2.3'
+version = '2.2.3w'
 ext.moduleName = 'com.fazecast.jSerialComm'
+//java6Home = 'C:/Program Files/Java/jdk1.8.0_161'
 
-assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
-assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
+//assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
+//assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
 javadoc.options.addBooleanOption('html4', true)
 
-def java6ExecutablesPath = new File(java6Home, 'bin')
-def java9ExecutablesPath = new File(java9Home, 'bin')
+def java6ExecutablesPath = new File('C:/Program Files/Java/jdk1.8.0_161', 'bin')
+def java9ExecutablesPath = new File('C:/Program Files/Java/jdk10', 'bin')
 def java6Executables = [:].withDefault { execName ->
   def executable = new File(java6ExecutablesPath, execName)
   executable
 }
+
 def java9Executables = [:].withDefault { execName ->
   def executable = new File(java9ExecutablesPath, execName)
   executable
 }
 
+
 tasks.withType(JavaCompile) {
   options.with {
     fork = true
-    forkOptions.javaHome = file(java6Home)
+    forkOptions.javaHome = file('C:/Program Files/Java/jdk1.8.0_161')
   }
 }
+
 tasks.withType(Javadoc) {
   executable = java9Executables.javadoc
 }
+
 tasks.withType(Test) {
   executable = java6Executables.java
 }
@@ -64,7 +69,7 @@ compileModuleInfoJava {
   doFirst {
     classpath = files()
     options.fork = true
-    options.forkOptions.javaHome = file(java9Home)
+    options.forkOptions.javaHome = file('C:/Program Files/Java/jdk10')
     options.sourcepath = files(sourceSets.moduleInfo.java.srcDirs)
     options.compilerArgs = [
       '--module-path', classpath.asPath,
@@ -78,9 +83,11 @@ jar {
   from sourceSets.moduleInfo.output
 
   manifest {
+  /*
     instruction 'Bundle-Description', 'Java Serial Communications Library'
     instruction 'Bundle-Vendor', 'Fazecast, Inc.'
     instruction 'Require-Capability', 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"'
+    */
     attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
 	           'Implementation-Version': version,
                'Implementation-Vendor': 'Fazecast, Inc.',
