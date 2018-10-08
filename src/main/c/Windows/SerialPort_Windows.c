@@ -57,6 +57,9 @@ jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
+jfieldID sendBufferSizeField;
+jfieldID receiveBufferSizeField;
+
 // FTDI DLL library loader
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 HINSTANCE hDllInstance = (HINSTANCE)&__ImageBase;
@@ -364,6 +367,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	readTimeoutField = env->GetFieldID(serialCommClass, "readTimeout", "I");
 	writeTimeoutField = env->GetFieldID(serialCommClass, "writeTimeout", "I");
 	eventFlagsField = env->GetFieldID(serialCommClass, "eventFlags", "I");
+
+	sendBufferSizeField = env->GetFieldID(serialCommClass, "sendBufferSize", "I");
+	receiveBufferSizeField = env->GetFieldID(serialCommClass, "receiveBufferSize", "I");
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
@@ -425,6 +431,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BOOL XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0);
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
+	int sendBufferSize = env->GetIntField(obj, sendBufferSizeField);
+	int receiveBufferSize = env->GetIntField(obj, receiveBufferSizeField);
+
 	// Retrieve existing port configuration
 	if (!GetCommState(serialPortHandle, &dcbSerialParams))
 		return JNI_FALSE;
@@ -454,7 +463,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.XoffChar = (char)19;
 
 	// Apply changes
-	return SetCommState(serialPortHandle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD);
+	return SetCommState(serialPortHandle, &dcbSerialParams)
+			&& Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD)
+			&& SetupComm(serialPortHandle, receiveBufferSize, sendBufferSize);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortFD)
