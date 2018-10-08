@@ -489,6 +489,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 {
 	if (serialPortFD <= 0)
 		return -1;
+	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
 	int numBytesWritten, result = 0;
 
@@ -509,6 +510,10 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
+
+	// Wait until all bytes were written in write-blocking mode
+	if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0)
+		tcdrain(serialPortFD);
 
 	// Clear the DTR line if using RS-422
 //#ifdef TIOCSERGETLSR

@@ -478,7 +478,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	switch (timeoutMode)
 	{
 		case com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING:		// Read Semi-blocking
-		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_SEMI_BLOCKING):	// Read/Write Semi-blocking
 		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read Semi-blocking/Write Blocking
 			timeouts.ReadIntervalTimeout = MAXDWORD;
 			timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
@@ -486,7 +485,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 			timeouts.WriteTotalTimeoutConstant = writeTimeout;
 			break;
 		case com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING:		// Read Blocking
-		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_SEMI_BLOCKING):	// Read Blocking/Write Semi-blocking
 		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read/Write Blocking
 			timeouts.ReadIntervalTimeout = 0;
 			timeouts.ReadTotalTimeoutMultiplier = 0;
@@ -497,10 +495,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 			timeouts.ReadIntervalTimeout = MAXDWORD;
 			timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 			timeouts.ReadTotalTimeoutConstant = 0x0FFFFFFF;
-			timeouts.WriteTotalTimeoutConstant = 0;
+			timeouts.WriteTotalTimeoutConstant = writeTimeout;
 			break;
 		case com_fazecast_jSerialComm_SerialPort_TIMEOUT_NONBLOCKING:		// Read Non-blocking
-		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_NONBLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_SEMI_BLOCKING):	// Read Non-blocking/Write Semi-blocking
 		case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_NONBLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read Non-blocking/Write Blocking
 		default:
 			timeouts.ReadIntervalTimeout = MAXDWORD;

@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 07, 2018
+ *  Last Updated on:  Oct 08, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -332,10 +332,9 @@ public final class SerialPort
 	// Timeout Modes
 	static final public int TIMEOUT_NONBLOCKING = 0x00000000;
 	static final public int TIMEOUT_READ_SEMI_BLOCKING = 0x00000001;
-	static final public int TIMEOUT_WRITE_SEMI_BLOCKING = 0x00000010;
-	static final public int TIMEOUT_READ_BLOCKING = 0x00000100;
-	static final public int TIMEOUT_WRITE_BLOCKING = 0x00001000;
-	static final public int TIMEOUT_SCANNER = 0x00010000;
+	static final public int TIMEOUT_READ_BLOCKING = 0x00000010;
+	static final public int TIMEOUT_WRITE_BLOCKING = 0x00000100;
+	static final public int TIMEOUT_SCANNER = 0x00001000;
 
 	// Serial Port Listening Events
 	static final public int LISTENING_EVENT_DATA_AVAILABLE = 0x00000001;
@@ -528,9 +527,9 @@ public final class SerialPort
 	 * <p>
 	 * The length of the byte buffer must be greater than or equal to the value passed in for <i>bytesToRead</i>
 	 * <p>
-	 * If no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully read from the serial port.
-	 * Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout have elapsed,
-	 * whichever comes first, regardless of the availability of more data.
+	 * In blocking-read mode, if no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully
+	 * read from the serial port. Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout
+	 * have elapsed, whichever comes first, regardless of the availability of more data.
 	 *
 	 * @param buffer The buffer into which the raw data is read.
 	 * @param bytesToRead The number of bytes to read from the serial port.
@@ -543,9 +542,9 @@ public final class SerialPort
 	 * <p>
 	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToRead</i>
 	 * <p>
-	 * If no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully read from the serial port.
-	 * Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout have elapsed,
-	 * whichever comes first, regardless of the availability of more data.
+	 * In blocking-read mode, if no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully
+	 * read from the serial port. Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout
+	 * have elapsed, whichever comes first, regardless of the availability of more data.
 	 *
 	 * @param buffer The buffer into which the raw data is read.
 	 * @param bytesToRead The number of bytes to read from the serial port.
@@ -559,9 +558,9 @@ public final class SerialPort
 	 * <p>
 	 * The length of the byte buffer must be greater than or equal to the value passed in for <i>bytesToWrite</i>
 	 * <p>
-	 * If no timeouts were specified or the write timeout was set to 0, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written the serial port.
-	 * Otherwise, this method will return after <i>bytesToWrite</i> bytes of data have been written or the number of milliseconds specified by the write timeout have elapsed,
-	 * whichever comes first, regardless of the availability of more data.
+	 * In blocking-write mode, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written to the serial port. Otherwise, this method will return
+	 * after <i>bytesToWrite</i> bytes of data have been written to the device driver's internal data buffer, which, in most cases, should be almost instantaneous unless the data
+	 * buffer is full.
 	 *
 	 * @param buffer The buffer containing the raw data to write to the serial port.
 	 * @param bytesToWrite The number of bytes to write to the serial port.
@@ -574,9 +573,9 @@ public final class SerialPort
 	 * <p>
 	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToWrite</i>
 	 * <p>
-	 * If no timeouts were specified or the write timeout was set to 0, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written the serial port.
-	 * Otherwise, this method will return after <i>bytesToWrite</i> bytes of data have been written or the number of milliseconds specified by the write timeout have elapsed,
-	 * whichever comes first, regardless of the availability of more data.
+	 * In blocking-write mode, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written to the serial port. Otherwise, this method will return
+	 * after <i>bytesToWrite</i> bytes of data have been written to the device driver's internal data buffer, which, in most cases, should be almost instantaneous unless the data
+	 * buffer is full.
 	 *
 	 * @param buffer The buffer containing the raw data to write to the serial port.
 	 * @param bytesToWrite The number of bytes to write to the serial port.
@@ -794,24 +793,29 @@ public final class SerialPort
 	/**
 	 * Sets the serial port read and write timeout parameters.
 	 * <p>
-	 * <i>Note that write timeouts are only available on Windows-based systems. There is no functionality to set a write timeout on other operating systems.</i>
+	 * <i>Note that time-based write timeouts are only available on Windows systems. There is no functionality to set a write timeout on other operating systems.</i>
 	 * <p>
 	 * The built-in timeout mode constants should be used ({@link #TIMEOUT_NONBLOCKING}, {@link #TIMEOUT_READ_SEMI_BLOCKING}, {@link #TIMEOUT_READ_BLOCKING},
-	 * {@link #TIMEOUT_SCANNER}) to specify how timeouts are to be handled.
+	 * {@link #TIMEOUT_WRITE_BLOCKING}, {@link #TIMEOUT_SCANNER}) to specify how timeouts are to be handled.
 	 * <p>
 	 * Valid modes are:
 	 * <p>
-	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Non-blocking: {@link #TIMEOUT_NONBLOCKING}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Non-blocking: {@link #TIMEOUT_NONBLOCKING}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Write Blocking: {@link #TIMEOUT_WRITE_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Semi-blocking: {@link #TIMEOUT_READ_SEMI_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read Full-blocking: {@link #TIMEOUT_READ_BLOCKING}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scanner: {@link #TIMEOUT_SCANNER}<br>
 	 * <p>
-	 * The {@link #TIMEOUT_NONBLOCKING} mode specifies that the corresponding {@link #readBytes(byte[],long)} call will return immediately with any available data.
+	 * The {@link #TIMEOUT_NONBLOCKING} mode specifies that corresponding {@link #readBytes(byte[],long)} and {@link #writeBytes(byte[],long)} calls will return
+	 * immediately with any available data.
 	 * <p>
-	 * The {@link #TIMEOUT_READ_SEMI_BLOCKING} mode specifies that the corresponding call will block until either <i>newReadTimeout</i> milliseconds of inactivity
+	 * The {@link #TIMEOUT_WRITE_BLOCKING} mode specifies that a corresponding write call will block until all data bytes have been successfully written to the
+	 * output serial device.
+	 * <p>
+	 * The {@link #TIMEOUT_READ_SEMI_BLOCKING} mode specifies that a corresponding read call will block until either <i>newReadTimeout</i> milliseconds of inactivity
 	 * have elapsed or at least 1 byte of data can be read.
 	 * <p>
-	 * The {@link #TIMEOUT_READ_BLOCKING} mode specifies that the corresponding call will block until either <i>newReadTimeout</i> milliseconds have elapsed since
+	 * The {@link #TIMEOUT_READ_BLOCKING} mode specifies that a corresponding read call will block until either <i>newReadTimeout</i> milliseconds have elapsed since
 	 * the start of the call or the total number of requested bytes can be returned.
 	 * <p>
 	 * The {@link #TIMEOUT_SCANNER} mode is intended for use with the Java {@link java.util.Scanner} class for reading from the serial port. In this mode,
@@ -820,13 +824,16 @@ public final class SerialPort
 	 * A value of 0 for either <i>newReadTimeout</i> or <i>newWriteTimeout</i> indicates that a {@link #readBytes(byte[],long)} or
 	 * {@link #writeBytes(byte[],long)} call should block forever until it can return successfully (based upon the current timeout mode specified).
 	 * <p>
+	 * In order to specify that both a blocking read and write mode should be used, {@link #TIMEOUT_WRITE_BLOCKING} can be OR'd together with any of the read modes to pass
+	 * to the first parameter.
+	 * <p>
 	 * It is important to note that non-Windows operating systems only allow decisecond (1/10th of a second) granularity for serial port timeouts. As such, your
 	 * millisecond timeout value will be rounded to the nearest decisecond under Linux or Mac OS. To ensure consistent performance across multiple platforms, it is
 	 * advisable that you set your timeout values to be multiples of 100, although this is not strictly enforced.
 	 *
 	 * @param newTimeoutMode The new timeout mode as specified above.
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
-	 * @param newWriteTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call.
+	 * @param newWriteTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call (effective only on Windows).
 	 */
 	public final void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
@@ -1049,7 +1056,7 @@ public final class SerialPort
 	/**
 	 * Gets the number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
 	 * <p>
-	 * A value of 0 indicates that a {@link #readBytes(byte[],long)} call will block forever until it has successfully read
+	 * A value of 0 in blocking-read mode indicates that a {@link #readBytes(byte[],long)} call will block forever until it has successfully read
 	 * the indicated number of bytes from the serial port.
 	 * <p>
 	 * Any value other than 0 indicates the number of milliseconds of inactivity that will be tolerated before the {@link #readBytes(byte[],long)}
@@ -1062,7 +1069,7 @@ public final class SerialPort
 	/**
 	 * Gets the number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call.
 	 * <p>
-	 * A value of 0 indicates that a {@link #writeBytes(byte[],long)} call will block forever until it has successfully written
+	 * A value of 0 in blocking-write mode indicates that a {@link #writeBytes(byte[],long)} call will block forever until it has successfully written
 	 * the indicated number of bytes to the serial port.
 	 * <p>
 	 * Any value other than 0 indicates the number of milliseconds of inactivity that will be tolerated before the {@link #writeBytes(byte[],long)}
