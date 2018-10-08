@@ -2,7 +2,7 @@
  * SerialPort_OSX.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 07, 2018
+ *  Last Updated on:  Oct 08, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -57,6 +57,8 @@ jfieldID dataBitsField;
 jfieldID stopBitsField;
 jfieldID parityField;
 jfieldID flowControlField;
+jfieldID sendDeviceQueueSizeField;
+jfieldID receiveDeviceQueueSizeField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -159,6 +161,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
 	parityField = (*env)->GetFieldID(env, serialCommClass, "parity", "I");
 	flowControlField = (*env)->GetFieldID(env, serialCommClass, "flowControl", "I");
+	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
+	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
@@ -222,6 +226,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int stopBitsInt = (*env)->GetIntField(env, obj, stopBitsField);
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
+	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
 	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
@@ -255,10 +261,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		cfsetospeed(&options, baudRateCode);
 	}
 
-	// Apply changes
+	// Apply changes and block non-root users from opening this port
 	int retVal = configDisabled ? 0 : tcsetattr(serialPortFD, TCSANOW, &options);
-	ioctl(serialPortFD, TIOCEXCL);			// Block non-root users from opening this port
-	if (baudRateCode == 0)					// Set custom baud rate
+	ioctl(serialPortFD, TIOCEXCL);
+
+	// Attempt to set any necessary custom baud rates
+	if (baudRateCode == 0)
 	{
 		speed_t speed = (speed_t)baudRate;
 		ioctl(serialPortFD, IOSSIOSPEED, &speed);

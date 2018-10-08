@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Oct 07, 2018
+ *  Last Updated on:  Oct 08, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -38,6 +38,7 @@
 #include <termios.h>
 #include <sys/time.h>
 #include <linux/usbdevice_fs.h>
+#include <linux/serial.h>
 #include <asm/byteorder.h>
 #include "com_fazecast_jSerialComm_SerialPort.h"
 #include "AndroidHelperFunctions.h"
@@ -62,6 +63,8 @@ jfieldID dataBitsField;
 jfieldID stopBitsField;
 jfieldID parityField;
 jfieldID flowControlField;
+jfieldID sendDeviceQueueSizeField;
+jfieldID receiveDeviceQueueSizeField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -115,6 +118,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
 	parityField = (*env)->GetFieldID(env, serialCommClass, "parity", "I");
 	flowControlField = (*env)->GetFieldID(env, serialCommClass, "flowControl", "I");
+	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
+	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
@@ -168,33 +173,11 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	return serialPortFD;
 }
 
-/*JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_associateNativeHandle(JNIEnv *env, jobject obj, jlong serialPortFD)
-{
-	// TODO: SET A FLAG SAYING THAT WE ARE USING USBFS
-	// Attempt to determine which serial port file this descriptor belongs to
-	char serialPortFdChars[16];
-	sprintf(serialPortFdChars, "%d", (int)serialPortFD);
-	char* fileDescriptorName = (char*)malloc(256), *portName = (char*)malloc(256);
-	strcpy(fileDescriptorName, "/proc/self/fd/");
-	strcat(fileDescriptorName, serialPortFdChars);
-	ssize_t result = readlink(fileDescriptorName, portName, 256);
-	free(fileDescriptorName);
-	if (result < 0)
-	{
-		free(portName);
-		return JNI_FALSE;
-	}
-
-	// Set the port name in the Java object
-	(*env)->SetObjectField(env, obj, comPortField, (*env)->NewStringUTF(env, portName));
-	free(portName);
-	return JNI_TRUE;
-}*/
-
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
 	if (serialPortFD <= 0)
 		return JNI_FALSE;
+	struct serial_struct serInfo;
 	struct termios options = { 0 };
 
 	// Get port parameters from Java class
@@ -203,6 +186,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int stopBitsInt = (*env)->GetIntField(env, obj, stopBitsField);
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
+	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
 	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
@@ -261,7 +246,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		requestWrapper.data = &options;
 		retVal = ioctl(serialPortFD, USBDEVFS_IOCTL, &requestWrapper);
 	}*/
-	if (baudRateCode == 0)					// Set custom baud rate
+
+	// Attempt to set the transmit buffer size and any necessary custom baud rates
+	ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
+	serInfo.xmit_fifo_size = sendDeviceQueueSize;
+	ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
+	if (baudRateCode == 0)
 		setBaudRate(serialPortFD, baudRate);
 	return ((retVal == 0) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD) ? JNI_TRUE : JNI_FALSE);
 }
