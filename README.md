@@ -4,7 +4,16 @@ This is a fork of Fazecast/jSerialComm v2.2.3, a good Java library for interacti
 
 jSerialComm v2.2.3 does not provide functionality to set a serial port's OS-level internal buffer. On *Windows* this becomes a problem if the receiving side of the port transmission is poorly implemented in that it only inspects the "available" number of bytes rather than draining available bytes into another buffer and waiting for the port's buffer to be refilled. I had the misfortune of being trapped in such a situation with 20-year old hardware that expected 1536 bytes to be available at the same time, but Windows defaulted to 1282 bytes. Whoops.
 
-This fork of jSerialComm just adds the ability to set the OS-level port buffer size on Windows. That's it. It looks like similar functionality exists at the OS level for Linux and Android, but I don't have the equipment or the need to test those changes. I've submitted a [pull request](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-setcommstate) to the Fazecast/jSerialComm project but since it only contains changes for the Windows serial port driver it probably won't be accepted. If you need to set port buffer size on Windows, you can use this version of the library instead. It adds a call to the Win32 API's [SetCommState](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-setcommstate) function.
+This fork of jSerialComm just adds the ability to set the OS-level port buffer size on Windows. That's it. It looks like similar functionality exists at the OS level for Linux and Android, but I don't have the equipment or the need to test those changes so I haven't updated the driver for those OS's. I've submitted a [pull request](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-setcommstate) to the Fazecast/jSerialComm project but since it only contains changes for the Windows serial port driver it probably won't be accepted. If you need to set port buffer size on Windows, you can use this version of the library instead. It adds a call to the Win32 API's [SetCommState](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-setcommstate) function.
+
+## Releases
+
+Pre-built JARS are available for each release.
+
+__v2.2.3w__
+* [Binary](https://github.com/steveperkins/jSerialComm/raw/master/dist/jSerialComm-2.2.3w.jar)
+* [Sources](https://github.com/steveperkins/jSerialComm/raw/master/dist/jSerialComm-2.2.3w-sources.jar)
+* [Javadoc](https://github.com/steveperkins/jSerialComm/raw/master/dist/jSerialComm-2.2.3w-javadoc.jar)
 
 ## Usage
 
