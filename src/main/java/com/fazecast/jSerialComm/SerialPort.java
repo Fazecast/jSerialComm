@@ -355,7 +355,7 @@ public final class SerialPort
 	private volatile boolean isOpened = false, disableConfig = false, isRtsEnabled = true, isDtrEnabled = true;
 
 	/**
-	 * Opens this serial port for reading and writing with an optional delay time.
+	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
@@ -472,7 +472,7 @@ public final class SerialPort
 	public final boolean isOpen() { return isOpened; }
 
 	/**
-	 * Disable the library from calling any of the underlying device driver configuration methods.
+	 * Disables the library from calling any of the underlying device driver configuration methods.
 	 * <p>
 	 * This function should never be called except in very specific cases involving USB-to-Serial converters
 	 * with buggy device drivers. In that case, this function <b>must</b> be called before attempting to
