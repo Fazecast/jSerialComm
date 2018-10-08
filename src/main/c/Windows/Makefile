@@ -2,9 +2,9 @@
 COMPILE			= cl
 LINK			= link
 CFLAGS			= /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TP
-LDFLAGS			= /DLL /LTCG /NOASSEMBLY /NOLOGO /DELAYLOAD:ftd2xx.dll
+LDFLAGS			= /DLL /LTCG /NOASSEMBLY /NOLOGO
 INCLUDES		= /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32"
-LIBRARIES		= Advapi32.lib SetupAPI.lib DelayImp.lib
+LIBRARIES		= Advapi32.lib SetupAPI.lib
 DELETE			= @del /q /f
 RMDIR			= @rd /q /s
 MKDIR			= @md
@@ -44,23 +44,18 @@ all :
 	$(PRINT).
 
 # Builds 32-bit Windows libraries
-win32 : checkdirs $(BUILD_DIR)\x86\$(LIBRARY_NAME)
-	$(DELETE) $(BUILD_DIR)\x86\*.obj
-	$(COPY) $(BUILD_DIR)\x86\*.* $(RESOURCE_DIR)\x86
-	$(COPY) ftdi\ftd2xx32.dll $(RESOURCE_DIR)\x86\ftd2xx.dll
+win32 : $(BUILD_DIR)\x86 $(BUILD_DIR)\x86\$(LIBRARY_NAME)
+	$(COPY) $(BUILD_DIR)\x86\*.dll $(RESOURCE_DIR)\x86
 	$(DELETE) ..\*.h
 	$(RMDIR) $(BUILD_DIR)\..
 
 # Builds 64-bit Windows libraries
-win64 : checkdirs $(BUILD_DIR)\x86_64\$(LIBRARY_NAME)
-	$(DELETE) $(BUILD_DIR)\x86_64\*.obj
-	$(COPY) $(BUILD_DIR)\x86_64\*.* $(RESOURCE_DIR)\x86_64
-	$(COPY) ftdi\ftd2xx64.dll $(RESOURCE_DIR)\x86_64\ftd2xx.dll
+win64 : $(BUILD_DIR)\x86_64 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME)
+	$(COPY) $(BUILD_DIR)\x86_64\*.dll $(RESOURCE_DIR)\x86_64
 	$(DELETE) ..\*.h
 	$(RMDIR) $(BUILD_DIR)\..
 
 # Rule to create build directories
-checkdirs : $(BUILD_DIR)\x86 $(BUILD_DIR)\x86_64
 $(BUILD_DIR)\x86 :
 	$(MKDIR) "$@"
 $(BUILD_DIR)\x86_64 :
@@ -68,11 +63,11 @@ $(BUILD_DIR)\x86_64 :
 
 # Rule to build 32-bit library
 $(BUILD_DIR)\x86\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
-	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES) ftdi/ftd2xx32.lib
+	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
 
 # Rule to build 64-bit library
 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
-	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES) ftdi/ftd2xx64.lib
+	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
 
 # Suffix rules to get from *.c -> *.obj
 $(OBJECTSx86_64) :

@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Aug 20, 2018
+ *  Last Updated on:  Oct 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -42,7 +42,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.2.3
+ * @version 2.3.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -203,29 +203,6 @@ public final class SerialPort
 		tempNativeLibrary.deleteOnExit();
 		try
 		{
-			// Copy the FTDI driver library to the system temp directory if on Windows
-			if (isWindows)
-			{
-				String ftdiFileName = tempFileDirectory + "ftd2xx.dll";
-				File tempFtdiLibrary = new File(ftdiFileName);
-				InputStream ftdiContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/ftd2xx.dll");
-				if (ftdiContents != null)
-				{
-					try
-					{
-						FileOutputStream destinationFileContents = new FileOutputStream(tempFtdiLibrary);
-						byte transferBuffer[] = new byte[4096];
-						int numBytesRead;
-
-						while ((numBytesRead = ftdiContents.read(transferBuffer)) > 0)
-							destinationFileContents.write(transferBuffer, 0, numBytesRead);
-						destinationFileContents.close();
-					}
-					catch (FileNotFoundException e) {};
-					ftdiContents.close();
-				}
-			}
-			
 			// Load the native jSerialComm library
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
 			if (fileContents == null)
@@ -270,10 +247,7 @@ public final class SerialPort
 	 * @return The port description as reported by the device itself.
 	 */
 	@Override
-    public String toString()
-	{
-		return getPortDescription();
-    }
+    public String toString() { return getPortDescription(); }
 
 	/**
 	 * Returns a list of all available serial ports on this machine.
@@ -334,40 +308,6 @@ public final class SerialPort
 		return serialPort;
 	}
 
-//	/**
-//	 * Allocates a {@link SerialPort} object corresponding to a previously opened serial port file descriptor.
-//	 * <p>
-//	 * Using this method to create a {@link SerialPort} object may not allow you to change some port characteristics
-//	 * like baud rate, flow control, or parity, depending on the methodology that was used to initially open the native
-//	 * file descriptor.
-//	 * <p>
-//	 * Use of this constructor is not recommended <b>except</b> for use with Android-specific applications. In this
-//	 * case, you can use the Android USB Host APIs to allow the user to grant permission to use the port, and then
-//	 * return the native file descriptor to this library via the Android UsbDeviceConnection.getFileDescriptor() method.
-//	 * <p>
-//	 * For non-Android applications, any of the other constructors are recommended; however, this method may still be
-//	 * used if you have a specific need for it in your application.
-//	 *
-//	 * @param nativeFileDescriptor A pre-opened file descriptor corresponding to the serial port you would like to use with this library.
-//	 * @return A SerialPort object.
-//	 */
-/*	static public SerialPort getCommPort(long nativeFileDescriptor)
-	{
-		// Create SerialPort object and associate it with the native file descriptor
-		SerialPort serialPort = new SerialPort();
-		if (!serialPort.associateNativeHandle(nativeFileDescriptor))
-			serialPort.comPort = "UNKNOWN";
-		serialPort.portString = "User-Specified Port";
-		serialPort.portHandle = nativeFileDescriptor;
-		serialPort.isOpened = true;
-
-		// Create the Input/OutputStream interfaces
-		serialPort.inputStream = serialPort.new SerialPortInputStream();
-		serialPort.outputStream = serialPort.new SerialPortOutputStream();
-
-		return serialPort;
-	}*/
-
 	// Parity Values
 	static final public int NO_PARITY = 0;
 	static final public int ODD_PARITY = 1;
@@ -406,28 +346,33 @@ public final class SerialPort
 	private volatile long portHandle = -1;
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
+	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
 	private volatile SerialPortInputStream inputStream = null;
 	private volatile SerialPortOutputStream outputStream = null;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
-	private volatile boolean isOpened = false;
+	private volatile boolean isOpened = false, disableConfig = false, isRtsEnabled = true, isDtrEnabled = true;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
-	 * Note that calling this method on an already opened port will simply return a value of true.
+	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
 	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
+	 * @param deviceSendQueueSize The requested size in bytes of the internal device driver's output queue (only has an effect on Windows)
+	 * @param deviceReceiveQueueSize The requested size in bytes of the internal device driver's input queue (only has an effect on Windows)
 	 * @return Whether the port was successfully opened.
 	 */
-	public final boolean openPort(int safetySleepTime)
+	public final boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
-		// Return true if already opened
+		// Set the send/receive internal buffer sizes, and return true if already opened
+		sendDeviceQueueSize = deviceSendQueueSize;
+		receiveDeviceQueueSize = deviceReceiveQueueSize;
 		if (isOpened)
-			return true;
+			return configPort(portHandle);
 
 		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
 		if (safetySleepTime > 0)
@@ -475,13 +420,25 @@ public final class SerialPort
 	}
 
 	/**
+	 * Opens this serial port for reading and writing with an optional delay time.
+	 * <p>
+	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
+	 * <p>
+	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
+	 *
+	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
+	 * @return Whether the port was successfully opened.
+	 */
+	public final boolean openPort(int safetySleepTime) { return openPort(safetySleepTime, sendDeviceQueueSize, receiveDeviceQueueSize); }
+
+	/**
 	 * Opens this serial port for reading and writing.
 	 * <p>
 	 * This method is equivalent to calling {@link #openPort} with a value of 1000.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
-	 * Note that calling this method on an already opened port will simply return a value of true.
+	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
 	 * @return Whether the port was successfully opened.
 	 */
@@ -514,6 +471,15 @@ public final class SerialPort
 	 */
 	public final boolean isOpen() { return isOpened; }
 
+	/**
+	 * Disable the library from calling any of the underlying device driver configuration methods.
+	 * <p>
+	 * This function should never be called except in very specific cases involving USB-to-Serial converters
+	 * with buggy device drivers. In that case, this function <b>must</b> be called before attempting to
+	 * open the port.
+	 */
+	public final void disablePortConfiguration() { disableConfig = true; }
+
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
@@ -531,8 +497,12 @@ public final class SerialPort
 	private final native boolean clearBreak(long portHandle);			// Clear BREAK status on serial line
 	private final native boolean setRTS(long portHandle);				// Set RTS line to 1
 	private final native boolean clearRTS(long portHandle);				// Clear RTS line to 0
+	private final native boolean presetRTS();							// Set RTS line to 1 prior to opening
+	private final native boolean preclearRTS();							// Clear RTS line to 0 prior to opening
 	private final native boolean setDTR(long portHandle);				// Set DTR line to 1
 	private final native boolean clearDTR(long portHandle);				// Clear DTR line to 0
+	private final native boolean presetDTR();							// Set DTR line to 1 prior to opening
+	private final native boolean preclearDTR();							// Clear DTR line to 0 prior to opening
 	private final native boolean getCTS(long portHandle);				// Returns whether the CTS signal is 1
 	private final native boolean getDSR(long portHandle);				// Returns whether the DSR signal is 1
 
@@ -631,25 +601,41 @@ public final class SerialPort
 	 * Sets the state of the RTS line to 1.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setRTS()   { return setRTS(portHandle); }
+	public final boolean setRTS()
+	{
+		isRtsEnabled = true;
+		return (isOpened ? setRTS(portHandle) : presetRTS());
+	}
 
 	/**
 	 * Clears the state of the RTS line to 0.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean clearRTS() { return clearRTS(portHandle); }
+	public final boolean clearRTS()
+	{
+		isRtsEnabled = false;
+		return (isOpened ? clearRTS(portHandle) : preclearRTS());
+	}
 
 	/**
 	 * Sets the state of the DTR line to 1.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setDTR()   { return setDTR(portHandle); }
+	public final boolean setDTR()
+	{
+		isDtrEnabled = true;
+		return (isOpened ? setDTR(portHandle) : presetDTR());
+	}
 
 	/**
 	 * Clears the state of the DTR line to 0.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean clearDTR() { return clearDTR(portHandle); }
+	public final boolean clearDTR()
+	{
+		isDtrEnabled = false;
+		return (isOpened ? clearDTR(portHandle) : preclearDTR());
+	}
 
 	/**
 	 * Returns whether the CTS line is currently asserted.

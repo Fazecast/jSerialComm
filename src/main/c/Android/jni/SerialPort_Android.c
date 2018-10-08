@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Jul 27, 2018
+ *  Last Updated on:  Oct 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -54,6 +54,9 @@ jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
 jfieldID isOpenedField;
+jfieldID disableConfigField;
+jfieldID isDtrEnabledField;
+jfieldID isRtsEnabledField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
 jfieldID stopBitsField;
@@ -104,6 +107,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
 	isOpenedField = (*env)->GetFieldID(env, serialCommClass, "isOpened", "Z");
+	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
+	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
+	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
@@ -126,6 +132,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	// TODO: SET A FLAG SAYING THAT WE ARE NOT USING USBFS
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
+	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 
 	// Try to open existing serial port with read/write access
 	int serialPortFD = -1;
@@ -138,6 +146,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			fcntl(serialPortFD, F_SETFL, 0);
 			ioctl(serialPortFD, TCGETS, &options);
 			cfmakeraw(&options);
+			if (!isDtrEnabled || !isRtsEnabled)
+				options.c_cflag &= ~HUPCL;
+			options.c_iflag |= BRKINT;
 			ioctl(serialPortFD, TCSETS, &options);
 		}
 
@@ -192,6 +203,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int stopBitsInt = (*env)->GetIntField(env, obj, stopBitsField);
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
+	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
+	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
 	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
@@ -207,6 +221,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_cflag = (byteSize | stopBits | parity | CLOCAL | CREAD | CTSRTSEnabled);
 		if (parityInt == com_fazecast_jSerialComm_SerialPort_SPACE_PARITY)
 			options.c_cflag &= ~PARODD;
+		if (!isDtrEnabled || !isRtsEnabled)
+			options.c_cflag &= ~HUPCL;
 		options.c_iflag &= ~(INPCK | IGNPAR | PARMRK | ISTRIP);
 		if (byteSizeInt < 8)
 			options.c_iflag |= ISTRIP;
@@ -235,7 +251,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Apply changes
 	int retVal = -1;
 	if (isatty(serialPortFD))
-		retVal = ioctl(serialPortFD, TCSETS, &options);
+		retVal = configDisabled ? 0 : ioctl(serialPortFD, TCSETS, &options);
 	else
 		return JNI_FALSE;/*
 	{
@@ -577,6 +593,34 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 	return (ioctl(serialPortFD, TIOCMBIC, &modemBits) == 0);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+
+	// Send a system command to preset the RTS mode of the serial port
+	char commandString[64];
+	sprintf(commandString, "stty -f %s hupcl", portName);
+	int result = system(commandString);
+
+	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	return (result == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+
+	// Send a system command to preset the RTS mode of the serial port
+	char commandString[64];
+	sprintf(commandString, "stty -f %s -hupcl", portName);
+	int result = system(commandString);
+
+	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	return (result == 0);
+}
+
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
 	if (serialPortFD <= 0)
@@ -591,6 +635,34 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 		return JNI_FALSE;
 	int modemBits = TIOCM_DTR;
 	return (ioctl(serialPortFD, TIOCMBIC, &modemBits) == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+
+	// Send a system command to preset the DTR mode of the serial port
+	char commandString[64];
+	sprintf(commandString, "stty -f %s hupcl", portName);
+	int result = system(commandString);
+
+	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	return (result == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+
+	// Send a system command to preset the DTR mode of the serial port
+	char commandString[64];
+	sprintf(commandString, "stty -f %s -hupcl", portName);
+	int result = system(commandString);
+
+	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	return (result == 0);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortFD)

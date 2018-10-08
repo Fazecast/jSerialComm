@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Sep 25, 2018
+ *  Last Updated on:  Oct 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -47,47 +47,27 @@ jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
 jfieldID isOpenedField;
+jfieldID disableConfigField;
+jfieldID isDtrEnabledField;
+jfieldID isRtsEnabledField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
 jfieldID stopBitsField;
 jfieldID parityField;
 jfieldID flowControlField;
+jfieldID sendDeviceQueueSizeField;
+jfieldID receiveDeviceQueueSizeField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
-// FTDI DLL library loader
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-HINSTANCE hDllInstance = (HINSTANCE)&__ImageBase;
-HMODULE LocalLoadLibrary(LPCSTR pszModuleName)
-{
-	CHAR szPath[MAX_PATH] = "";
-	DWORD cchPath = GetModuleFileNameA(hDllInstance, szPath, MAX_PATH);
-	while (cchPath > 0)
-	{
-		switch(szPath[cchPath - 1])
-		{
-			case '\\':
-			case '/':
-			case ':':
-				break;
-			default:
-				--cchPath;
-				continue;
-		}
-		break;
-	}
-	lstrcpynA(szPath + cchPath, pszModuleName, MAX_PATH - cchPath);
-	return LoadLibraryA(szPath);
-}
-FARPROC WINAPI DllLoadNotifyHook(unsigned dliNotify, PDelayLoadInfo pdli)
-{
-	if (dliNotify == dliNotePreLoadLibrary)
-		return (FARPROC)LocalLoadLibrary(pdli->szDll);
-	return NULL;
-}
-extern "C" const PfnDliHook __pfnDliNotifyHook2 = DllLoadNotifyHook;
+// Run-time loadable DLL function
+typedef int (__cdecl *FT_CreateDeviceInfoListFunction)(LPDWORD);
+typedef int (__cdecl *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
+typedef int (__cdecl *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
+typedef int (__cdecl *FT_OpenFunction)(int, FT_HANDLE*);
+typedef int (__cdecl *FT_CloseFunction)(FT_HANDLE);
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
@@ -286,35 +266,48 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	}
 
 	// Attempt to locate any FTDI-specified port descriptions
-	DWORD numDevs;
-	if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
+	HINSTANCE ftdiLibInstance = LoadLibrary(TEXT("ftd2xx.dll"));
+	if (ftdiLibInstance != NULL)
 	{
-		FT_DEVICE_LIST_INFO_NODE *devInfo = (FT_DEVICE_LIST_INFO_NODE*)malloc(sizeof(FT_DEVICE_LIST_INFO_NODE)*numDevs);
-		if (FT_GetDeviceInfoList(devInfo, &numDevs) == FT_OK)
+		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
+		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
+		FT_GetComPortNumberFunction FT_GetComPortNumber = (FT_GetComPortNumberFunction)GetProcAddress(ftdiLibInstance, "FT_GetComPortNumber");
+		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
+		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
+		if ((FT_CreateDeviceInfoList != NULL) && (FT_GetDeviceInfoList != NULL) && (FT_GetComPortNumber != NULL) && (FT_Open != NULL) && (FT_Close != NULL))
 		{
-			int i, j;
-			wchar_t comPortString[128];
-			for (i = 0; i < numDevs; ++i)
+			DWORD numDevs;
+			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
 			{
-				LONG comPortNumber = 0;
-				if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
+				FT_DEVICE_LIST_INFO_NODE *devInfo = (FT_DEVICE_LIST_INFO_NODE*)malloc(sizeof(FT_DEVICE_LIST_INFO_NODE)*numDevs);
+				if (FT_GetDeviceInfoList(devInfo, &numDevs) == FT_OK)
 				{
-					// Update port description if COM port is actually connected and present in the port list
-					FT_Close(devInfo[i].ftHandle);
-					swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
-					for (j = 0; j < serialCommPorts.length; ++j)
-						if (wcscmp(serialCommPorts.first[j], comPortString) == 0)
+					int i, j;
+					wchar_t comPortString[128];
+					for (i = 0; i < numDevs; ++i)
+					{
+						LONG comPortNumber = 0;
+						if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
 						{
-							size_t descLength = 8+strlen(devInfo[i].Description);
-							free(serialCommPorts.third[j]);
-							serialCommPorts.third[j] = (wchar_t*)malloc(descLength*sizeof(wchar_t));
-							MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialCommPorts.third[j], descLength);
-							break;
+							// Update port description if COM port is actually connected and present in the port list
+							FT_Close(devInfo[i].ftHandle);
+							swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
+							for (j = 0; j < serialCommPorts.length; ++j)
+								if (wcscmp(serialCommPorts.first[j], comPortString) == 0)
+								{
+									size_t descLength = 8+strlen(devInfo[i].Description);
+									free(serialCommPorts.third[j]);
+									serialCommPorts.third[j] = (wchar_t*)malloc(descLength*sizeof(wchar_t));
+									MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialCommPorts.third[j], descLength);
+									break;
+								}
 						}
+					}
 				}
+				free(devInfo);
 			}
 		}
-		free(devInfo);
+		FreeLibrary(ftdiLibInstance);
 	}
 
 	// Get relevant SerialComm methods and fill in com port array
@@ -355,11 +348,16 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	friendlyNameField = env->GetFieldID(serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = env->GetFieldID(serialCommClass, "portDescription", "Ljava/lang/String;");
 	isOpenedField = env->GetFieldID(serialCommClass, "isOpened", "Z");
+	disableConfigField = env->GetFieldID(serialCommClass, "disableConfig", "Z");
+	isDtrEnabledField = env->GetFieldID(serialCommClass, "isDtrEnabled", "Z");
+	isRtsEnabledField = env->GetFieldID(serialCommClass, "isRtsEnabled", "Z");
 	baudRateField = env->GetFieldID(serialCommClass, "baudRate", "I");
 	dataBitsField = env->GetFieldID(serialCommClass, "dataBits", "I");
 	stopBitsField = env->GetFieldID(serialCommClass, "stopBits", "I");
 	parityField = env->GetFieldID(serialCommClass, "parity", "I");
 	flowControlField = env->GetFieldID(serialCommClass, "flowControl", "I");
+	sendDeviceQueueSizeField = env->GetFieldID(serialCommClass, "sendDeviceQueueSize", "I");
+	receiveDeviceQueueSizeField = env->GetFieldID(serialCommClass, "receiveDeviceQueueSize", "I");
 	timeoutModeField = env->GetFieldID(serialCommClass, "timeoutMode", "I");
 	readTimeoutField = env->GetFieldID(serialCommClass, "readTimeout", "I");
 	writeTimeoutField = env->GetFieldID(serialCommClass, "writeTimeout", "I");
@@ -413,6 +411,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int stopBitsInt = env->GetIntField(obj, stopBitsField);
 	int parityInt = env->GetIntField(obj, parityField);
 	int flowControl = env->GetIntField(obj, flowControlField);
+	DWORD sendDeviceQueueSize = (DWORD)env->GetIntField(obj, sendDeviceQueueSizeField);
+	DWORD receiveDeviceQueueSize = (DWORD)env->GetIntField(obj, receiveDeviceQueueSizeField);
+	BYTE configDisabled = (BYTE)env->GetBooleanField(obj, disableConfigField);
+	BYTE isDtrEnabled = env->GetBooleanField(obj, isDtrEnabledField);
+	BYTE isRtsEnabled = env->GetBooleanField(obj, isRtsEnabledField);
 	BYTE stopBits = (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS;
 	BYTE parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? NOPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? ODDPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? EVENPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? MARKPARITY : SPACEPARITY;
 	BOOL isParity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? FALSE : TRUE;
@@ -420,13 +423,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0));
 	BOOL DSREnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DSR_ENABLED) > 0) ||
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED) > 0));
-	BYTE DTRValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED) > 0) ? DTR_CONTROL_HANDSHAKE : DTR_CONTROL_ENABLE;
-	BYTE RTSValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0) ? RTS_CONTROL_HANDSHAKE : RTS_CONTROL_ENABLE;
+	BYTE DTRValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED) > 0) ? DTR_CONTROL_HANDSHAKE : (isDtrEnabled ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE);
+	BYTE RTSValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0) ? RTS_CONTROL_HANDSHAKE : (isRtsEnabled ? RTS_CONTROL_ENABLE : RTS_CONTROL_DISABLE);
 	BOOL XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0);
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
 	// Retrieve existing port configuration
-	if (!GetCommState(serialPortHandle, &dcbSerialParams))
+	SetupComm(serialPortHandle, receiveDeviceQueueSize, sendDeviceQueueSize);
+	if (!configDisabled && !GetCommState(serialPortHandle, &dcbSerialParams))
 		return JNI_FALSE;
 
 	// Set updated port parameters
@@ -454,7 +458,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.XoffChar = (char)19;
 
 	// Apply changes
-	return SetCommState(serialPortHandle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD);
+	return (configDisabled ? Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD) :
+			(SetCommState(serialPortHandle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD)));
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortFD)
@@ -783,6 +788,44 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 	return EscapeCommFunction(serialPortHandle, CLRRTS);
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)env->GetObjectField(obj, comPortField);
+	const char *portName = env->GetStringUTFChars(portNameJString, NULL);
+	const char* comPort = strrchr(portName, '\\');
+
+	// Try to preset the RTS mode of the COM port using a Windows command
+	int result = -1;
+	if (comPort != NULL)
+	{
+		char commandString[32];
+		sprintf(commandString, "MODE %s rts=on", comPort + 1);
+		result = system(commandString);
+	}
+
+	env->ReleaseStringUTFChars(portNameJString, portName);
+	return (result == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)env->GetObjectField(obj, comPortField);
+	const char *portName = env->GetStringUTFChars(portNameJString, NULL);
+	const char* comPort = strrchr(portName, '\\');
+
+	// Try to preset the RTS mode of the COM port using a Windows command
+	int result = -1;
+	if (comPort != NULL)
+	{
+		char commandString[32];
+		sprintf(commandString, "MODE %s rts=off", comPort + 1);
+		result = system(commandString);
+	}
+
+	env->ReleaseStringUTFChars(portNameJString, portName);
+	return (result == 0);
+}
+
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
@@ -797,6 +840,44 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return JNI_FALSE;
 	return EscapeCommFunction(serialPortHandle, CLRDTR);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)env->GetObjectField(obj, comPortField);
+	const char *portName = env->GetStringUTFChars(portNameJString, NULL);
+	const char* comPort = strrchr(portName, '\\');
+
+	// Try to preset the DTR mode of the COM port using a Windows command
+	int result = -1;
+	if (comPort != NULL)
+	{
+		char commandString[32];
+		sprintf(commandString, "MODE %s dtr=on", comPort + 1);
+		result = system(commandString);
+	}
+
+	env->ReleaseStringUTFChars(portNameJString, portName);
+	return (result == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(JNIEnv *env, jobject obj)
+{
+	jstring portNameJString = (jstring)env->GetObjectField(obj, comPortField);
+	const char *portName = env->GetStringUTFChars(portNameJString, NULL);
+	const char* comPort = strrchr(portName, '\\');
+
+	// Try to preset the DTR mode of the COM port using a Windows command
+	int result = -1;
+	if (comPort != NULL)
+	{
+		char commandString[32];
+		sprintf(commandString, "MODE %s dtr=off", comPort + 1);
+		result = system(commandString);
+	}
+
+	env->ReleaseStringUTFChars(portNameJString, portName);
+	return (result == 0);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortFD)
