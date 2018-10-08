@@ -362,8 +362,8 @@ public final class SerialPort
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
 	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
-	 * @param deviceSendQueueSize The requested size in bytes of the internal device driver's output queue (only has an effect on Windows)
-	 * @param deviceReceiveQueueSize The requested size in bytes of the internal device driver's input queue (only has an effect on Windows)
+	 * @param deviceSendQueueSize The requested size in bytes of the internal device driver's output queue (no effect on OSX)
+	 * @param deviceReceiveQueueSize The requested size in bytes of the internal device driver's input queue (no effect on Linux/OSX)
 	 * @return Whether the port was successfully opened.
 	 */
 	public final boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
