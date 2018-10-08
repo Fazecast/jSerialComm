@@ -412,6 +412,7 @@ public final class SerialPort
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean isOpened = false;
+	private volatile boolean ignoreErrors = false;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time.
@@ -423,8 +424,11 @@ public final class SerialPort
 	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
 	 * @return Whether the port was successfully opened.
 	 */
-	public final boolean openPort(int safetySleepTime)
+	public final boolean openPort(int safetySleepTime) { return openPort(safetySleepTime, false); }
+	public final boolean openPort(int safetySleepTime, boolean ignoreErrors)
 	{
+		this.ignoreErrors = ignoreErrors;
+
 		// Return true if already opened
 		if (isOpened)
 			return true;
