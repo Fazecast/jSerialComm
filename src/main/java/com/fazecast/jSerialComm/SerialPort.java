@@ -378,7 +378,8 @@ public final class SerialPort
 			try { Thread.sleep(safetySleepTime); } catch (Exception e) {}
 
 		// If this is an Android root application, we must explicitly allow serial port access to the library
-		if (isAndroid)
+		File portFile = isAndroid ? new File(comPort) : null;
+		if (portFile != null && (!portFile.canRead() || !portFile.canWrite()))
 		{
 			Process process = null;
 			try
