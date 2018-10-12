@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 08, 2018
+ *  Last Updated on:  Oct 12, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -205,6 +205,11 @@ public final class SerialPort
 		{
 			// Load the native jSerialComm library
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
+			if ((fileContents == null) && isAndroid)
+			{
+				libraryPath = libraryPath.replace("Android/", "lib/");
+				fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
+			}
 			if (fileContents == null)
 			{
 				System.err.println("Could not locate or access the native jSerialComm shared library.");
