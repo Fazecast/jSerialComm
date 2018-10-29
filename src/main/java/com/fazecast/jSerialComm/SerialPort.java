@@ -50,7 +50,7 @@ public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
 	private static volatile boolean isAndroid = false;
-	private static volatile boolean isLinuxOrMac = false;
+	private static volatile boolean isUnixBased = false;
 	private static volatile boolean isWindows = false;
 	static
 	{
@@ -115,10 +115,19 @@ public final class SerialPort
 				libraryPath = "OSX/x86_64";
 			else
 				libraryPath = "OSX/x86";
-			isLinuxOrMac = true;
+			isUnixBased = true;
 			fileName = "libjSerialComm.jnilib";
 		}
-		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
+		else if ((OS.indexOf("sunos") >= 0) || (OS.indexOf("solaris") >= 0))
+		{
+			if (System.getProperty("os.arch").indexOf("64") >= 0)
+				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv9_64" : "Solaris/x86_64";
+			else
+				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8_32" : "Solaris/x86";
+			isUnixBased = true;
+			fileName = "libjSerialComm.so";
+		}
+		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0) || (OS.indexOf("bsd") >= 0))
 		{
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				libraryPath = "Linux/" + System.getProperty("os.arch_full").toLowerCase();
@@ -188,7 +197,7 @@ public final class SerialPort
 				libraryPath = "Linux/x86_64";
 			else
 				libraryPath = "Linux/x86";
-			isLinuxOrMac = true;
+			isUnixBased = true;
 			fileName = "libjSerialComm.so";
 		}
 		else
