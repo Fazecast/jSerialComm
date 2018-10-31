@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 07, 2018
+ *  Last Updated on:  Oct 31, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -63,11 +63,11 @@ jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
 // Run-time loadable DLL function
-typedef int (__cdecl *FT_CreateDeviceInfoListFunction)(LPDWORD);
-typedef int (__cdecl *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
-typedef int (__cdecl *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
-typedef int (__cdecl *FT_OpenFunction)(int, FT_HANDLE*);
-typedef int (__cdecl *FT_CloseFunction)(FT_HANDLE);
+typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
+typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
+typedef int (__stdcall *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
+typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
+typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
