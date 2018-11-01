@@ -2,7 +2,7 @@
  * LinuxHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Mar 25, 2016
+ *  Last Updated on:  Nov 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -37,6 +37,7 @@ char keyExists(struct charTupleVector* vector, const char* key);
 void getDriverName(const char* directoryToSearch, char* friendlyName);
 void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch);
 void lastDitchSearchForComPorts(charTupleVector* comPorts);
+void driverBasedSearchForComPorts(charTupleVector* comPorts);
 void getFriendlyName(const char* productFile, char* friendlyName);
 void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription);
 unsigned int getBaudRateCode(int baudRate);

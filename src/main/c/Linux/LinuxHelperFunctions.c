@@ -2,7 +2,7 @@
  * LinuxHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Aug 10, 2018
+ *  Last Updated on:  Nov 01, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <linux/serial.h>
 #include <dirent.h>
@@ -327,6 +328,26 @@ void lastDitchSearchForComPorts(charTupleVector* comPorts)
 			free(systemName);
 			free(friendlyName);
 		}
+		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
+				(directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'P'))
+		{
+			// Determine system name of port
+			char* systemName = (char*)malloc(256);
+			strcpy(systemName, "/dev/");
+			strcat(systemName, directoryEntry->d_name);
+
+			// Set static friendly name
+			char* friendlyName = (char*)malloc(256);
+			strcpy(friendlyName, "Advantech Extended Serial Port");
+
+			// Determine if port is already in the list, and add it if not
+			if (!keyExists(comPorts, systemName))
+				push_back(comPorts, systemName, friendlyName, friendlyName);
+
+			// Clean up memory
+			free(systemName);
+			free(friendlyName);
+		}
 		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
 				(directoryEntry->d_name[3] == 'o') && (directoryEntry->d_name[4] == 'm') && (directoryEntry->d_name[5] == 'm'))
 		{
@@ -352,6 +373,45 @@ void lastDitchSearchForComPorts(charTupleVector* comPorts)
 
 	// Close the directory
 	closedir(directoryIterator);
+}
+
+void driverBasedSearchForComPorts(charTupleVector* comPorts)
+{
+	// Search for unidentified physical serial ports
+	FILE *serialDriverFile = fopen("/proc/tty/driver/serial", "rb");
+	if (serialDriverFile)
+	{
+		char* serialLine = (char*)malloc(128);
+		while (fgets(serialLine, 128, serialDriverFile))
+			if (strstr(serialLine, "uart:") && (strstr(serialLine, "uart:unknown") == NULL))
+			{
+				// Determine system name of port
+				*strchr(serialLine, ':') = '\0';
+				char* systemName = (char*)malloc(256);
+				char* friendlyName = (char*)malloc(256);
+				strcpy(systemName, "/dev/ttyS");
+				strcat(systemName, serialLine);
+
+				// Ensure that the port is valid and not a symlink
+				struct stat fileStats;
+				if ((access(systemName, F_OK) == 0) && (lstat(systemName, &fileStats) == 0) && !S_ISLNK(fileStats.st_mode))
+				{
+					// Set static friendly name
+					strcpy(friendlyName, "Physical Port ");
+					strcat(friendlyName, serialLine);
+
+					// Determine if port is already in the list, and add it if not
+					if (!keyExists(comPorts, systemName))
+						push_back(comPorts, systemName, friendlyName, friendlyName);
+				}
+
+				// Clean up memory
+				free(systemName);
+				free(friendlyName);
+			}
+		free(serialLine);
+		fclose(serialDriverFile);
+	}
 }
 
 unsigned int getBaudRateCode(int baudRate)
