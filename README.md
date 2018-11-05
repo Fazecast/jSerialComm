@@ -2,6 +2,7 @@
 
 _A platform-independent serial port access library for Java._
 
+
 ## Usage
 
 For usage examples, please refer to the [Usage wiki](https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples).
@@ -92,7 +93,6 @@ this project's [GitHub page](https://github.com/Fazecast/jSerialComm/issues),
 and we will be glad to look into it.
 
 
-
 ## Building
 
 Building this library yourself is not advised (at least not for distribution)
@@ -120,7 +120,6 @@ this project:
 You can then Import the project using the "Existing Project into Workspace" import
 tool in Eclipse. (Note that if you use Eclipse as an IDE, you will probably want
 to install the Eclipse CDT plugin for proper handling of the C source code).
-
 
 
 ### Linux/UNIX
@@ -152,6 +151,34 @@ The resulting ```jSerialComm``` library can be found in the project directory
 ```build/libs``` under the name ```jSerialComm-{VERSION}.jar```.
 
 
+### Solaris
+
+Ensure that you have a cross-compiler installed on your Linux distribution
+capable of compiling for both x86 and Sparc-based Solaris architectures.
+Instructions for creating such a toolchain can be found on the
+[Solaris Cross-Compiler wiki](https://github.com/Fazecast/jSerialComm/wiki/Building-Solaris-Cross-Compilers).
+
+Ensure that the ```JDK_HOME``` environment variable has been set for the 1.6
+version of your Java SDK. The correct directory can usually be found by entering
+the following command:
+
+    readlink -f /usr/bin/java
+
+Export the result of this command ***up to but not including*** the
+```/jre/...``` portion using the ```export``` command. For example, if
+```readlink``` produced ```/usr/lib/jvm/java-6-jdk/jre/bin/java``` as an output,
+the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk```
+
+Run the following commands:
+
+    cd src/main/c/Solaris
+    make && make sparc
+    cd ../../../..
+    gradle build
+
+The resulting ```jSerialComm``` library can be found in the project directory
+```build/libs``` under the name ```jSerialComm-{VERSION}.jar```.
+
 
 ### ARM-Based Mobile Linux (non-Android)
 
@@ -181,7 +208,6 @@ The resulting ```jSerialComm``` library can be found in the project directory
 ```build/libs``` under the name ```jSerialComm-{VERSION}.jar```.
 
 
-
 ### Android
 
 Ensure that the Android NDK is installed on your system. For purposes of these
@@ -198,7 +224,7 @@ The resulting ```jSerialComm``` library can be found in the project directory
 ```build/libs``` under the name ```jSerialComm-{VERSION}.jar```
 
 
-### macOS X
+### Mac OS X
 
 Ensure that [Xcode](https://developer.apple.com/xcode/) is installed on your system.
 If it is not, it can be downloaded via the App Store. You must also make sure
@@ -212,10 +238,8 @@ Run the following commands in order:
     cd ../../../..
     gradle build
 
-
 The resulting ```jSerialComm``` library can be found in the project directory
 ```build/libs``` under the name ```jSerialComm-{VERSION}.jar```
-
 
 
 ### Windows
@@ -243,8 +267,6 @@ Then run:
     nmake win32
     POPD
     gradle build
-
-
 
 The resulting ```jSerialComm``` library can be found in the project directory
 ```build/libs``` under the name ```jSerialComm-{VERSION}.jar```
