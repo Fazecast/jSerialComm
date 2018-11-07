@@ -2,7 +2,7 @@
  * SerialPort_Linux.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 08, 2018
+ *  Last Updated on:  Nov 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -571,7 +571,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -f %s hupcl", portName);
+	sprintf(commandString, "stty -F %s hupcl", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -585,7 +585,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -f %s -hupcl", portName);
+	sprintf(commandString, "stty -F %s -hupcl", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -615,7 +615,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -f %s hupcl", portName);
+	sprintf(commandString, "stty -F %s hupcl", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -629,7 +629,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -f %s -hupcl", portName);
+	sprintf(commandString, "stty -F %s -hupcl", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
