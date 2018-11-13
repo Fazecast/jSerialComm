@@ -142,8 +142,8 @@ the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk``
 
 Run the following commands:
 
-    cd src/main/c/Linux
-    make
+    cd src/main/c/Posix
+    make linux
     cd ../../../..
     gradle build
 
@@ -171,8 +171,8 @@ the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk``
 
 Run the following commands:
 
-    cd src/main/c/Solaris
-    make && make sparc
+    cd src/main/c/Posix
+    make solaris
     cd ../../../..
     gradle build
 
@@ -199,7 +199,7 @@ the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk``
 
 Run the following commands:
 
-    cd src/main/c/Linux
+    cd src/main/c/Posix
     make arm
     cd ../../../..
     gradle build
@@ -233,8 +233,8 @@ entering the following command in a terminal: ```xcode-select --install```
 
 Run the following commands in order:
 
-    cd src/main/c/OSX
-    make
+    cd src/main/c/Posix
+    make osx
     cd ../../../..
     gradle build
 
