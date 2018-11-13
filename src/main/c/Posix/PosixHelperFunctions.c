@@ -1,8 +1,8 @@
 /*
- * LinuxHelperFunctions.c
+ * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 01, 2018
+ *  Last Updated on:  Nov 12, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -23,23 +23,17 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
-#ifdef __linux__
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <linux/serial.h>
-#include <dirent.h>
-#include <asm/termios.h>
-#include <asm/ioctls.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include "LinuxHelperFunctions.h"
+#include "PosixHelperFunctions.h"
 
-// Explicitly define the ioctl function signature
-extern int ioctl(int __fd, unsigned long int __request, ...);
-
+// Common functionality
 void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString)
 {
 	// Allocate memory for new string storage
@@ -70,6 +64,45 @@ char keyExists(struct charTupleVector* vector, const char* key)
 		if (strcmp(key, vector->first[i]) == 0)
 			return 1;
 	return 0;
+}
+
+// Linux-specific functionality
+#if defined(__linux__)
+#include <linux/serial.h>
+#include <asm/termios.h>
+#include <asm/ioctls.h>
+
+void getDriverName(const char* directoryToSearch, char* friendlyName)
+{
+	friendlyName[0] = '\0';
+
+	// Open the directory
+	DIR *directoryIterator = opendir(directoryToSearch);
+	if (!directoryIterator)
+		return;
+
+	// Read all sub-directories in the current directory
+	struct dirent *directoryEntry = readdir(directoryIterator);
+	while (directoryEntry)
+	{
+		// Check if entry is a valid sub-directory
+		if (directoryEntry->d_name[0] != '.')
+		{
+			// Get the readable part of the driver name
+			strcpy(friendlyName, "USB-to-Serial Port (");
+			char *startingPoint = strchr(directoryEntry->d_name, ':');
+			if (startingPoint != NULL)
+				strcat(friendlyName, startingPoint+1);
+			else
+				strcat(friendlyName, directoryEntry->d_name);
+			strcat(friendlyName, ")");
+			break;
+		}
+		directoryEntry = readdir(directoryIterator);
+	}
+
+	// Close the directory
+	closedir(directoryIterator);
 }
 
 void getFriendlyName(const char* productFile, char* friendlyName)
@@ -108,39 +141,6 @@ void getInterfaceDescription(const char* interfaceFile, char* interfaceDescripti
 		interfaceDescription[interfaceDescriptionLength] = '\0';
 		fclose(input);
 	}
-}
-
-void getDriverName(const char* directoryToSearch, char* friendlyName)
-{
-	friendlyName[0] = '\0';
-
-	// Open the directory
-	DIR *directoryIterator = opendir(directoryToSearch);
-	if (!directoryIterator)
-		return;
-
-	// Read all sub-directories in the current directory
-	struct dirent *directoryEntry = readdir(directoryIterator);
-	while (directoryEntry)
-	{
-		// Check if entry is a valid sub-directory
-		if (directoryEntry->d_name[0] != '.')
-		{
-			// Get the readable part of the driver name
-			strcpy(friendlyName, "USB-to-Serial Port (");
-			char *startingPoint = strchr(directoryEntry->d_name, ':');
-			if (startingPoint != NULL)
-				strcat(friendlyName, startingPoint+1);
-			else
-				strcat(friendlyName, directoryEntry->d_name);
-			strcat(friendlyName, ")");
-			break;
-		}
-		directoryEntry = readdir(directoryIterator);
-	}
-
-	// Close the directory
-	closedir(directoryIterator);
 }
 
 void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch)
@@ -414,8 +414,9 @@ void driverBasedSearchForComPorts(charTupleVector* comPorts)
 	}
 }
 
-unsigned int getBaudRateCode(int baudRate)
+baud_rate getBaudRateCode(baud_rate baudRate)
 {
+	// Translate a raw baud rate into a system-specified one
 	switch (baudRate)
 	{
 		case 50:
@@ -497,7 +498,7 @@ unsigned int getBaudRateCode(int baudRate)
 	return 0;
 }
 
-void setBaudRate(int portFD, int baudRate)
+int setBaudRateCustom(int portFD, baud_rate baudRate)
 {
 #ifdef TCSETS2
 	struct termios2 options = { 0 };
@@ -506,7 +507,7 @@ void setBaudRate(int portFD, int baudRate)
 	options.c_cflag |= BOTHER;
 	options.c_ispeed = baudRate;
 	options.c_ospeed = baudRate;
-	ioctl(portFD, TCSETS2, &options);
+	int retVal = ioctl(portFD, TCSETS2, &options);
 #else
 	struct serial_struct serInfo;
 	ioctl(portFD, TIOCGSERIAL, &serInfo);
@@ -515,8 +516,216 @@ void setBaudRate(int portFD, int baudRate)
 	serInfo.custom_divisor = serInfo.baud_base / baudRate;
 	if (sersInfo.custom_divisor == 0)
 		serInfo.custom_divisor = 1;
-	ioctl(portFD, TIOCSSERIAL, &serInfo);
+	int retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
 #endif
+	return (retVal == 0);
+}
+
+// Solaris-specific functionality
+#elif defined(__sun__)
+#include <termios.h>
+
+void searchForComPorts(charTupleVector* comPorts)
+{
+	// Open the Solaris callout dev directory
+	DIR *directoryIterator = opendir("/dev/cua/");
+	if (directoryIterator)
+	{
+		// Read all files in the current directory
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// See if the file names a potential serial port
+			if ((strlen(directoryEntry->d_name) >= 1) && (directoryEntry->d_name[0] != '.'))
+			{
+				// Determine system name of port
+				char* systemName = (char*)malloc(256);
+				strcpy(systemName, "/dev/cua/");
+				strcat(systemName, directoryEntry->d_name);
+
+				// Set static friendly name
+				char* friendlyName = (char*)malloc(256);
+				strcpy(friendlyName, "Serial Port");
+
+				// Ensure that the file is not a directory
+				struct stat fileStats;
+				stat(systemName, &fileStats);
+				if (!S_ISDIR(fileStats.st_mode))
+				{
+					// Determine if port is already in the list, and add it if not
+					if (!keyExists(comPorts, systemName))
+						push_back(comPorts, systemName, friendlyName, friendlyName);
+				}
+
+				// Clean up memory
+				free(systemName);
+				free(friendlyName);
+			}
+			directoryEntry = readdir(directoryIterator);
+		}
+
+		// Close the directory
+		closedir(directoryIterator);
+	}
+
+	// Open the Solaris dial-in dev directory
+	directoryIterator = opendir("/dev/term/");
+	if (directoryIterator)
+	{
+		// Read all files in the current directory
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// See if the file names a potential serial port
+			if ((strlen(directoryEntry->d_name) >= 1) && (directoryEntry->d_name[0] != '.'))
+			{
+				// Determine system name of port
+				char* systemName = (char*)malloc(256);
+				strcpy(systemName, "/dev/term/");
+				strcat(systemName, directoryEntry->d_name);
+
+				// Set static friendly name
+				char* friendlyName = (char*)malloc(256);
+				strcpy(friendlyName, "Serial Port (Dial-In)");
+
+				// Ensure that the file is not a directory
+				struct stat fileStats;
+				stat(systemName, &fileStats);
+				if (!S_ISDIR(fileStats.st_mode))
+				{
+					// Determine if port is already in the list, and add it if not
+					if (!keyExists(comPorts, systemName))
+						push_back(comPorts, systemName, friendlyName, friendlyName);
+				}
+
+				// Clean up memory
+				free(systemName);
+				free(friendlyName);
+			}
+			directoryEntry = readdir(directoryIterator);
+		}
+
+		// Close the directory
+		closedir(directoryIterator);
+	}
+}
+
+baud_rate getBaudRateCode(baud_rate baudRate)
+{
+	// Translate a raw baud rate into a system-specified one
+	switch (baudRate)
+	{
+		case 50:
+			return B50;
+		case 75:
+			return B75;
+		case 110:
+			return B110;
+		case 134:
+			return B134;
+		case 150:
+			return B150;
+		case 200:
+			return B200;
+		case 300:
+			return B300;
+		case 600:
+			return B600;
+		case 1200:
+			return B1200;
+		case 1800:
+			return B1800;
+		case 2400:
+			return B2400;
+		case 4800:
+			return B4800;
+		case 9600:
+			return B9600;
+		case 19200:
+			return B19200;
+		case 38400:
+			return B38400;
+		case 57600:
+			return B57600;
+		case 76800:
+			return B76800;
+		case 115200:
+			return B115200;
+		case 153600:
+			return B153600;
+		case 230400:
+			return B230400;
+		case 307200:
+			return B307200;
+		case 460800:
+			return B460800;
+		default:
+			return 0;
+	}
+
+	return 0;
+}
+
+int setBaudRateCustom(int portFD, baud_rate baudRate)
+{
+	// No way to set custom baud rates on this OS
+	return 0;
+}
+
+// Apple-specific functionality
+#elif defined(__APPLE__)
+#include <sys/ioctl.h>
+#include <IOKit/serial/ioss.h>
+
+baud_rate getBaudRateCode(baud_rate baudRate)
+{
+	// Translate a raw baud rate into a system-specified one
+	switch (baudRate)
+	{
+		case 50:
+			return B50;
+		case 75:
+			return B75;
+		case 110:
+			return B110;
+		case 134:
+			return B134;
+		case 150:
+			return B150;
+		case 200:
+			return B200;
+		case 300:
+			return B300;
+		case 600:
+			return B600;
+		case 1200:
+			return B1200;
+		case 1800:
+			return B1800;
+		case 2400:
+			return B2400;
+		case 4800:
+			return B4800;
+		case 9600:
+			return B9600;
+		case 19200:
+			return B19200;
+		case 38400:
+			return B38400;
+		default:
+			return 0;
+	}
+
+	return 0;
+}
+
+int setBaudRateCustom(int portFD, baud_rate baudRate)
+{
+	// Use OSX-specific ioctls to set a custom baud rate
+	unsigned long microseconds = 1000;
+	int retVal = ioctl(portFD, IOSSIOSPEED, &baudRate);
+	ioctl(portFD, IOSSDATALAT, &microseconds);
+	return (retVal == 0);
 }
 
 #endif
