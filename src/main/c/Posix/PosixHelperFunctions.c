@@ -510,13 +510,15 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 	int retVal = ioctl(portFD, TCSETS2, &options);
 #else
 	struct serial_struct serInfo;
-	ioctl(portFD, TIOCGSERIAL, &serInfo);
-	serInfo.flags &= ~ASYNC_SPD_MASK;
-	serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
-	serInfo.custom_divisor = serInfo.baud_base / baudRate;
-	if (sersInfo.custom_divisor == 0)
-		serInfo.custom_divisor = 1;
-	int retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
+	int retVal = ioctl(portFD, TIOCGSERIAL, &serInfo);
+	if (retVal == 0) {
+		serInfo.flags &= ~ASYNC_SPD_MASK;
+		serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
+		serInfo.custom_divisor = serInfo.baud_base / baudRate;
+		if (sersInfo.custom_divisor == 0)
+			serInfo.custom_divisor = 1;
+		retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
+	}
 #endif
 	return (retVal == 0);
 }

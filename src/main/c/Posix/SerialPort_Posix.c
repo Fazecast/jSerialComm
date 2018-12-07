@@ -336,9 +336,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
 	struct serial_struct serInfo;
-	ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
-	serInfo.xmit_fifo_size = sendDeviceQueueSize;
-	ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
+	int tiocgserialRetVal = ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
+	if (tiocgserialRetVal == 0) {
+		serInfo.xmit_fifo_size = sendDeviceQueueSize;
+		ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
+	}
 #endif
 	if (nonStandardBaudRate)
 		setBaudRateCustom(serialPortFD, baudRate);
