@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 12, 2018
+ *  Last Updated on:  Dec 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -511,7 +511,8 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 #else
 	struct serial_struct serInfo;
 	int retVal = ioctl(portFD, TIOCGSERIAL, &serInfo);
-	if (retVal == 0) {
+	if (retVal == 0)
+	{
 		serInfo.flags &= ~ASYNC_SPD_MASK;
 		serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
 		serInfo.custom_divisor = serInfo.baud_base / baudRate;

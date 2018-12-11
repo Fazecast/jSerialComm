@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 12, 2018
+ *  Last Updated on:  Dec 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -336,8 +337,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
 	struct serial_struct serInfo;
-	int tiocgserialRetVal = ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
-	if (tiocgserialRetVal == 0) {
+	int ioctlRetVal = ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
+	if (ioctlRetVal == 0)
+	{
 		serInfo.xmit_fifo_size = sendDeviceQueueSize;
 		ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
 	}
@@ -447,24 +449,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
+	// Initialize the waiting set
 	if (serialPortFD <= 0)
 		return 0;
-
-	// Initialize the waiting set
-	fd_set waitingSet;
-	FD_ZERO(&waitingSet);
-	FD_SET(serialPortFD, &waitingSet);
+	struct pollfd waitingSet = { serialPortFD, POLLIN, 0 };
 
 	// Wait for a serial port event
-	int retVal;
-	do
-	{
-		struct timeval timeout = { 1, 0 };
-		retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout);
-	} while ((retVal < 0) && ((errno == EINTR) || (errno == EAGAIN)));
-	if (retVal <= 0)
+	if (poll(&waitingSet, 1, 1000) <= 0)
 		return 0;
-	return (FD_ISSET(serialPortFD, &waitingSet)) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
+	return (waitingSet.revents & POLLIN) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortFD)

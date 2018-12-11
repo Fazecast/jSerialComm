@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Oct 08, 2018
+ *  Last Updated on:  Dec 07, 2018
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2018 Fazecast, Inc.
@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <poll.h>
 #include <unistd.h>
 #include <termios.h>
 #include <sys/time.h>
@@ -380,24 +381,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
+	// Initialize the waiting set
 	if (serialPortFD <= 0)
 		return 0;
-
-	// Initialize the waiting set
-	fd_set waitingSet;
-	FD_ZERO(&waitingSet);
-	FD_SET(serialPortFD, &waitingSet);
+	struct pollfd waitingSet = { serialPortFD, POLLIN, 0 };
 
 	// Wait for a serial port event
-	int retVal;
-	do
-	{
-		struct timeval timeout = { 1, 0 };
-		retVal = select(serialPortFD + 1, &waitingSet, NULL, NULL, &timeout);
-	} while ((retVal < 0) && ((errno == EINTR) || (errno == EAGAIN)));
-	if (retVal <= 0)
+	if (poll(&waitingSet, 1, 1000) <= 0)
 		return 0;
-	return (FD_ISSET(serialPortFD, &waitingSet)) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
+	return (waitingSet.revents & POLLIN) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortFD)
