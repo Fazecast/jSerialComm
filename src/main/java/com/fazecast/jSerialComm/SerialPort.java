@@ -123,7 +123,7 @@ public final class SerialPort
 			if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv9_64" : "Solaris/x86_64";
 			else
-				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8_32" : "Solaris/x86";
+				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8plus_32" : "Solaris/x86";
 			isUnixBased = true;
 			fileName = "libjSerialComm.so";
 		}
