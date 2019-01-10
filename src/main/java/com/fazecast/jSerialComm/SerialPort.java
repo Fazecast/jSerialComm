@@ -1236,11 +1236,17 @@ public final class SerialPort
 		}
 
 		@Override
-		public final int read() throws SerialPortIOException
+		public final int read() throws SerialPortIOException, SerialPortTimeoutException
 		{
+			// Perform error checking
 			if (!isOpened)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
-			return (readBytes(portHandle, byteBuffer, 1L, 0) < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
+
+			// Read from the serial port
+			int numRead = readBytes(portHandle, byteBuffer, 1L, 0);
+			if (numRead == 0)
+				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
+			return (numRead < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
 		}
 
 		@Override
