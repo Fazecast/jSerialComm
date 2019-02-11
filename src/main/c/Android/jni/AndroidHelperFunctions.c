@@ -304,8 +304,7 @@ void setBaudRate(int portFD, int baudRate)
 //		requestWrapper.data = &options;
 //		ioctl(portFD, USBDEVFS_IOCTL, &requestWrapper);
 //	}
-	cfsetispeed(&options, B38400);
-	cfsetospeed(&options, B38400);
+	options.c_cflag = (options.c_cflag & ~CBAUD) | (B38400 & CBAUD);
 	if (isatty(portFD))
 		ioctl(portFD, TCSETS, &options);
 	else

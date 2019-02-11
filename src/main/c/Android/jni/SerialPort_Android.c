@@ -2,10 +2,10 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Dec 07, 2018
+ *  Last Updated on:  Feb 11, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -151,7 +151,11 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			struct termios options = { 0 };
 			fcntl(serialPortFD, F_SETFL, 0);
 			ioctl(serialPortFD, TCGETS, &options);
-			cfmakeraw(&options);
+			options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+			options.c_oflag &= ~OPOST;
+			options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+			options.c_cflag &= ~(CSIZE | PARENB);
+			options.c_cflag |= CS8;
 			if (!isDtrEnabled || !isRtsEnabled)
 				options.c_cflag &= ~HUPCL;
 			options.c_iflag |= BRKINT;
@@ -229,10 +233,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Set baud rate
 	unsigned int baudRateCode = getBaudRateCode(baudRate);
 	if (baudRateCode != 0)
-	{
-		cfsetispeed(&options, baudRateCode);
-		cfsetospeed(&options, baudRateCode);
-	}
+		options.c_cflag = (options.c_cflag & ~CBAUD) | (baudRateCode & CBAUD);
 
 	// Apply changes
 	int retVal = -1;
@@ -401,13 +402,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 
 	// Force the port to enter non-blocking mode to ensure that any current reads return
 	struct termios options;
-	tcgetattr(serialPortFD, &options);
+	ioctl(serialPortFD, TCGETS, &options);
 	int flags = fcntl(serialPortFD, F_GETFL);
 	flags |= O_NONBLOCK;
 	options.c_cc[VMIN] = 0;
 	options.c_cc[VTIME] = 0;
 	int retVal = fcntl(serialPortFD, F_SETFL, flags);
-	tcsetattr(serialPortFD, TCSANOW, &options);
+	ioctl(serialPortFD, TCSETS, &options);
 
 	// Close the port
 	while ((close(serialPortFD) == -1) && (errno != EBADF));
@@ -536,7 +537,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	{
 		// Problem writing, allow others to open the port and close it ourselves
 		ioctl(serialPortFD, TIOCNXCL);
-		tcdrain(serialPortFD);
+		ioctl(serialPortFD, TCSBRK, 1);
 		while ((close(serialPortFD) == -1) && (errno != EBADF));
 		serialPortFD = -1;
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
@@ -545,7 +546,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 	// Wait until all bytes were written in write-blocking mode
 	if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0)
-		tcdrain(serialPortFD);
+		ioctl(serialPortFD, TCSBRK, 1);
 
 	// Return number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
