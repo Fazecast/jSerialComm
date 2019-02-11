@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 29, 2018
+ *  Last Updated on:  Feb 11, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -169,11 +169,12 @@ public final class SerialPort
 							libraryPath += "-hf";
 						else
 						{
+							String line;
 							ProcessBuilder pb = new ProcessBuilder("/bin/sh", "-c", "ls /lib/ld-linux*");
 							Process p = pb.start();
 							p.waitFor();
 							BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-							if (br.readLine().contains("armhf"))
+							if (((line = br.readLine()) != null) && line.contains("armhf"))
 								libraryPath += "-hf";
 							else
 							{
@@ -181,7 +182,7 @@ public final class SerialPort
 								p = pb.start();
 								p.waitFor();
 								br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-								if (br.readLine().contains("armhf"))
+								if (((line = br.readLine()) != null) && line.contains("armhf"))
 									libraryPath += "-hf";
 							}
 						}
