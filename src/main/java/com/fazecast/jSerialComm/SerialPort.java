@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 11, 2019
+ *  Last Updated on:  Mar 07, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -42,7 +42,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.4.1
+ * @version 2.4.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -520,6 +520,7 @@ public final class SerialPort
 	private final native boolean preclearDTR();							// Clear DTR line to 0 prior to opening
 	private final native boolean getCTS(long portHandle);				// Returns whether the CTS signal is 1
 	private final native boolean getDSR(long portHandle);				// Returns whether the DSR signal is 1
+	private final native boolean getDCD(long portHandle);				// Returns whether the DCD signal is 1
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes(byte[], long)} were to be called immediately
@@ -663,6 +664,12 @@ public final class SerialPort
 	 * @return Whether or not the DSR line is asserted.
 	 */
 	public final boolean getDSR() { return getDSR(portHandle); }
+	
+	/**
+	 * Returns whether the DCD line is currently asserted.
+	 * @return Whether or not the DCD line is asserted.
+	 */
+	public final boolean getDCD() { return getDCD(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}

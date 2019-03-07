@@ -31,7 +31,7 @@ import java.util.EventObject;
  * This class describes an asynchronous serial port event.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.4.1
+ * @version 2.4.2
  * @see java.util.EventObject
  */
 public final class SerialPortEvent extends EventObject

@@ -253,6 +253,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR
   (JNIEnv *, jobject, jlong);
 
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getDCD
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD
+  (JNIEnv *, jobject, jlong);
+
 #ifdef __cplusplus
 }
 #endif

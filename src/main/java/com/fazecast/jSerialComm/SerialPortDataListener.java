@@ -31,7 +31,7 @@ import java.util.EventListener;
  * This interface must be implemented to enable simple event-based serial port I/O.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.4.1
+ * @version 2.4.2
  * @see java.util.EventListener
  */
 public interface SerialPortDataListener extends EventListener

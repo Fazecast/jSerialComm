@@ -2,10 +2,10 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 07, 2018
+ *  Last Updated on:  Mar 07, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -28,6 +28,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <termios.h>
@@ -247,35 +248,44 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	int serialPortFD = -1;
 	if ((serialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK)) > 0)
 	{
-		// Clear any serial port flags and set up raw, non-canonical port parameters
-		struct termios options = { 0 };
-		fcntl(serialPortFD, F_SETFL, 0);
-		tcgetattr(serialPortFD, &options);
-#if defined(__sun__)
-		options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-		options.c_oflag &= ~OPOST;
-		options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-		options.c_cflag &= ~(CSIZE | PARENB);
-		options.c_cflag |= CS8;
-#else
-		cfmakeraw(&options);
-#endif
-		if (!isDtrEnabled || !isRtsEnabled)
-			options.c_cflag &= ~HUPCL;
-		options.c_iflag |= BRKINT;
-		tcsetattr(serialPortFD, TCSANOW, &options);
-
-		// Configure the port parameters and timeouts
-		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD))
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_TRUE);
-		else
+		// Ensure that multiple root users cannot access the device simultaneously
+		if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
 		{
-			// Close the port if there was a problem setting the parameters
-			ioctl(serialPortFD, TIOCNXCL);
-			tcdrain(serialPortFD);
 			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+		}
+		else
+		{
+			// Clear any serial port flags and set up raw, non-canonical port parameters
+			struct termios options = { 0 };
+			fcntl(serialPortFD, F_SETFL, 0);
+			tcgetattr(serialPortFD, &options);
+#if defined(__sun__)
+			options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+			options.c_oflag &= ~OPOST;
+			options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+			options.c_cflag &= ~(CSIZE | PARENB);
+			options.c_cflag |= CS8;
+#else
+			cfmakeraw(&options);
+#endif
+			if (!isDtrEnabled || !isRtsEnabled)
+				options.c_cflag &= ~HUPCL;
+			options.c_iflag |= BRKINT;
+			tcsetattr(serialPortFD, TCSANOW, &options);
+
+			// Configure the port parameters and timeouts
+			if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD))
+				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_TRUE);
+			else
+			{
+				// Close the port if there was a problem setting the parameters
+				ioctl(serialPortFD, TIOCNXCL);
+				tcdrain(serialPortFD);
+				while ((close(serialPortFD) == -1) && (errno != EBADF));
+				serialPortFD = -1;
+				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+			}
 		}
 	}
 
@@ -482,6 +492,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	tcsetattr(serialPortFD, TCSANOW, &options);
 
 	// Close the port
+	flock(serialPortFD, LOCK_UN);
 	while ((close(serialPortFD) == -1) && (errno != EBADF));
 	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 	return JNI_TRUE;
@@ -781,4 +792,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR(JNIEn
 		return JNI_FALSE;
 	int modemBits = 0;
 	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_LE);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_CAR);
 }

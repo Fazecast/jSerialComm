@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 31, 2018
+ *  Last Updated on:  Mar 07, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -893,6 +893,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR(JNIEn
 		return JNI_FALSE;
 	DWORD modemStatus = 0;
 	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_DSR_ON);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	DWORD modemStatus = 0;
+	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_RLSD_ON);
 }
 
 #endif
