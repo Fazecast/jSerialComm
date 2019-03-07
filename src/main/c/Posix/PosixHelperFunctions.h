@@ -2,10 +2,10 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 12, 2018
+ *  Last Updated on:  Mar 07, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -53,8 +53,13 @@ void driverBasedSearchForComPorts(charTupleVector* comPorts);
 
 // Solaris-specific functionality
 #elif defined(__sun__)
+#define LOCK_SH 1
+#define LOCK_EX 2
+#define LOCK_NB 4
+#define LOCK_UN 8
 typedef int baud_rate;
 extern int ioctl(int __fd, int __request, ...);
+int flock(int fd, int op);
 void searchForComPorts(charTupleVector* comPorts);
 
 // Apple-specific functionality
