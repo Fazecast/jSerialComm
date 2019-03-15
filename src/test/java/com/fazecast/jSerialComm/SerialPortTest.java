@@ -2,10 +2,10 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Jan 10, 2018
+ *  Last Updated on:  Mar 14, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2019 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -26,13 +26,14 @@
 package com.fazecast.jSerialComm;
 
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.Scanner;
 
 /**
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.4.1
+ * @version 2.5.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -53,6 +54,22 @@ public class SerialPortTest
 		}
 		@Override
 		public int getPacketSize() { return 100; }
+	}
+	
+	private static final class MessageListener implements SerialPortMessageListener
+	{
+		@Override
+		public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
+		@Override
+		public void serialEvent(SerialPortEvent event)
+		{
+			String newMessage = new String(event.getReceivedData());
+			System.out.println("Received the following message: " + newMessage);
+		}
+		@Override
+		public String getMessageDelimiter() { return "\n"; }
+		@Override
+		public Charset getCharacterEncoding() { return Charset.forName("UTF-8"); }
 	}
 	
 	static public void main(String[] args)
@@ -169,8 +186,13 @@ public class SerialPortTest
 		PacketListener listener = new PacketListener();
 		ubxPort.addDataListener(listener);
 		try { Thread.sleep(5000); } catch (Exception e) {}
-		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 		ubxPort.removeDataListener();
+		System.out.println("\nNow listening for newline-delimited string messages\n");
+		MessageListener messageListener = new MessageListener();
+		ubxPort.addDataListener(messageListener);
+		try { Thread.sleep(5000); } catch (Exception e) {}
+		ubxPort.removeDataListener();
+		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 		try { Thread.sleep(1000); } catch (InterruptedException e1) { e1.printStackTrace(); }
 		System.out.println("Reopening " + ubxPort.getDescriptivePortName() + ": " + ubxPort.openPort() + "\n");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 1000, 0);

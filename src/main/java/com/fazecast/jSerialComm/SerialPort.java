@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 07, 2019
+ *  Last Updated on:  Mar 15, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -26,6 +26,7 @@
 package com.fazecast.jSerialComm;
 
 import java.lang.ProcessBuilder;
+import java.nio.charset.Charset;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -37,12 +38,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Date;
+import java.util.regex.Pattern;
 
 /**
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.4.2
+ * @version 2.5.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -679,25 +681,29 @@ public final class SerialPort
 	 * <p>
 	 * Calling this function enables event-based serial port callbacks to be used instead of, or in addition to, direct serial port read/write calls or the {@link java.io.InputStream}/{@link java.io.OutputStream} interface.
 	 * <p>
-	 * The parameter passed into this method must be an implementation of either the {@link SerialPortDataListener} or the {@link SerialPortPacketListener}.
-	 * The {@link SerialPortPacketListener} interface <b>must</b> be used if you plan to use event-based reading of <i>full</i> data packets over the serial port.
+	 * The parameter passed into this method must be an implementation of either {@link SerialPortDataListener}, {@link SerialPortPacketListener}, or {@link SerialPortMessageListener}.
+	 * The {@link SerialPortMessageListener} interface <b>should</b> be used if you plan to use event-based reading of <i>delimited</i> data messages over the serial port.
+	 * The {@link SerialPortPacketListener} interface <b>should</b> be used if you plan to use event-based reading of <i>full</i> data packets over the serial port.
 	 * Otherwise, the simpler {@link SerialPortDataListener} may be used.
 	 * <p>
 	 * Only one listener can be registered at a time; however, that listener can be used to detect multiple types of serial port events.
-	 * Refer to {@link SerialPortDataListener} and {@link SerialPortPacketListener} for more information.
+	 * Refer to {@link SerialPortDataListener}, {@link SerialPortPacketListener}, and {@link SerialPortMessageListener} for more information.
 	 *
-	 * @param listener A {@link SerialPortDataListener} or {@link SerialPortPacketListener}implementation to be used for event-based serial port communications.
+	 * @param listener A {@link SerialPortDataListener}, {@link SerialPortPacketListener}, or {@link SerialPortMessageListener} implementation to be used for event-based serial port communications.
 	 * @return Whether the listener was successfully registered with the serial port.
 	 * @see SerialPortDataListener
 	 * @see SerialPortPacketListener
+	 * @see SerialPortMessageListener
 	 */
 	public final boolean addDataListener(SerialPortDataListener listener)
 	{
 		if (userDataListener != null)
 			return false;
 		userDataListener = listener;
-		serialEventListener = new SerialPortEventListener((userDataListener instanceof SerialPortPacketListener) ?
-				((SerialPortPacketListener)userDataListener).getPacketSize() : 0);
+		serialEventListener = ((userDataListener instanceof SerialPortPacketListener) ? new SerialPortEventListener(((SerialPortPacketListener)userDataListener).getPacketSize()) :
+			((userDataListener instanceof SerialPortMessageListener) ?
+					new SerialPortEventListener(((SerialPortMessageListener)userDataListener).getMessageDelimiter(), ((SerialPortMessageListener)userDataListener).getCharacterEncoding()) :
+						new SerialPortEventListener()));
 
 		eventFlags = 0;
 		if ((listener.getListeningEvents() & LISTENING_EVENT_DATA_AVAILABLE) > 0)
@@ -1139,10 +1145,15 @@ public final class SerialPort
 	{
 		private volatile boolean isListening = false;
 		private final byte[] dataPacket;
+		private final String delimiter, delimiterRegex;
+		private final Charset messageCharset;
 		private volatile int dataPacketIndex = 0;
+		private String messages = "";
 		private Thread serialEventThread = null;
 
-		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; }
+		public SerialPortEventListener() { dataPacket = new byte[0]; delimiter = delimiterRegex = ""; messageCharset = Charset.forName("UTF-8"); }
+		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; delimiter = delimiterRegex = ""; messageCharset = Charset.forName("UTF-8"); }
+		public SerialPortEventListener(String messageDelimiter, Charset charset) { dataPacket = new byte[0]; delimiter = messageDelimiter; delimiterRegex = Pattern.quote(messageDelimiter); messageCharset = charset; }
 
 		public final void startListening()
 		{
@@ -1192,7 +1203,17 @@ public final class SerialPort
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
 							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length, 0);
-							if(dataPacket.length == 0)
+							if (!delimiter.isEmpty())
+							{
+								messages += new String(newBytes, messageCharset);
+								while (messages.contains(delimiter))
+								{
+									String[] message = messages.split(delimiterRegex, 2);
+									messages = (message.length > 1) ? message[1] : "";
+									userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, message[0].getBytes(messageCharset)));
+								}
+							}
+							else if (dataPacket.length == 0)
 								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, newBytes.clone()));
 							else
 							{
