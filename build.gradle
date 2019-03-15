@@ -5,7 +5,7 @@ apply plugin: 'osgi'
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.4.2'
+version = '2.5.0'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
