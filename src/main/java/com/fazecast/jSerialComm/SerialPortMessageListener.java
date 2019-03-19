@@ -2,7 +2,7 @@
  * SerialPortMessageListener.java
  *
  *       Created on:  Mar 14, 2019
- *  Last Updated on:  Mar 15, 2019
+ *  Last Updated on:  Mar 19, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -25,10 +25,8 @@
 
 package com.fazecast.jSerialComm;
 
-import java.nio.charset.Charset;
-
 /**
- * This interface must be implemented to enable delimited string-based message reads using event-based serial port I/O.
+ * This interface must be implemented to enable delimited message reads using event-based serial port I/O.
  * <p>
  * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
  * 
@@ -40,16 +38,16 @@ import java.nio.charset.Charset;
 public interface SerialPortMessageListener extends SerialPortDataListener
 {
 	/**
-	 * Must be overridden to return the expected message delimiter that <b>must</b> be encountered before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
+	 * Must be overridden to return the expected message delimiter bytes that <b>must</b> be encountered before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
 	 * 
-	 * @return A string indicating the expected message delimiter that must be encountered before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
+	 * @return A byte array containing the expected message delimiters that must be encountered before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
 	 */
-	public abstract String getMessageDelimiter();
-	
+	public abstract byte[] getMessageDelimiter();
+
 	/**
-	 * Must be overridden to return the expected character encoding used by your message transfer protocol.
+	 * Must be overridden to return whether the message delimiter indicates the end or the beginning of a message.
 	 * 
-	 * @return A {@link java.nio.charset.Charset} indicating the expected character encoding used by your serial messages.
+	 * @return A boolean indicating whether the message delimiter indicates the end or the beginning of a message.
 	 */
-	public abstract Charset getCharacterEncoding();
+	public abstract boolean delimiterIndicatesEndOfMessage();
 }

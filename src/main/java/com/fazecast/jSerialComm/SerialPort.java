@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 15, 2019
+ *  Last Updated on:  Mar 19, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -26,8 +26,8 @@
 package com.fazecast.jSerialComm;
 
 import java.lang.ProcessBuilder;
-import java.nio.charset.Charset;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.regex.Pattern;
 
@@ -702,7 +703,7 @@ public final class SerialPort
 		userDataListener = listener;
 		serialEventListener = ((userDataListener instanceof SerialPortPacketListener) ? new SerialPortEventListener(((SerialPortPacketListener)userDataListener).getPacketSize()) :
 			((userDataListener instanceof SerialPortMessageListener) ?
-					new SerialPortEventListener(((SerialPortMessageListener)userDataListener).getMessageDelimiter(), ((SerialPortMessageListener)userDataListener).getCharacterEncoding()) :
+					new SerialPortEventListener(((SerialPortMessageListener)userDataListener).getMessageDelimiter(), ((SerialPortMessageListener)userDataListener).delimiterIndicatesEndOfMessage()) :
 						new SerialPortEventListener()));
 
 		eventFlags = 0;
@@ -1144,16 +1145,15 @@ public final class SerialPort
 	private final class SerialPortEventListener
 	{
 		private volatile boolean isListening = false;
-		private final byte[] dataPacket;
-		private final String delimiter, delimiterRegex;
-		private final Charset messageCharset;
-		private volatile int dataPacketIndex = 0;
-		private String messages = "";
+		private final boolean messageEndIsDelimited;
+		private final byte[] dataPacket, delimiters;
+		private volatile ByteArrayOutputStream messageBytes = new ByteArrayOutputStream();
+		private volatile int dataPacketIndex = 0, delimiterIndex = 0;
 		private Thread serialEventThread = null;
 
-		public SerialPortEventListener() { dataPacket = new byte[0]; delimiter = delimiterRegex = ""; messageCharset = Charset.forName("UTF-8"); }
-		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; delimiter = delimiterRegex = ""; messageCharset = Charset.forName("UTF-8"); }
-		public SerialPortEventListener(String messageDelimiter, Charset charset) { dataPacket = new byte[0]; delimiter = messageDelimiter; delimiterRegex = Pattern.quote(messageDelimiter); messageCharset = charset; }
+		public SerialPortEventListener() { dataPacket = new byte[0]; delimiters = new byte[0]; messageEndIsDelimited = true; }
+		public SerialPortEventListener(int packetSizeToReceive) { dataPacket = new byte[packetSizeToReceive]; delimiters = new byte[0]; messageEndIsDelimited = true; }
+		public SerialPortEventListener(byte[] messageDelimiters, boolean delimiterForMessageEnd) { dataPacket = new byte[0]; delimiters = messageDelimiters; messageEndIsDelimited = delimiterForMessageEnd; }
 
 		public final void startListening()
 		{
@@ -1203,15 +1203,28 @@ public final class SerialPort
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
 							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length, 0);
-							if (!delimiter.isEmpty())
+							if (delimiters.length > 0)
 							{
-								messages += new String(newBytes, messageCharset);
-								while (messages.contains(delimiter))
-								{
-									String[] message = messages.split(delimiterRegex, 2);
-									messages = (message.length > 1) ? message[1] : "";
-									userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, message[0].getBytes(messageCharset)));
-								}
+								int startIndex = 0;
+								for (int offset = 0; offset < bytesRemaining; ++offset)
+									if (newBytes[offset] == delimiters[delimiterIndex])
+									{
+										if ((++delimiterIndex) == delimiters.length)
+										{
+											messageBytes.write(newBytes, startIndex, 1 + offset - startIndex);
+											byte[] byteArray = (messageEndIsDelimited ? messageBytes.toByteArray() : Arrays.copyOf(messageBytes.toByteArray(), messageBytes.size() - delimiters.length));
+											if ((byteArray.length > 0) && (messageEndIsDelimited || (delimiters[0] == byteArray[0])))
+												userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, byteArray));
+											startIndex = offset + 1;
+											messageBytes.reset();
+											delimiterIndex = 0;
+											if (!messageEndIsDelimited)
+												messageBytes.write(delimiters, 0, delimiters.length);
+										}
+									}
+									else if (delimiterIndex != 0)
+										delimiterIndex = (newBytes[offset] == delimiters[0]) ? 1 : 0;
+								messageBytes.write(newBytes, startIndex, bytesRemaining - startIndex);
 							}
 							else if (dataPacket.length == 0)
 								userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, LISTENING_EVENT_DATA_RECEIVED, newBytes.clone()));

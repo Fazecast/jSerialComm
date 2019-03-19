@@ -2,7 +2,7 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Mar 14, 2019
+ *  Last Updated on:  Mar 19, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -58,18 +58,28 @@ public class SerialPortTest
 	
 	private static final class MessageListener implements SerialPortMessageListener
 	{
+		public String byteToHex(byte num)
+		{
+			char[] hexDigits = new char[2];
+			hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
+			hexDigits[1] = Character.forDigit((num & 0xF), 16);
+			return new String(hexDigits);
+		}
 		@Override
 		public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_RECEIVED; }
 		@Override
 		public void serialEvent(SerialPortEvent event)
 		{
-			String newMessage = new String(event.getReceivedData());
-			System.out.println("Received the following message: " + newMessage);
+			byte[] byteArray = event.getReceivedData();
+			StringBuffer hexStringBuffer = new StringBuffer();
+			for (int i = 0; i < byteArray.length; i++)
+				hexStringBuffer.append(byteToHex(byteArray[i]));
+			System.out.println("Received the following message: " + hexStringBuffer.toString());
 		}
 		@Override
-		public String getMessageDelimiter() { return "\n"; }
+		public byte[] getMessageDelimiter() { return new byte[]{ (byte)0xB5, (byte)0x62 }; }
 		@Override
-		public Charset getCharacterEncoding() { return Charset.forName("UTF-8"); }
+		public boolean delimiterIndicatesEndOfMessage() { return false; }
 	}
 	
 	static public void main(String[] args)
@@ -187,7 +197,7 @@ public class SerialPortTest
 		ubxPort.addDataListener(listener);
 		try { Thread.sleep(5000); } catch (Exception e) {}
 		ubxPort.removeDataListener();
-		System.out.println("\nNow listening for newline-delimited string messages\n");
+		System.out.println("\nNow listening for byte-delimited binary messages\n");
 		MessageListener messageListener = new MessageListener();
 		ubxPort.addDataListener(messageListener);
 		try { Thread.sleep(5000); } catch (Exception e) {}
