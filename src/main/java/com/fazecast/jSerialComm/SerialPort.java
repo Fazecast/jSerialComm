@@ -295,8 +295,9 @@ public final class SerialPort
 	 *
 	 * @param portDescriptor The desired serial port to use with this library.
 	 * @return A SerialPort object.
+	 * @throws java.io.IOException
 	 */
-	static public SerialPort getCommPort(String portDescriptor)
+	static public SerialPort getCommPort(String portDescriptor) throws IOException
 	{
 		// Correct port descriptor, if needed
 		try
@@ -317,11 +318,8 @@ public final class SerialPort
 		}
 		catch (Exception e)
 		{
-			SerialPort serialPort = new SerialPort();
-			serialPort.comPort = "/dev/null";
-			serialPort.friendlyName = "Bad Port";
-			serialPort.portDescription = "Bad Port";
-			return serialPort;
+			IOException ioex = new IOException("Unable to create SerialPort for descriptor - " + portDescriptor, e);
+			throw ioex;
 		}
 
 		// Create SerialPort object
