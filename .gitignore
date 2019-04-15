@@ -15,6 +15,7 @@ build
 .gradle
 gradle.properties
 build.gradle.private
+build.gradle.private.android
 
 # Eclipse Files #
 .settings
