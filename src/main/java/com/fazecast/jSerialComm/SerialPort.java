@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 22, 2019
+ *  Last Updated on:  Apr 15, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -1198,7 +1198,7 @@ public final class SerialPort
 					{
 						// Read data from serial port
 						int numBytesAvailable, bytesRemaining, newBytesIndex;
-						while ((numBytesAvailable = bytesAvailable(portHandle)) > 0)
+						while (isListening && ((numBytesAvailable = bytesAvailable(portHandle)) > 0))
 						{
 							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
