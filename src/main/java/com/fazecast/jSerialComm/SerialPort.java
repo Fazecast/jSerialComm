@@ -295,8 +295,9 @@ public final class SerialPort
 	 *
 	 * @param portDescriptor The desired serial port to use with this library.
 	 * @return A SerialPort object.
+	 * @exception SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
-	static public SerialPort getCommPort(String portDescriptor)
+	static public SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
 	{
 		// Correct port descriptor, if needed
 		try
@@ -315,21 +316,13 @@ public final class SerialPort
 			else if (!((new File(portDescriptor)).exists()))
 				portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 		}
-		catch (Exception e)
-		{
-			SerialPort serialPort = new SerialPort();
-			serialPort.comPort = "/dev/null";
-			serialPort.friendlyName = "Bad Port";
-			serialPort.portDescription = "Bad Port";
-			return serialPort;
-		}
+		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
 
-		// Create SerialPort object
+		// Create the SerialPort object
 		SerialPort serialPort = new SerialPort();
 		serialPort.comPort = portDescriptor;
 		serialPort.friendlyName = "User-Specified Port";
 		serialPort.portDescription = "User-Specified Port";
-
 		return serialPort;
 	}
 
