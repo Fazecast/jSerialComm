@@ -66,4 +66,6 @@ public interface SerialPortDataListener extends EventListener
 	 * @see SerialPortEvent
 	 */
 	public abstract void serialEvent(SerialPortEvent event);
+
+	public abstract void catchException(Exception e);
 }

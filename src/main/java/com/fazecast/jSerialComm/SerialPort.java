@@ -1167,7 +1167,7 @@ public final class SerialPort
 				@Override
 				public void run()
 				{
-					while (isListening && isOpened) { try { waitForSerialEvent(); } catch (NullPointerException e) { isListening = false; } }
+					while (isListening && isOpened) { try { waitForSerialEvent(); } catch (NullPointerException e) { isListening = false; userDataListener.catchException(e); } }
 					isListening = false;
 				}
 			});
