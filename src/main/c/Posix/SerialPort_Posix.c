@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 15, 2019
+ *  Last Updated on:  Jul 08, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -64,6 +64,9 @@ jfieldID parityField;
 jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
+jfieldID rs485ModeField;
+jfieldID rs485DelayBeforeField;
+jfieldID rs485DelayAfterField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -225,6 +228,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	flowControlField = (*env)->GetFieldID(env, serialCommClass, "flowControl", "I");
 	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
 	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
+	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
+	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
+	rs485DelayAfterField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayAfter", "I");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
@@ -307,7 +313,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
 	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
 	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
+	int rs485DelayBefore = (*env)->GetIntField(env, obj, rs485DelayBeforeField);
+	int rs485DelayAfter = (*env)->GetIntField(env, obj, rs485DelayAfterField);
 	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
+	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
@@ -347,8 +356,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
 	struct serial_struct serInfo;
-	int ioctlRetVal = ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
-	if (ioctlRetVal == 0)
+	if (ioctl(serialPortFD, TIOCGSERIAL, &serInfo) == 0)
 	{
 		serInfo.xmit_fifo_size = sendDeviceQueueSize;
 		ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
@@ -356,6 +364,21 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 #endif
 	if (nonStandardBaudRate)
 		setBaudRateCustom(serialPortFD, baudRate);
+
+	// Attempt to set the requested RS-485 mode
+#if defined(__linux__)
+	struct serial_rs485 rs485Conf;
+	if (ioctl(serialPortFD, TIOCGRS485, &rs485Conf) == 0)
+	{
+		if (rs485ModeEnabled)
+			rs485Conf.flags |= SER_RS485_ENABLED;
+		else
+			rs485Conf.flags &= ~SER_RS485_ENABLED;
+		rs485Conf.delay_rts_before_send = rs485DelayBefore;
+		rs485Conf.delay_rts_after_send = rs485DelayAfter;
+		ioctl(serialPortFD, TIOCSRS485, &rs485Conf);
+	}
+#endif
 	return ((retVal == 0) && Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD) ? JNI_TRUE : JNI_FALSE);
 }
 
@@ -538,7 +561,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 				// Problem reading, allow others to open the port and close it ourselves
 				ioctl(serialPortFD, TIOCNXCL);
 				tcdrain(serialPortFD);
-				while ((close(serialPortFD) == -1) && (errno != EBADF));
+				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -571,7 +594,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 				// Problem reading, allow others to open the port and close it ourselves
 				ioctl(serialPortFD, TIOCNXCL);
 				tcdrain(serialPortFD);
-				while ((close(serialPortFD) == -1) && (errno != EBADF));
+				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -596,7 +619,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			// Problem reading, allow others to open the port and close it ourselves
 			ioctl(serialPortFD, TIOCNXCL);
 			tcdrain(serialPortFD);
-			while ((close(serialPortFD) == -1) && (errno != EBADF));
+			while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
 			(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -631,7 +654,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		// Problem writing, allow others to open the port and close it ourselves
 		ioctl(serialPortFD, TIOCNXCL);
 		tcdrain(serialPortFD);
-		while ((close(serialPortFD) == -1) && (errno != EBADF));
+		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
 		serialPortFD = -1;
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);

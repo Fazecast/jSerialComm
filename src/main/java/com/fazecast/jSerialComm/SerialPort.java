@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 15, 2019
+ *  Last Updated on:  Jul 08, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -364,12 +364,14 @@ public final class SerialPort
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
+	private volatile int rs485DelayBefore = 0, rs485DelayAfter = 0;
 	private volatile SerialPortInputStream inputStream = null;
 	private volatile SerialPortOutputStream outputStream = null;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
-	private volatile boolean isOpened = false, disableConfig = false, isRtsEnabled = true, isDtrEnabled = true;
+	private volatile boolean isOpened = false, disableConfig = false;
+	private volatile boolean rs485Mode = false, isRtsEnabled = true, isDtrEnabled = true;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
@@ -821,6 +823,53 @@ public final class SerialPort
 	}
 
 	/**
+	 * Sets all serial port parameters at one time.
+	 * <p>
+	 * Allows the user to set all port parameters with a single function call.
+	 * <p>
+	 * The baud rate can be any arbitrary value specified by the user.  The default value is 9600 baud.  The data bits parameter
+	 * specifies how many data bits to use per word.  The default is 8, but any values from 5 to 8 are acceptable.
+	 * <p>
+	 * The default number of stop bits is 1, but 2 bits can also be used or even 1.5 on Windows machines.  Please use the built-in
+	 * constants for this parameter ({@link #ONE_STOP_BIT}, {@link #ONE_POINT_FIVE_STOP_BITS}, {@link #TWO_STOP_BITS}).
+	 * <p>
+	 * The parity parameter specifies how error detection is carried out.  Again, the built-in constants should be used.
+	 * Acceptable values are {@link #NO_PARITY}, {@link #EVEN_PARITY}, {@link #ODD_PARITY}, {@link #MARK_PARITY}, and {@link #SPACE_PARITY}.
+	 * <p>
+	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
+	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
+	 * may not work with all RS-485 devices.
+	 *
+	 * @param newBaudRate The desired baud rate for this serial port.
+	 * @param newDataBits The number of data bits to use per word.
+	 * @param newStopBits The number of stop bits to use.
+	 * @param newParity The type of parity error-checking desired.
+	 * @param useRS485Mode Whether to enable RS-485 mode.
+	 * @see #ONE_STOP_BIT
+	 * @see #ONE_POINT_FIVE_STOP_BITS
+	 * @see #TWO_STOP_BITS
+	 * @see #NO_PARITY
+	 * @see #EVEN_PARITY
+	 * @see #ODD_PARITY
+	 * @see #MARK_PARITY
+	 * @see #SPACE_PARITY
+	 */
+	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
+	{
+		baudRate = newBaudRate;
+		dataBits = newDataBits;
+		stopBits = newStopBits;
+		parity = newParity;
+		rs485Mode = useRS485Mode;
+
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			configPort(portHandle);
+		}
+	}
+
+	/**
 	 * Sets the serial port read and write timeout parameters.
 	 * <p>
 	 * <i>Note that time-based write timeouts are only available on Windows systems. There is no functionality to set a write timeout on other operating systems.</i>
@@ -1006,6 +1055,33 @@ public final class SerialPort
 	public final void setParity(int newParity)
 	{
 		parity = newParity;
+
+		if (isOpened)
+		{
+			try { Thread.sleep(200); } catch (Exception e) {}
+			configPort(portHandle);
+		}
+	}
+
+	/**
+	 * Sets whether to enable RS-485 mode for this device.
+	 * <p>
+	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
+	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
+	 * may not work with all RS-485 devices.
+	 * <p>
+	 * The delay parameters specify how long to wait before or after transmission of data before enabling or disabling
+	 * transmission mode via the RTS pin.
+	 *
+	 * @param useRS485Mode Whether to enable RS-485 mode.
+	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
+	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
+	 */
+	public final void setRs485ModeParameters(boolean useRS485Mode, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
+	{
+		rs485Mode = useRS485Mode;
+		rs485DelayBefore = delayBeforeSendMicroseconds;
+		rs485DelayAfter = delayAfterSendMicroseconds;
 
 		if (isOpened)
 		{

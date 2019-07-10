@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 07, 2019
+ *  Last Updated on:  Jul 08, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -57,6 +57,9 @@ jfieldID parityField;
 jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
+jfieldID rs485ModeField;
+jfieldID rs485DelayBeforeField;
+jfieldID rs485DelayAfterField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -358,6 +361,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	flowControlField = env->GetFieldID(serialCommClass, "flowControl", "I");
 	sendDeviceQueueSizeField = env->GetFieldID(serialCommClass, "sendDeviceQueueSize", "I");
 	receiveDeviceQueueSizeField = env->GetFieldID(serialCommClass, "receiveDeviceQueueSize", "I");
+	rs485ModeField = env->GetFieldID(serialCommClass, "rs485Mode", "Z");
+	rs485DelayBeforeField = env->GetFieldID(serialCommClass, "rs485DelayBefore", "I");
+	rs485DelayAfterField = env->GetFieldID(serialCommClass, "rs485DelayAfter", "I");
 	timeoutModeField = env->GetFieldID(serialCommClass, "timeoutMode", "I");
 	readTimeoutField = env->GetFieldID(serialCommClass, "readTimeout", "I");
 	writeTimeoutField = env->GetFieldID(serialCommClass, "writeTimeout", "I");
@@ -414,6 +420,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	DWORD sendDeviceQueueSize = (DWORD)env->GetIntField(obj, sendDeviceQueueSizeField);
 	DWORD receiveDeviceQueueSize = (DWORD)env->GetIntField(obj, receiveDeviceQueueSizeField);
 	BYTE configDisabled = (BYTE)env->GetBooleanField(obj, disableConfigField);
+	BYTE rs485ModeEnabled = (BYTE)env->GetBooleanField(obj, rs485ModeField);
 	BYTE isDtrEnabled = env->GetBooleanField(obj, isDtrEnabledField);
 	BYTE isRtsEnabled = env->GetBooleanField(obj, isRtsEnabledField);
 	BYTE stopBits = (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS;
@@ -424,7 +431,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BOOL DSREnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DSR_ENABLED) > 0) ||
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED) > 0));
 	BYTE DTRValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED) > 0) ? DTR_CONTROL_HANDSHAKE : (isDtrEnabled ? DTR_CONTROL_ENABLE : DTR_CONTROL_DISABLE);
-	BYTE RTSValue = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0) ? RTS_CONTROL_HANDSHAKE : (isRtsEnabled ? RTS_CONTROL_ENABLE : RTS_CONTROL_DISABLE);
+	BYTE RTSValue = (rs485ModeEnabled ? RTS_CONTROL_TOGGLE :
+			(((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0) ? RTS_CONTROL_HANDSHAKE : (isRtsEnabled ? RTS_CONTROL_ENABLE : RTS_CONTROL_DISABLE)));
 	BOOL XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0);
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
@@ -566,7 +574,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 			// Problem reading, close port
 			int numRetries = 10;
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
@@ -674,7 +682,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			// Problem reading, close port
 			int numRetries = 10;
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
@@ -684,7 +692,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			// Problem reading, close port
 			int numRetries = 10;
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
@@ -725,7 +733,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 			// Problem writing, close port
 			int numRetries = 10;
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
@@ -735,7 +743,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 			// Problem reading, close port
 			int numRetries = 10;
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
 			env->SetLongField(obj, serialPortHandleField, -1l);
 			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
