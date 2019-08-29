@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 23, 2019
+ *  Last Updated on:  Aug 28, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -30,7 +30,6 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -57,23 +56,14 @@ public final class SerialPort
 	private static volatile boolean isWindows = false;
 	static
 	{
-		// Determine the temporary file directory for Java
+		// Determine the temporary file directory for Java and remove any previous versions of this library
 		String OS = System.getProperty("os.name").toLowerCase();
 		String libraryPath = "", fileName = "";
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
-		if ((tempFileDirectory.charAt(tempFileDirectory.length()-1) != '\\') &&
-				(tempFileDirectory.charAt(tempFileDirectory.length()-1) != '/'))
+		if ((tempFileDirectory.charAt(tempFileDirectory.length()-1) != '\\') && (tempFileDirectory.charAt(tempFileDirectory.length()-1) != '/'))
 			tempFileDirectory += "/";
-
-		// Force remove any previous versions of this library
-		File directory = new File(tempFileDirectory);
-		if (directory.exists())
-		{
-			File directoryListing[] = directory.listFiles();
-			for (File listing : directoryListing)
-				if (listing.isFile() && listing.toString().contains("jSerialComm"))
-					listing.delete();
-		}
+		tempFileDirectory += "jSerialComm/";
+		deleteDirectory(new File(tempFileDirectory));
 
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
@@ -210,12 +200,14 @@ public final class SerialPort
 			System.exit(-1);
 		}
 
-		// Get path of native library and copy file to working directory
-		String tempFileName = tempFileDirectory + (new Date()).getTime() + "-" + fileName;
-		File tempNativeLibrary = new File(tempFileName);
-		tempNativeLibrary.deleteOnExit();
+		// Copy platform-specific binary to a temporary location
 		try
 		{
+			// Get path of native library and copy file to working directory
+			File tempNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-" + fileName);
+			tempNativeLibrary.getParentFile().mkdirs();
+			tempNativeLibrary.deleteOnExit();
+
 			// Load the native jSerialComm library
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
 			if ((fileContents == null) && isAndroid)
@@ -231,17 +223,13 @@ public final class SerialPort
 			else
 			{
 				// Copy the native library to the system temp directory
-				try
-				{
-					FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-					byte transferBuffer[] = new byte[4096];
-					int numBytesRead;
+				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+				byte transferBuffer[] = new byte[4096];
+				int numBytesRead;
 
-					while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-						destinationFileContents.write(transferBuffer, 0, numBytesRead);
-					destinationFileContents.close();
-				}
-				catch (FileNotFoundException e) {};
+				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+					destinationFileContents.write(transferBuffer, 0, numBytesRead);
+				destinationFileContents.close();
 				fileContents.close();
 
 				// Load and initialize native library
@@ -257,6 +245,15 @@ public final class SerialPort
 	{
 		File canonicalFile = (file.getParent() == null) ? file : new File(file.getParentFile().getCanonicalFile(), file.getName());
 		return !canonicalFile.getCanonicalFile().equals(canonicalFile.getAbsoluteFile());
+	}
+
+	// Static recursive directory deletion function
+	private static void deleteDirectory(File path)
+	{
+		if (path.isDirectory())
+			for (File file : path.listFiles())
+				deleteDirectory(file);
+		path.delete();
 	}
 
 	/**
