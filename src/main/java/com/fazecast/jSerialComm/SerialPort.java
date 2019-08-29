@@ -152,7 +152,8 @@ public final class SerialPort
 				if (libraryPath.isEmpty())
 					libraryPath = "Linux/armv6";
 				else if (libraryPath.contains("Linux/armv8"))
-					libraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "_64" : "_32";
+					libraryPath += ((System.getProperty("sun.arch.data.model") != null) ? ("_" + System.getProperty("sun.arch.data.model")) :
+						((System.getProperty("os.arch").indexOf("64") >= 0) ? "_64" : "_32"));
 				else
 				{
 					try
