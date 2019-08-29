@@ -291,7 +291,7 @@ public final class SerialPort
 	 * On Linux machines, the descriptor will look similar to "/dev/tty[*]".
 	 *
 	 * @param portDescriptor The desired serial port to use with this library.
-	 * @return A SerialPort object.
+	 * @return A {@link SerialPort} object.
 	 * @exception SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
 	static public SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException

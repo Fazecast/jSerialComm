@@ -2,7 +2,7 @@
  * SerialPortDataListenerWithExceptions.java
  *
  *       Created on:  Jul 11, 2019
- *  Last Updated on:  Jul 11, 2019
+ *  Last Updated on:  Aug 28, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -37,6 +37,8 @@ public interface SerialPortDataListenerWithExceptions extends SerialPortDataList
 {
 	/**
 	 * Must be overridden to handle any Java exceptions that occur asynchronously in this data listener.
+	 *
+	 * @param e An {@link Exception} object containing information about the exception that occurred.
 	 */
 	public abstract void catchException(Exception e);
 }
