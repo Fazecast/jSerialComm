@@ -1245,7 +1245,7 @@ public final class SerialPort
 					while (isListening && isOpened)
 					{
 						try { waitForSerialEvent(); }
-						catch (NullPointerException e)
+						catch (Exception e)
 						{
 							isListening = false;
 							if (userDataListener instanceof SerialPortDataListenerWithExceptions)
@@ -1267,12 +1267,12 @@ public final class SerialPort
 			int oldEventFlags = eventFlags;
 			eventFlags = 0;
 			configEventFlags(portHandle);
+			eventFlags = oldEventFlags;
 			try { serialEventThread.join(); } catch (InterruptedException e) {}
 			serialEventThread = null;
-			eventFlags = oldEventFlags;
 		}
 
-		public final void waitForSerialEvent() throws NullPointerException
+		public final void waitForSerialEvent() throws Exception
 		{
 			switch (waitForEvent(portHandle))
 			{
