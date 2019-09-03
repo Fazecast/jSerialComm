@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Aug 28, 2019
+ *  Last Updated on:  Sep 03, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -43,14 +43,14 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.5.2
+ * @version 2.5.3
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	private static final String versionString = "2.5.2";
+	private static final String versionString = "2.5.3";
 	private static volatile boolean isAndroid = false;
 	private static volatile boolean isUnixBased = false;
 	private static volatile boolean isWindows = false;
