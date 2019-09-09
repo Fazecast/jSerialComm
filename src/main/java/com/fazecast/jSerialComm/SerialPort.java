@@ -86,7 +86,10 @@ public final class SerialPort
 				getpropProcess.waitFor();
 				buildProperties.close();
 			}
-			catch (Exception e) { e.printStackTrace(); }
+			catch (Exception e) {
+				handleInterruptedException(e);
+				e.printStackTrace(); 
+			}
 
 			if (libraryPath.isEmpty())
 				libraryPath = "Android/armeabi";
@@ -146,7 +149,10 @@ public final class SerialPort
 					}
 					cpuPropertiesFile.close();
 				}
-				catch (Exception e) { e.printStackTrace(); }
+				catch (Exception e) {
+					handleInterruptedException(e);
+					e.printStackTrace(); 
+				}
 
 				// Ensure that there was no error, and see if we need to use the hard-float dynamic linker
 				if (libraryPath.isEmpty())
@@ -181,7 +187,10 @@ public final class SerialPort
 							}
 						}
 					}
-					catch (Exception e) { e.printStackTrace(); }
+					catch (Exception e) {
+						handleInterruptedException(e);
+						e.printStackTrace(); 
+					}
 				}
 			}
 			else if (System.getProperty("os.arch").indexOf("aarch32") >= 0)
@@ -238,7 +247,17 @@ public final class SerialPort
 				initializeLibrary();
 			}
 		}
-		catch (Exception e) { e.printStackTrace(); }
+		catch (Exception e) {
+			handleInterruptedException(e);
+			e.printStackTrace(); 
+		}
+	}
+	
+	private static void handleInterruptedException(Exception exception){
+		if (!(exception instanceof InterruptedException)) {
+			return;
+		}
+		Thread.currentThread().interrupt();
 	}
 
 	// Static symbolic link testing function
@@ -314,7 +333,10 @@ public final class SerialPort
 			else if (!((new File(portDescriptor)).exists()))
 				portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 		}
-		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
+		catch (Exception e) {
+			handleInterruptedException(e);	
+			throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); 
+		}
 
 		// Create the SerialPort object
 		SerialPort serialPort = new SerialPort();
@@ -393,7 +415,7 @@ public final class SerialPort
 
 		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
 		if (safetySleepTime > 0)
-			try { Thread.sleep(safetySleepTime); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(safetySleepTime); } catch (Exception e) { handleInterruptedException(e); }
 
 		// If this is an Android root application, we must explicitly allow serial port access to the library
 		File portFile = isAndroid ? new File(comPort) : null;
@@ -412,6 +434,7 @@ public final class SerialPort
 			}
 			catch (Exception e)
 			{
+				handleInterruptedException(e);
 				e.printStackTrace();
 				return false;
 			}
@@ -419,11 +442,11 @@ public final class SerialPort
 			{
 				if (process == null)
 					return false;
-				try { process.waitFor(); } catch (InterruptedException e) { return false; }
+				try { process.waitFor(); } catch (InterruptedException e) { handleInterruptedException(e); return false; }
 				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-				try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
+				try { Thread.sleep(500); } catch (InterruptedException e) { handleInterruptedException(e); return false; }
 			}
 		}
 
@@ -816,7 +839,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -863,7 +886,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -928,7 +951,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configTimeouts(portHandle);
 		}
 	}
@@ -946,7 +969,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -964,7 +987,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -988,7 +1011,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -1033,7 +1056,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -1057,7 +1080,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -1084,7 +1107,7 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			try { Thread.sleep(200); } catch (Exception e) { handleInterruptedException(e); }
 			configPort(portHandle);
 		}
 	}
@@ -1247,6 +1270,7 @@ public final class SerialPort
 						try { waitForSerialEvent(); }
 						catch (Exception e)
 						{
+							handleInterruptedException(e);
 							isListening = false;
 							if (userDataListener instanceof SerialPortDataListenerWithExceptions)
 								((SerialPortDataListenerWithExceptions)userDataListener).catchException(e);
@@ -1268,7 +1292,7 @@ public final class SerialPort
 			eventFlags = 0;
 			configEventFlags(portHandle);
 			eventFlags = oldEventFlags;
-			try { serialEventThread.join(); } catch (InterruptedException e) {}
+			try { serialEventThread.join(); } catch (InterruptedException e) { handleInterruptedException(e); }
 			serialEventThread = null;
 		}
 
