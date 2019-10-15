@@ -261,6 +261,30 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD
   (JNIEnv *, jobject, jlong);
 
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getDTR
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDTR
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getRTS
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRTS
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getRI
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI
+  (JNIEnv *, jobject, jlong);
+
 #ifdef __cplusplus
 }
 #endif

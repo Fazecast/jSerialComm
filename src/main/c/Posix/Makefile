@@ -5,14 +5,14 @@ COMPILE_ARM32HF				:= arm32hf-unknown-linux-gnueabi-gcc
 COMPILE_ARM64				:= aarch64-unknown-linux-gnueabi-gcc
 COMPILE_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC		:= sparc-sun-solaris2.10-gcc
-COMPILE_APPLE				:= /usr/local/bin/gcc-8
+COMPILE_APPLE				:= /usr/local/bin/gcc-9
 LINK						:= gcc
 LINK_ARM32					:= arm32-unknown-linux-gnueabi-gcc
 LINK_ARM32HF				:= arm32hf-unknown-linux-gnueabi-gcc
 LINK_ARM64					:= aarch64-unknown-linux-gnueabi-gcc
 LINK_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 LINK_SOLARIS_SPARC			:= sparc-sun-solaris2.10-gcc
-LINK_APPLE					:= /usr/local/bin/gcc-8
+LINK_APPLE					:= /usr/local/bin/gcc-9
 CFLAGS						:= -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 CFLAGS_POSIX				:= -fuse-linker-plugin
 CFLAGS_APPLE				:= 
@@ -55,6 +55,7 @@ OBJECTSsolarisSparc32		:= $(BUILD_DIR)/solaris_sparc32/SerialPort_Posix.o $(BUIL
 OBJECTSsolarisSparc64		:= $(BUILD_DIR)/solaris_sparc64/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc64/PosixHelperFunctions.o
 OBJECTSosx32				:= $(BUILD_DIR)/osx_x86/SerialPort_Posix.o $(BUILD_DIR)/osx_x86/PosixHelperFunctions.o
 OBJECTSosx64				:= $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUILD_DIR)/osx_x86_64/PosixHelperFunctions.o
+CPATH_APPLE					:= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 FLAGSlinux32				:= -m32
 FLAGSlinux64				:= -m64
 FLAGSarmv5					:= -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
@@ -252,9 +253,9 @@ $(BUILD_DIR)/solaris_sparc32/%.o : %.c
 $(BUILD_DIR)/solaris_sparc64/%.o : %.c
 	$(COMPILE_SOLARIS_SPARC) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolarisSparc64) -c $< -o $@
 $(BUILD_DIR)/osx_x86/%.o : %.c
-	$(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx32) -c $< -o $@
+	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx32) -c $< -o $@
 $(BUILD_DIR)/osx_x86_64/%.o : %.c
-	$(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
+	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)

@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 08, 2019
+ *  Last Updated on:  Oct 15, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -804,7 +804,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 	if (comPort != NULL)
 	{
 		char commandString[32];
-		sprintf(commandString, "MODE %s rts=on", comPort + 1);
+		sprintf(commandString, "cmd.exe /C \"MODE %s rts=on > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
 
@@ -823,7 +823,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 	if (comPort != NULL)
 	{
 		char commandString[32];
-		sprintf(commandString, "MODE %s rts=off", comPort + 1);
+		sprintf(commandString, "cmd.exe /C \"MODE %s rts=off > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
 
@@ -858,7 +858,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 	if (comPort != NULL)
 	{
 		char commandString[32];
-		sprintf(commandString, "MODE %s dtr=on", comPort + 1);
+		sprintf(commandString, "cmd.exe /C \"MODE %s dtr=on > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
 
@@ -877,7 +877,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 	if (comPort != NULL)
 	{
 		char commandString[32];
-		sprintf(commandString, "MODE %s dtr=off", comPort + 1);
+		sprintf(commandString, "cmd.exe /C \"MODE %s dtr=off > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
 
@@ -910,6 +910,31 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD(JNIEn
 		return JNI_FALSE;
 	DWORD modemStatus = 0;
 	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_RLSD_ON);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	return env->GetBooleanField(obj, isDtrEnabledField);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	return env->GetBooleanField(obj, isRtsEnabledField);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	HANDLE serialPortHandle = (HANDLE)serialPortFD;
+	if (serialPortHandle == INVALID_HANDLE_VALUE)
+		return JNI_FALSE;
+	DWORD modemStatus = 0;
+	return GetCommModemStatus(serialPortHandle, &modemStatus) && (modemStatus & MS_RING_ON);
 }
 
 #endif

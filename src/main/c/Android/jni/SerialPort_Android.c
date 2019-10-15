@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Jul 08, 2019
+ *  Last Updated on:  Oct 15, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -259,6 +259,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	}*/
 
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
+	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
 	ioctl(serialPortFD, TIOCGSERIAL, &serInfo);
 	serInfo.xmit_fifo_size = sendDeviceQueueSize;
 	ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
@@ -612,7 +613,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -F %s hupcl", portName);
+	sprintf(commandString, "stty -F %s hupcl >>/dev/null 2>&1", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -626,7 +627,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -F %s -hupcl", portName);
+	sprintf(commandString, "stty -F %s -hupcl >>/dev/null 2>&1", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -656,7 +657,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -F %s hupcl", portName);
+	sprintf(commandString, "stty -F %s hupcl >>/dev/null 2>&1", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -670,7 +671,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[64];
-	sprintf(commandString, "stty -F %s -hupcl", portName);
+	sprintf(commandString, "stty -F %s -hupcl >>/dev/null 2>&1", portName);
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -699,6 +700,30 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD(JNIEn
 		return JNI_FALSE;
 	int modemBits = 0;
 	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_CAR);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDTR(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_DTR);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRTS(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_RTS);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv *env, jobject obj, jlong serialPortFD)
+{
+	if (serialPortFD <= 0)
+		return JNI_FALSE;
+	int modemBits = 0;
+	return (ioctl(serialPortFD, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_RI);
 }
 
 #endif

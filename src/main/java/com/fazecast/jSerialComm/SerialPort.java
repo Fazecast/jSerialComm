@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Sep 03, 2019
+ *  Last Updated on:  Oct 15, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -86,6 +86,7 @@ public final class SerialPort
 				getpropProcess.waitFor();
 				buildProperties.close();
 			}
+			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 			catch (Exception e) { e.printStackTrace(); }
 
 			if (libraryPath.isEmpty())
@@ -419,7 +420,7 @@ public final class SerialPort
 			{
 				if (process == null)
 					return false;
-				try { process.waitFor(); } catch (InterruptedException e) { return false; }
+				try { process.waitFor(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
 				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
 				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
@@ -524,6 +525,9 @@ public final class SerialPort
 	private final native boolean getCTS(long portHandle);				// Returns whether the CTS signal is 1
 	private final native boolean getDSR(long portHandle);				// Returns whether the DSR signal is 1
 	private final native boolean getDCD(long portHandle);				// Returns whether the DCD signal is 1
+	private final native boolean getDTR(long portHandle);				// Returns whether the DTR signal is 1
+	private final native boolean getRTS(long portHandle);				// Returns whether the RTS signal is 1
+	private final native boolean getRI(long portHandle);				// Returns whether the RI signal is 1
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes(byte[], long)} were to be called immediately
@@ -603,6 +607,18 @@ public final class SerialPort
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
 	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset) { return writeBytes(portHandle, buffer, bytesToWrite, offset); }
+	
+	/**
+	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
+	 * @return The underlying device transmit buffer size.
+	 */
+	public final int getDeviceWriteBufferSize() { return sendDeviceQueueSize; }
+
+	/**
+	 * Returns the underlying receive buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
+	 * @return The underlying device receive buffer size.
+	 */
+	public final int getDeviceReadBufferSize() { return receiveDeviceQueueSize; }
 
 	/**
 	 * Sets the BREAK signal on the serial control line.
@@ -673,6 +689,28 @@ public final class SerialPort
 	 * @return Whether or not the DCD line is asserted.
 	 */
 	public final boolean getDCD() { return getDCD(portHandle); }
+
+	/**
+	 * Returns whether the DTR line is currently asserted.
+	 * <p>
+	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
+	 * @return Whether or not the DTR line is asserted.
+	 */
+	public final boolean getDTR() { return getDTR(portHandle); }
+
+	/**
+	 * Returns whether the RTS line is currently asserted.
+	 * <p>
+	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
+	 * @return Whether or not the RTS line is asserted.
+	 */
+	public final boolean getRTS() { return getRTS(portHandle); }
+
+	/**
+	 * Returns whether the RI line is currently asserted.
+	 * @return Whether or not the RI line is asserted.
+	 */
+	public final boolean getRI() { return getRI(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}
@@ -1268,7 +1306,7 @@ public final class SerialPort
 			eventFlags = 0;
 			configEventFlags(portHandle);
 			eventFlags = oldEventFlags;
-			try { serialEventThread.join(); } catch (InterruptedException e) {}
+			try { serialEventThread.join(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 			serialEventThread = null;
 		}
 
