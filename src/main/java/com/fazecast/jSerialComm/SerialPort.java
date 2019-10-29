@@ -205,9 +205,12 @@ public final class SerialPort
 		// Copy platform-specific binary to a temporary location
 		try
 		{
-			// Get path of native library and copy file to working directory
+			// Get path of native library and copy file to working directory with open permissions
 			File tempNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-" + fileName);
 			tempNativeLibrary.getParentFile().mkdirs();
+			tempNativeLibrary.getParentFile().setReadable(true, false);
+			tempNativeLibrary.getParentFile().setWritable(true, false);
+			tempNativeLibrary.getParentFile().setExecutable(true, false);
 			tempNativeLibrary.deleteOnExit();
 
 			// Load the native jSerialComm library
@@ -228,11 +231,13 @@ public final class SerialPort
 				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
 				byte transferBuffer[] = new byte[4096];
 				int numBytesRead;
-
 				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
 					destinationFileContents.write(transferBuffer, 0, numBytesRead);
 				destinationFileContents.close();
 				fileContents.close();
+				tempNativeLibrary.setReadable(true, false);
+				tempNativeLibrary.setWritable(true, false);
+				tempNativeLibrary.setExecutable(true, false);
 
 				// Load and initialize native library
 				System.load(tempNativeLibrary.getAbsolutePath());
