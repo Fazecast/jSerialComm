@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 15, 2019
+ *  Last Updated on:  Oct 29, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -803,7 +803,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 	int result = -1;
 	if (comPort != NULL)
 	{
-		char commandString[32];
+		char commandString[64];
 		sprintf(commandString, "cmd.exe /C \"MODE %s rts=on > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
@@ -822,7 +822,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 	int result = -1;
 	if (comPort != NULL)
 	{
-		char commandString[32];
+		char commandString[64];
 		sprintf(commandString, "cmd.exe /C \"MODE %s rts=off > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
@@ -857,7 +857,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 	int result = -1;
 	if (comPort != NULL)
 	{
-		char commandString[32];
+		char commandString[64];
 		sprintf(commandString, "cmd.exe /C \"MODE %s dtr=on > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}
@@ -876,7 +876,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 	int result = -1;
 	if (comPort != NULL)
 	{
-		char commandString[32];
+		char commandString[64];
 		sprintf(commandString, "cmd.exe /C \"MODE %s dtr=off > nul 2>&1\"", comPort + 1);
 		result = system(commandString);
 	}

@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 15, 2019
+ *  Last Updated on:  Oct 29, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -722,7 +722,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 
 	// Send a system command to preset the RTS mode of the serial port
-	char commandString[64];
+	char commandString[128];
 #if defined(__linux__)
 	sprintf(commandString, "stty -F %s hupcl >>/dev/null 2>&1", portName);
 #else
@@ -740,7 +740,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 
 	// Send a system command to preset the RTS mode of the serial port
-	char commandString[64];
+	char commandString[128];
 #if defined(__linux__)
 	sprintf(commandString, "stty -F %s -hupcl >>/dev/null 2>&1", portName);
 #else
@@ -774,7 +774,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 
 	// Send a system command to preset the DTR mode of the serial port
-	char commandString[64];
+	char commandString[128];
 #if defined(__linux__)
 	sprintf(commandString, "stty -F %s hupcl >>/dev/null 2>&1", portName);
 #else
@@ -792,7 +792,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 
 	// Send a system command to preset the DTR mode of the serial port
-	char commandString[64];
+	char commandString[128];
 #if defined(__linux__)
 	sprintf(commandString, "stty -F %s -hupcl >>/dev/null 2>&1", portName);
 #else
