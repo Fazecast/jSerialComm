@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 15, 2019
+ *  Last Updated on:  Nov 04, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -368,7 +368,7 @@ public final class SerialPort
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
-	private volatile int rs485DelayBefore = 0, rs485DelayAfter = 0;
+	private volatile int safetySleepTimeMS = 200, rs485DelayBefore = 0, rs485DelayAfter = 0;
 	private volatile SerialPortInputStream inputStream = null;
 	private volatile SerialPortOutputStream outputStream = null;
 	private volatile SerialPortDataListener userDataListener = null;
@@ -392,14 +392,15 @@ public final class SerialPort
 	public final boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
 		// Set the send/receive internal buffer sizes, and return true if already opened
+		safetySleepTimeMS = safetySleepTime;
 		sendDeviceQueueSize = deviceSendQueueSize;
 		receiveDeviceQueueSize = deviceReceiveQueueSize;
 		if (isOpened)
 			return configPort(portHandle);
 
 		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
-		if (safetySleepTime > 0)
-			try { Thread.sleep(safetySleepTime); } catch (Exception e) { Thread.currentThread().interrupt(); }
+		if (safetySleepTimeMS > 0)
+			try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 
 		// If this is an Android root application, we must explicitly allow serial port access to the library
 		File portFile = isAndroid ? new File(comPort) : null;
@@ -458,7 +459,7 @@ public final class SerialPort
 	/**
 	 * Opens this serial port for reading and writing.
 	 * <p>
-	 * This method is equivalent to calling {@link #openPort} with a value of 1000.
+	 * This method is equivalent to calling {@link #openPort} with a value of 200.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
@@ -466,7 +467,7 @@ public final class SerialPort
 	 *
 	 * @return Whether the port was successfully opened.
 	 */
-	public final boolean openPort() { return openPort(1000); }
+	public final boolean openPort() { return openPort(200); }
 
 	/**
 	 * Closes this serial port.
@@ -859,7 +860,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -906,7 +908,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -971,7 +974,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configTimeouts(portHandle);
 		}
 	}
@@ -989,7 +993,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -1007,7 +1012,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -1031,7 +1037,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -1076,7 +1083,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -1100,7 +1108,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
@@ -1127,7 +1136,8 @@ public final class SerialPort
 
 		if (isOpened)
 		{
-			try { Thread.sleep(200); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 			configPort(portHandle);
 		}
 	}
