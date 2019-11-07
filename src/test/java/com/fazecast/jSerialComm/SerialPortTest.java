@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.5.2
+ * @version 2.5.3
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -112,7 +112,7 @@ public class SerialPortTest
 		byte[] readBuffer = new byte[2048];
 		
 		System.out.println("\nPre-setting RTS: " + (ubxPort.setRTS() ? "Success" : "Failure"));
-		boolean openedSuccessfully = ubxPort.openPort();
+		boolean openedSuccessfully = ubxPort.openPort(0);
 		System.out.println("\nOpening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + " - " + ubxPort.getPortDescription() + ": " + openedSuccessfully);
 		if (!openedSuccessfully)
 			return;
