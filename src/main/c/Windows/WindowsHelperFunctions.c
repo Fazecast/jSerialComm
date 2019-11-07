@@ -5,7 +5,7 @@
  *  Last Updated on:  Mar 25, 2016
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2018 Fazecast, Inc.
+ * Copyright (C) 2012-2016 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -53,6 +53,7 @@ void push_back(struct charTupleVector* vector, const wchar_t* firstString, const
 
 char keyExists(struct charTupleVector* vector, const wchar_t* key)
 {
+	// Search for a vector item with a matching key
 	size_t i;
 	for (i = 0; i < vector->length; ++i)
 		if (wcscmp(key, vector->first[i]) == 0)
