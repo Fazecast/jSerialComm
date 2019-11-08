@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Oct 29, 2019
+ *  Last Updated on:  Nov 07, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -442,8 +442,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
 	int numBytesAvailable = -1;
-	if (serialPortFD > 0)
-		ioctl(serialPortFD, FIONREAD, &numBytesAvailable);
+	if ((serialPortFD > 0) && (ioctl(serialPortFD, FIONREAD, &numBytesAvailable) == -1))
+	{
+		// Problem detected, allow others to open the port and close it ourselves
+		ioctl(serialPortFD, TIOCNXCL);
+		tcdrain(serialPortFD);
+		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+		serialPortFD = -1;
+		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
+		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+	}
 
 	return numBytesAvailable;
 }
@@ -464,7 +472,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		return -1;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
-	int numBytesRead, numBytesReadTotal = 0, bytesRemaining = bytesToRead;
+	int numBytesRead, numBytesReadTotal = 0, bytesRemaining = bytesToRead, ioctlResult = 0;
 	char* readBuffer = (char*)malloc(bytesToRead);
 
 	// Infinite blocking mode specified, don't return until we have completely finished the read
@@ -474,7 +482,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		while (bytesRemaining > 0)
 		{
 			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
-			if (numBytesRead == -1)
+			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
 				// Problem reading, close port
 				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
@@ -505,7 +513,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		do
 		{
 			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
-			if (numBytesRead == -1)
+			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
 				// Problem reading, close port
 				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
@@ -528,7 +536,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	{
 		// Read from port
 		do { numBytesRead = read(serialPortFD, readBuffer, bytesToRead); } while ((numBytesRead < 0) && (errno == EINTR));
-		if (numBytesRead == -1)
+		if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 		{
 			// Problem reading, close port
 			while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
@@ -552,11 +560,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		return -1;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
-	int numBytesWritten;
+	int numBytesWritten, ioctlResult = 0;
 
 	// Write to port
 	do { numBytesWritten = write(serialPortFD, writeBuffer+offset, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
-	if (numBytesWritten == -1)
+	if ((numBytesWritten == -1) || ((numBytesWritten == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 	{
 		// Problem writing, allow others to open the port and close it ourselves
 		ioctl(serialPortFD, TIOCNXCL);
