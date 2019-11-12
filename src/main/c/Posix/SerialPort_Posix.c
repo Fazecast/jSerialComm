@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 08, 2019
+ *  Last Updated on:  Nov 12, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -263,7 +263,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		else
 		{
 			// Clear any serial port flags and set up raw, non-canonical port parameters
-			struct termios options = { 0 };
+			struct termios options = {0};
 			fcntl(serialPortFD, F_SETFL, 0);
 			tcgetattr(serialPortFD, &options);
 #if defined(__sun__)
@@ -303,7 +303,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 {
 	if (serialPortFD <= 0)
 		return JNI_FALSE;
-	struct termios options = { 0 };
+	struct termios options = {0};
 
 	// Get port parameters from Java class
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
@@ -355,7 +355,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
-	struct serial_struct serInfo;
+	struct serial_struct serInfo = {0};
 	if (ioctl(serialPortFD, TIOCGSERIAL, &serInfo) == 0)
 	{
 		serInfo.xmit_fifo_size = sendDeviceQueueSize;
@@ -370,13 +370,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 	// Attempt to set the requested RS-485 mode
 #if defined(__linux__)
-	struct serial_rs485 rs485Conf;
+	struct serial_rs485 rs485Conf = {0};
 	if (ioctl(serialPortFD, TIOCGRS485, &rs485Conf) == 0)
 	{
 		if (rs485ModeEnabled)
-			rs485Conf.flags |= SER_RS485_ENABLED;
+			rs485Conf.flags |= SER_RS485_ENABLED; // Set these too? SER_RS485_RTS_ON_SEND | SER_RS485_RTS_AFTER_SEND
 		else
-			rs485Conf.flags &= ~SER_RS485_ENABLED;
+			rs485Conf.flags &= ~SER_RS485_ENABLED; // Clear these too? &= ~(SER_RS485_ENABLED | SER_RS485_RTS_ON_SEND | SER_RS485_RTS_AFTER_SEND);
 		rs485Conf.delay_rts_before_send = rs485DelayBefore;
 		rs485Conf.delay_rts_after_send = rs485DelayAfter;
 		ioctl(serialPortFD, TIOCSRS485, &rs485Conf);
@@ -396,7 +396,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
 
 	// Retrieve existing port configuration
-	struct termios options = { 0 };
+	struct termios options = {0};
 	tcgetattr(serialPortFD, &options);
 	int flags = fcntl(serialPortFD, F_GETFL);
 	if (flags == -1)
@@ -463,7 +463,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 	jboolean retVal;
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
 	{
-		struct termios options = { 0 };
+		struct termios options = {0};
 		tcgetattr(serialPortFD, &options);
 		int flags = fcntl(serialPortFD, F_GETFL);
 		if (flags == -1)
@@ -507,7 +507,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 
 	// Force the port to enter non-blocking mode to ensure that any current reads return
-	struct termios options = { 0 };
+	struct termios options = {0};
 	tcgetattr(serialPortFD, &options);
 	int flags = fcntl(serialPortFD, F_GETFL);
 	flags |= O_NONBLOCK;
@@ -586,7 +586,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	else if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING) > 0)		// Blocking mode, but not indefinitely
 	{
 		// Get current system time
-		struct timeval expireTime = { 0 }, currTime = { 0 };
+		struct timeval expireTime = {0}, currTime = {0};
 		gettimeofday(&expireTime, NULL);
 		expireTime.tv_usec += (readTimeout * 1000);
 		if (expireTime.tv_usec > 1000000)

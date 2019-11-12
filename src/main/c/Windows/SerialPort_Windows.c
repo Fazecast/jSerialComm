@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 07, 2019
+ *  Last Updated on:  Nov 12, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -408,7 +408,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return JNI_FALSE;
-	DCB dcbSerialParams = {0};
+	DCB dcbSerialParams{};
 	dcbSerialParams.DCBlength = sizeof(DCB);
 
 	// Get port parameters from Java class
@@ -476,7 +476,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return JNI_FALSE;
-	COMMTIMEOUTS timeouts = {0};
+	COMMTIMEOUTS timeouts{};
 	int timeoutMode = env->GetIntField(obj, timeoutModeField);
 	DWORD readTimeout = (DWORD)env->GetIntField(obj, readTimeoutField);
 	DWORD writeTimeout = (DWORD)env->GetIntField(obj, writeTimeoutField);
@@ -537,7 +537,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 	// Change read timeouts if we are monitoring data received
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
 	{
-		COMMTIMEOUTS timeouts = {0};
+		COMMTIMEOUTS timeouts{};
 		timeouts.ReadIntervalTimeout = MAXDWORD;
 		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 		timeouts.ReadTotalTimeoutConstant = 1000;
@@ -557,7 +557,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	HANDLE serialPortHandle = (HANDLE)serialPortFD;
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return 0;
-	OVERLAPPED overlappedStruct = {0};
+	OVERLAPPED overlappedStruct{};
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (overlappedStruct.hEvent == NULL)
 	{
@@ -607,7 +607,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 
 	// Force the port to enter non-blocking mode to ensure that any current reads return
-	COMMTIMEOUTS timeouts = {0};
+	COMMTIMEOUTS timeouts{};
 	timeouts.WriteTotalTimeoutMultiplier = 0;
 	timeouts.ReadIntervalTimeout = MAXDWORD;
 	timeouts.ReadTotalTimeoutMultiplier = 0;
@@ -689,7 +689,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	}
 
 	// Create an asynchronous result structure
-	OVERLAPPED overlappedStruct = {0};
+	OVERLAPPED overlappedStruct{};
     overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (overlappedStruct.hEvent == NULL)
     {
@@ -751,7 +751,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	}
 
 	// Create an asynchronous result structure
-	OVERLAPPED overlappedStruct = {0};
+	OVERLAPPED overlappedStruct{};
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (overlappedStruct.hEvent == NULL)
 	{
