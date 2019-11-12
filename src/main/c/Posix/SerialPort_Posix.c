@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 07, 2019
+ *  Last Updated on:  Nov 08, 2019
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2019 Fazecast, Inc.
@@ -471,8 +471,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 		flags &= ~O_NONBLOCK;
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 10;
-		retVal = ((fcntl(serialPortFD, F_SETFL, flags) == -1) || (tcsetattr(serialPortFD, TCSANOW, &options) == -1)) ?
-				JNI_FALSE : JNI_TRUE;
+		retVal = ((fcntl(serialPortFD, F_SETFL, flags) == -1) || (tcsetattr(serialPortFD, TCSANOW, &options) == -1)) ? JNI_FALSE : JNI_TRUE;
 		if (baudRateCode == 0)
 			setBaudRateCustom(serialPortFD, baudRate);
 	}
@@ -508,7 +507,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 
 	// Force the port to enter non-blocking mode to ensure that any current reads return
-	struct termios options;
+	struct termios options = { 0 };
 	tcgetattr(serialPortFD, &options);
 	int flags = fcntl(serialPortFD, F_GETFL);
 	flags |= O_NONBLOCK;
