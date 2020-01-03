@@ -186,6 +186,7 @@ public class SerialPortTest
 			public void serialEvent(SerialPortEvent event)
 			{
 				SerialPort comPort = event.getSerialPort();
+				System.out.println("Available: " + comPort.bytesAvailable() + " bytes.");
 				byte[] newData = new byte[comPort.bytesAvailable()];
 				int numRead = comPort.readBytes(newData, newData.length);
 				System.out.println("Read " + numRead + " bytes.");
