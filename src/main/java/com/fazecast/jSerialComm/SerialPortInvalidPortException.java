@@ -5,7 +5,7 @@
  *  Last Updated on:  Apr 15, 2019
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2019-2019 Fazecast, Inc.
+ * Copyright (C) 2019-2020 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *

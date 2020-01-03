@@ -2,10 +2,10 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Oct 29, 2019
+ *  Last Updated on:  Jan 03, 2020
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2019 Fazecast, Inc.
+ * Copyright (C) 2012-2020 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
