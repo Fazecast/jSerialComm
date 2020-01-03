@@ -43,6 +43,12 @@ declaration depending on your build system:
 compile 'com.fazecast:jSerialComm:[2.0.0,3.0.0)'
 ```
 
+* Gradle (.kts):
+
+```
+compile("com.fazecast:jSerialComm:[2.0.0,3.0.0)")
+```
+
 * Buildr:
 
 ```
