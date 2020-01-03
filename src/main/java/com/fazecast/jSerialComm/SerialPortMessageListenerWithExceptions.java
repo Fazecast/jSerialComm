@@ -1,8 +1,8 @@
 /*
- * SerialPortDataListenerWithExceptions.java
+ * SerialPortMessageListenerWithExceptions.java
  *
- *       Created on:  Jul 11, 2019
- *  Last Updated on:  Aug 28, 2019
+ *       Created on:  Jan 03, 2020
+ *  Last Updated on:  Jan 03, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -26,14 +26,17 @@
 package com.fazecast.jSerialComm;
 
 /**
- * This interface must be implemented to enable simple event-based serial port I/O with a custom Exception callback.
+ * This interface must be implemented to enable delimited message reads using event-based serial port I/O with a custom Exception callback.
+ * <p>
+ * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
  * @version 2.5.4
+ * @see com.fazecast.jSerialComm.SerialPortMessageListener
  * @see com.fazecast.jSerialComm.SerialPortDataListener
  * @see java.util.EventListener
  */
-public interface SerialPortDataListenerWithExceptions extends SerialPortDataListener
+public interface SerialPortMessageListenerWithExceptions extends SerialPortMessageListener
 {
 	/**
 	 * Must be overridden to handle any Java exceptions that occur asynchronously in this data listener.

@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 04, 2019
+ *  Last Updated on:  Jan 03, 2020
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2019 Fazecast, Inc.
+ * Copyright (C) 2012-2020 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -50,7 +50,7 @@ import java.util.Date;
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	private static final String versionString = "2.5.3";
+	private static final String versionString = "2.5.4";
 	private static volatile boolean isAndroid = false;
 	private static volatile boolean isUnixBased = false;
 	private static volatile boolean isWindows = false;
@@ -726,20 +726,22 @@ public final class SerialPort
 	 * <p>
 	 * Calling this function enables event-based serial port callbacks to be used instead of, or in addition to, direct serial port read/write calls or the {@link java.io.InputStream}/{@link java.io.OutputStream} interface.
 	 * <p>
-	 * The parameter passed into this method must be an implementation of either {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, or {@link SerialPortMessageListener}.
-	 * The {@link SerialPortMessageListener} interface <b>should</b> be used if you plan to use event-based reading of <i>delimited</i> data messages over the serial port.
+	 * The parameter passed into this method must be an implementation of either {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions},
+	 * {@link SerialPortPacketListener}, {@link SerialPortMessageListener} or {@link SerialPortMessageListenerWithExceptions}.
+	 * The {@link SerialPortMessageListener} or {@link SerialPortMessageListenerWithExceptions} interface <b>should</b> be used if you plan to use event-based reading of <i>delimited</i> data messages over the serial port.
 	 * The {@link SerialPortPacketListener} interface <b>should</b> be used if you plan to use event-based reading of <i>full</i> data packets over the serial port.
 	 * Otherwise, the simpler {@link SerialPortDataListener} or {@link SerialPortDataListenerWithExceptions} may be used.
 	 * <p>
 	 * Only one listener can be registered at a time; however, that listener can be used to detect multiple types of serial port events.
-	 * Refer to {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, and {@link SerialPortMessageListener} for more information.
+	 * Refer to {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, {@link SerialPortMessageListener}, and {@link SerialPortMessageListenerWithExceptions} for more information.
 	 *
-	 * @param listener A {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, or {@link SerialPortMessageListener} implementation to be used for event-based serial port communications.
+	 * @param listener A {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, {@link SerialPortMessageListener}, or {@link SerialPortMessageListenerWithExceptions} implementation to be used for event-based serial port communications.
 	 * @return Whether the listener was successfully registered with the serial port.
 	 * @see SerialPortDataListener
 	 * @see SerialPortDataListenerWithExceptions
 	 * @see SerialPortPacketListener
 	 * @see SerialPortMessageListener
+	 * @see SerialPortMessageListenerWithExceptions
 	 */
 	public final boolean addDataListener(SerialPortDataListener listener)
 	{
@@ -1303,6 +1305,8 @@ public final class SerialPort
 							isListening = false;
 							if (userDataListener instanceof SerialPortDataListenerWithExceptions)
 								((SerialPortDataListenerWithExceptions)userDataListener).catchException(e);
+							else if (userDataListener instanceof SerialPortMessageListenerWithExceptions)
+								((SerialPortMessageListenerWithExceptions)userDataListener).catchException(e);
 						}
 					}
 					isListening = false;
