@@ -43,7 +43,7 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.5.3
+ * @version 2.5.4
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
