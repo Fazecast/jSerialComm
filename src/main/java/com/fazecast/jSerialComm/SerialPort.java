@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2020
+ *  Last Updated on:  Jan 22, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -374,8 +374,8 @@ public final class SerialPort
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
-	private volatile boolean isOpened = false, disableConfig = false;
-	private volatile boolean rs485Mode = false, isRtsEnabled = true, isDtrEnabled = true;
+	private volatile boolean isOpened = false, disableConfig = false, rs485Mode = false;
+	private volatile boolean rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
@@ -855,17 +855,7 @@ public final class SerialPort
 	 */
 	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity)
 	{
-		baudRate = newBaudRate;
-		dataBits = newDataBits;
-		stopBits = newStopBits;
-		parity = newParity;
-
-		if (isOpened)
-		{
-			if (safetySleepTimeMS > 0)
-				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
-		}
+		setComPortParameters(newBaudRate, newDataBits, newStopBits, newParity, rs485Mode);
 	}
 
 	/**
@@ -882,8 +872,8 @@ public final class SerialPort
 	 * The parity parameter specifies how error detection is carried out.  Again, the built-in constants should be used.
 	 * Acceptable values are {@link #NO_PARITY}, {@link #EVEN_PARITY}, {@link #ODD_PARITY}, {@link #MARK_PARITY}, and {@link #SPACE_PARITY}.
 	 * <p>
-	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
-	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
+	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin.  This mode should be set if you plan
+	 * to use this library with an RS-485 device.  Note that this mode requires support from the underlying device driver, so it
 	 * may not work with all RS-485 devices.
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
@@ -1123,16 +1113,21 @@ public final class SerialPort
 	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
 	 * may not work with all RS-485 devices.
 	 * <p>
+	 * The RTS "active high" parameter specifies that the logical level of the RTS line will be set to 1 when transmitting and
+	 * 0 when receiving.
+	 * <p>
 	 * The delay parameters specify how long to wait before or after transmission of data before enabling or disabling
 	 * transmission mode via the RTS pin.
 	 *
 	 * @param useRS485Mode Whether to enable RS-485 mode.
+	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting.
 	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
 	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
 	 */
-	public final void setRs485ModeParameters(boolean useRS485Mode, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
+	public final void setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
 		rs485Mode = useRS485Mode;
+		rs485ActiveHigh = rs485RtsActiveHigh;
 		rs485DelayBefore = delayBeforeSendMicroseconds;
 		rs485DelayAfter = delayAfterSendMicroseconds;
 

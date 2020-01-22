@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Nov 12, 2019
+ *  Last Updated on:  Jan 21, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -67,6 +67,7 @@ jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
 jfieldID rs485ModeField;
+jfieldID rs485ActiveHighField;
 jfieldID rs485DelayBeforeField;
 jfieldID rs485DelayAfterField;
 jfieldID timeoutModeField;
@@ -125,6 +126,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
 	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
+	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
 	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
 	rs485DelayAfterField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayAfter", "I");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
@@ -203,6 +205,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int rs485DelayAfter = (*env)->GetIntField(env, obj, rs485DelayAfterField);
 	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
+	unsigned char rs485ActiveHigh = (*env)->GetBooleanField(env, obj, rs485ActiveHighField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
@@ -271,9 +274,19 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (ioctl(serialPortFD, TIOCGRS485, &rs485Conf) == 0)
 	{
 		if (rs485ModeEnabled)
-			rs485Conf.flags |= SER_RS485_ENABLED; // Set these too? SER_RS485_RTS_ON_SEND | SER_RS485_RTS_AFTER_SEND
+			rs485Conf.flags |= SER_RS485_ENABLED;
 		else
-			rs485Conf.flags &= ~SER_RS485_ENABLED; // Clear these too? &= ~(SER_RS485_ENABLED | SER_RS485_RTS_ON_SEND | SER_RS485_RTS_AFTER_SEND);
+			rs485Conf.flags &= ~SER_RS485_ENABLED;
+		if (rs485ActiveHigh)
+		{
+			rs485Conf.flags |= SER_RS485_RTS_ON_SEND;
+			rs485Conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
+		}
+		else
+		{
+			rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
+			rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
+		}
 		rs485Conf.delay_rts_before_send = rs485DelayBefore;
 		rs485Conf.delay_rts_after_send = rs485DelayAfter;
 		ioctl(serialPortFD, TIOCSRS485, &rs485Conf);
