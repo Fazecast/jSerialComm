@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 03, 2020
+ *  Last Updated on:  Feb 18, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -572,12 +572,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		if (GetLastError() != ERROR_IO_PENDING)			// Problem occurred
 		{
 			// Problem reading, close port
-			int numRetries = 10;
-			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
+			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 			serialPortHandle = INVALID_HANDLE_VALUE;
-			env->SetLongField(obj, serialPortHandleField, -1l);
-			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		}
 		else
 		{
@@ -594,17 +590,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 
 	// Ensure that new data actually was received
 	COMSTAT commInfo;
-	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
-	{
-		// Problem detected, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-		return -1;
-	}
+	if ((serialPortHandle != INVALID_HANDLE_VALUE) && !ClearCommError(serialPortHandle, &errorsMask, &commInfo))
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 	numBytesRead = commInfo.cbInQue;
 
 	// Return type of event if successful
@@ -632,16 +619,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 
 	// Close the port
 	int numRetries = 10;
-	env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-	while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
+	while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (GetLastError() != ERROR_INVALID_HANDLE) && (numRetries-- > 0));
 	if (numRetries > 0)
 	{
 		env->SetLongField(obj, serialPortHandleField, -1l);
+		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		return JNI_TRUE;
 	}
-	else
-		env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
 
+	// Error closing port, reconfigure port settings
+	Java_com_fazecast_jSerialComm_SerialPort_configEventFlags(env, obj, serialPortFD);
 	return JNI_FALSE;
 }
 
@@ -651,22 +638,16 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return -1;
 
+	// Retrieve bytes available to read
 	COMSTAT commInfo;
 	DWORD errorsMask;
 	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-		return -1;
 	}
-	DWORD numBytesAvailable = commInfo.cbInQue;
-
-	return (jint)numBytesAvailable;
+	return (serialPortHandle == INVALID_HANDLE_VALUE) ? -1 : commInfo.cbInQue;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
@@ -675,13 +656,16 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	if (serialPortHandle == INVALID_HANDLE_VALUE)
 		return -1;
 
+	// Retrieve bytes awaiting write
 	COMSTAT commInfo;
 	DWORD errorsMask;
 	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
-		return -1;
-	DWORD numBytesToWrite = commInfo.cbOutQue;
-
-	return (jint)numBytesToWrite;
+	{
+		// Problem detected, close port
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
+		serialPortHandle = INVALID_HANDLE_VALUE;
+	}
+	return (serialPortHandle == INVALID_HANDLE_VALUE) ? -1 : commInfo.cbOutQue;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToRead, jlong offset)
@@ -697,12 +681,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 		return -1;
 	}
 
@@ -717,28 +696,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
     char *readBuffer = (char*)malloc(bytesToRead);
     DWORD numBytesRead = 0;
 
-    // Read from serial port
+    // Read from serial port and close upon error
     BOOL result;
     if (((result = ReadFile(serialPortHandle, readBuffer, bytesToRead, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
-	{
-		// Problem reading, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-	}
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 	else if ((result = GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, TRUE)) == FALSE)
-	{
-		// Problem reading, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-	}
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 
     // Return number of bytes read if successful
     CloseHandle(overlappedStruct.hEvent);
@@ -760,12 +723,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 		return -1;
 	}
 
@@ -781,35 +739,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	DWORD numBytesWritten = 0;
 	BOOL result;
 
-	// Set the DTR line to high if using RS-422
-	//EscapeCommFunction(serialPortHandle, SETDTR);
-
-	// Write to serial port
+	// Write to serial port and close upon error
 	if (((result = WriteFile(serialPortHandle, writeBuffer+offset, bytesToWrite, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
-	{
-		// Problem writing, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-	}
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 	else if ((result = GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesWritten, TRUE)) == FALSE)
-	{
-		// Problem writing, close port
-		int numRetries = 10;
-		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
-		serialPortHandle = INVALID_HANDLE_VALUE;
-		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
-	}
-
-	// Clear the DTR line if using RS-422
-	//COMSTAT commInfo;
-	//do { ClearCommError(serialPortHandle, NULL, &commInfo); } while (commInfo.cbOutQue > 0);
-	//EscapeCommFunction(serialPortHandle, CLRDTR);
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 
 	// Return number of bytes written if successful
 	CloseHandle(overlappedStruct.hEvent);
