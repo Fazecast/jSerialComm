@@ -110,7 +110,6 @@ public class SerialPortTest
 		else
 			ubxPort = ports[serialPortChoice];
 		byte[] readBuffer = new byte[2048];
-		
 		System.out.println("\nPre-setting RTS: " + (ubxPort.setRTS() ? "Success" : "Failure"));
 		boolean openedSuccessfully = ubxPort.openPort(0);
 		System.out.println("\nOpening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + " - " + ubxPort.getPortDescription() + ": " + openedSuccessfully);
@@ -215,7 +214,31 @@ public class SerialPortTest
 				System.out.print((char)in.read());
 			in.close();
 		} catch (Exception e) { e.printStackTrace(); }
-		System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
+		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+		openedSuccessfully = ubxPort.openPort(0);
+		System.out.println("Reopening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + ": " + openedSuccessfully);
+		if (!openedSuccessfully)
+			return;
+		System.out.println("Unplug the device sometime in the next 10 seconds to ensure that it closes properly...\n");
+		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 0, 0);
+		ubxPort.addDataListener(new SerialPortDataListener() {
+			@Override
+			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
+			@Override
+			public void serialEvent(SerialPortEvent event)
+			{
+				SerialPort comPort = event.getSerialPort();
+				System.out.println("Available: " + comPort.bytesAvailable() + " bytes.");
+				byte[] newData = new byte[comPort.bytesAvailable()];
+				int numRead = comPort.readBytes(newData, newData.length);
+				System.out.println("Read " + numRead + " bytes.");
+			}
+		});
+		try { Thread.sleep(10000); } catch (Exception e) {}
+		ubxPort.removeDataListener();
+		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+
+		/*System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
@@ -257,6 +280,6 @@ public class SerialPortTest
 			if (scanner.hasNextLine())
 				System.out.println("Full Line #" + i + ": " + scanner.nextLine());
 		scanner.close();
-		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());*/
 	}
 }
