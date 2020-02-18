@@ -394,7 +394,7 @@ public final class SerialPort
 	 * @param deviceReceiveQueueSize The requested size in bytes of the internal device driver's input queue (no effect on Linux/OSX)
 	 * @return Whether the port was successfully opened.
 	 */
-	public final boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
+	public final synchronized boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
 		// Set the send/receive internal buffer sizes, and return true if already opened
 		safetySleepTimeMS = safetySleepTime;
@@ -481,7 +481,7 @@ public final class SerialPort
 	 *
 	 * @return Whether the port was successfully closed.
 	 */
-	public final boolean closePort()
+	public final synchronized boolean closePort()
 	{
 		if (serialEventListener != null)
 			serialEventListener.stopListening();
@@ -499,7 +499,7 @@ public final class SerialPort
 	 *
 	 * @return Whether the port is opened.
 	 */
-	public final boolean isOpen() { return isOpened; }
+	public final synchronized boolean isOpen() { return isOpened; }
 
 	/**
 	 * Disables the library from calling any of the underlying device driver configuration methods.
@@ -508,7 +508,7 @@ public final class SerialPort
 	 * with buggy device drivers. In that case, this function <b>must</b> be called before attempting to
 	 * open the port.
 	 */
-	public final void disablePortConfiguration() { disableConfig = true; }
+	public final synchronized void disablePortConfiguration() { disableConfig = true; }
 
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
@@ -748,7 +748,7 @@ public final class SerialPort
 	 * @see SerialPortMessageListener
 	 * @see SerialPortMessageListenerWithExceptions
 	 */
-	public final boolean addDataListener(SerialPortDataListener listener)
+	public final synchronized boolean addDataListener(SerialPortDataListener listener)
 	{
 		if (userDataListener != null)
 			return false;
@@ -777,7 +777,7 @@ public final class SerialPort
 	/**
 	 * Removes the associated {@link SerialPortDataListener} from the serial port interface.
 	 */
-	public final void removeDataListener()
+	public final synchronized void removeDataListener()
 	{
 		if (serialEventListener != null)
 		{
@@ -895,7 +895,7 @@ public final class SerialPort
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
+	public final synchronized void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
 	{
 		baudRate = newBaudRate;
 		dataBits = newDataBits;
@@ -956,7 +956,7 @@ public final class SerialPort
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
 	 * @param newWriteTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call (effective only on Windows).
 	 */
-	public final void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
+	public final synchronized void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
 		timeoutMode = newTimeoutMode;
 		if (isWindows)
@@ -984,7 +984,7 @@ public final class SerialPort
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
 	 */
-	public final void setBaudRate(int newBaudRate)
+	public final synchronized void setBaudRate(int newBaudRate)
 	{
 		baudRate = newBaudRate;
 
@@ -1003,7 +1003,7 @@ public final class SerialPort
 	 *
 	 * @param newDataBits The desired number of data bits per word.
 	 */
-	public final void setNumDataBits(int newDataBits)
+	public final synchronized void setNumDataBits(int newDataBits)
 	{
 		dataBits = newDataBits;
 
@@ -1028,7 +1028,7 @@ public final class SerialPort
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
 	 */
-	public final void setNumStopBits(int newStopBits)
+	public final synchronized void setNumStopBits(int newStopBits)
 	{
 		stopBits = newStopBits;
 
@@ -1074,7 +1074,7 @@ public final class SerialPort
 	 * @see #FLOW_CONTROL_XONXOFF_IN_ENABLED
 	 * @see #FLOW_CONTROL_XONXOFF_OUT_ENABLED
 	 */
-	public final void setFlowControl(int newFlowControlSettings)
+	public final synchronized void setFlowControl(int newFlowControlSettings)
 	{
 		flowControl = newFlowControlSettings;
 
@@ -1099,7 +1099,7 @@ public final class SerialPort
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final void setParity(int newParity)
+	public final synchronized void setParity(int newParity)
 	{
 		parity = newParity;
 
@@ -1129,7 +1129,7 @@ public final class SerialPort
 	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
 	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
 	 */
-	public final void setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
+	public final synchronized void setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
 		rs485Mode = useRS485Mode;
 		rs485ActiveHigh = rs485RtsActiveHigh;
