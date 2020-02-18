@@ -527,7 +527,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventF
 
 	// Get event flags from Java class
 	int eventsToMonitor = env->GetIntField(obj, eventFlagsField);
-	int eventFlags = 0;
+	int eventFlags = EV_ERR;
 	if (((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) > 0) ||
 			((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0))
 		eventFlags |= EV_RXCHAR;
@@ -566,7 +566,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	}
 
 	// Wait for a serial port event
-	DWORD eventMask, numBytesRead, readResult = WAIT_FAILED;
+	DWORD eventMask = 0, numBytesRead, errorsMask, readResult = WAIT_FAILED;
 	if (WaitCommEvent(serialPortHandle, &eventMask, &overlappedStruct) == FALSE)
 	{
 		if (GetLastError() != ERROR_IO_PENDING)			// Problem occurred
@@ -587,14 +587,29 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 				readResult = WaitForSingleObject(overlappedStruct.hEvent, 750);
 				continueWaiting = ((readResult == WAIT_TIMEOUT) && (env->GetIntField(obj, eventFlagsField) != 0));
 			}
-			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, TRUE) == FALSE))
+			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, FALSE) == FALSE))
 				numBytesRead = 0;
 		}
 	}
 
+	// Ensure that new data actually was received
+	COMSTAT commInfo;
+	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
+	{
+		// Problem detected, close port
+		int numRetries = 10;
+		PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
+		while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (numRetries-- > 0));
+		serialPortHandle = INVALID_HANDLE_VALUE;
+		env->SetLongField(obj, serialPortHandleField, -1l);
+		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+		return -1;
+	}
+	numBytesRead = commInfo.cbInQue;
+
 	// Return type of event if successful
 	CloseHandle(overlappedStruct.hEvent);
-	return ((eventMask & EV_RXCHAR) > 0) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE :
+	return (((eventMask & EV_RXCHAR) > 0) && numBytesRead) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE :
 			(((eventMask & EV_TXEMPTY) > 0) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN : 0);
 }
 
@@ -637,7 +652,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 		return -1;
 
 	COMSTAT commInfo;
-	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
+	DWORD errorsMask;
+	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
 		int numRetries = 10;
@@ -660,7 +676,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 		return -1;
 
 	COMSTAT commInfo;
-	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
+	DWORD errorsMask;
+	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 		return -1;
 	DWORD numBytesToWrite = commInfo.cbOutQue;
 
@@ -676,7 +693,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 
 	// Check for a disconnected serial port
 	COMSTAT commInfo;
-	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
+	DWORD errorsMask;
+	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
 		int numRetries = 10;
@@ -738,7 +756,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 	// Check for a disconnected serial port
 	COMSTAT commInfo;
-	if (!ClearCommError(serialPortHandle, NULL, &commInfo))
+	DWORD errorsMask;
+	if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
 	{
 		// Problem detected, close port
 		int numRetries = 10;
