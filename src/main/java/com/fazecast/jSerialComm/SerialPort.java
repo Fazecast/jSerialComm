@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 22, 2020
+ *  Last Updated on:  Feb 18, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -130,13 +130,18 @@ public final class SerialPort
 				// Determine the specific ARM architecture of this device
 				try
 				{
-					BufferedReader cpuPropertiesFile = new BufferedReader(new FileReader("/proc/cpuinfo"));
 					String line;
+					BufferedReader cpuPropertiesFile = new BufferedReader(new FileReader("/proc/cpuinfo"));
 					while ((line = cpuPropertiesFile.readLine()) != null)
 					{
 						if (line.contains("ARMv"))
 						{
 							libraryPath = "Linux/armv" + line.substring(line.indexOf("ARMv")+4, line.indexOf("ARMv")+5);
+							break;
+						}
+						else if (line.contains("ARM") && line.contains("(v"))
+						{
+							libraryPath = "Linux/armv" + line.substring(line.indexOf("(v")+2, line.indexOf("(v")+3);
 							break;
 						}
 						else if (line.contains("aarch"))
