@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 21, 2020
+ *  Last Updated on:  Feb 18, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -259,7 +259,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
 		{
-			while ((close(serialPortFD) == -1) && (errno != EBADF));
+			while ((close(serialPortFD) == -1) && (errno == EINTR));
 			serialPortFD = -1;
 		}
 		else
@@ -288,9 +288,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			else
 			{
 				// Close the port if there was a problem setting the parameters
-				ioctl(serialPortFD, TIOCNXCL);
 				tcdrain(serialPortFD);
-				while ((close(serialPortFD) == -1) && (errno != EBADF));
+				while ((close(serialPortFD) == -1) && (errno == EINTR));
 				serialPortFD = -1;
 				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 			}
@@ -344,17 +343,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_iflag |= (INPCK | IGNPAR);
 	options.c_iflag |= (XonXoffInEnabled | XonXoffOutEnabled);
 
-	// Set baud rate
+	// Set baud rate and apply changes
 	baud_rate baudRateCode = getBaudRateCode(baudRate);
 	unsigned char nonStandardBaudRate = (baudRateCode == 0);
 	if (nonStandardBaudRate)
 		baudRateCode = B38400;
 	cfsetispeed(&options, baudRateCode);
 	cfsetospeed(&options, baudRateCode);
-
-	// Apply changes and block non-root users from opening this port
 	int retVal = configDisabled ? 0 : tcsetattr(serialPortFD, TCSANOW, &options);
-	ioctl(serialPortFD, TIOCEXCL);
 
 	// Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
@@ -514,11 +510,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	if (serialPortFD <= 0)
 		return JNI_TRUE;
 
-	// Allow others to open the port
-	ioctl(serialPortFD, TIOCNXCL);
-	tcdrain(serialPortFD);
-	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
-
 	// Force the port to enter non-blocking mode to ensure that any current reads return
 	struct termios options = {0};
 	tcgetattr(serialPortFD, &options);
@@ -528,37 +519,32 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	options.c_cc[VTIME] = 0;
 	int retVal = fcntl(serialPortFD, F_SETFL, flags);
 	tcsetattr(serialPortFD, TCSANOW, &options);
+	tcdrain(serialPortFD);
 
 	// Close the port
-	flock(serialPortFD, LOCK_UN);
-	while ((close(serialPortFD) == -1) && (errno != EBADF));
+	flock(serialPortFD, LOCK_UN | LOCK_NB);
+	while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno == EINTR))
+		errno = 0;
 	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
+	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	return JNI_TRUE;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
+	// Retrieve bytes available to read and close port upon error
 	int numBytesAvailable = -1;
 	if ((serialPortFD > 0) && (ioctl(serialPortFD, FIONREAD, &numBytesAvailable) == -1))
-	{
-		// Problem detected, allow others to open the port and close it ourselves
-		ioctl(serialPortFD, TIOCNXCL);
-		tcdrain(serialPortFD);
-		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
-		serialPortFD = -1;
-		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
-	}
-
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 	return numBytesAvailable;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortFD)
 {
+	// Retrieve bytes awaiting write and close port upon error
 	int numBytesToWrite = -1;
-	if (serialPortFD > 0)
-		ioctl(serialPortFD, TIOCOUTQ, &numBytesToWrite);
-
+	if ((serialPortFD > 0) && (ioctl(serialPortFD, TIOCOUTQ, &numBytesToWrite) == -1))
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 	return numBytesToWrite;
 }
 
@@ -581,13 +567,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
-				// Problem reading, allow others to open the port and close it ourselves
-				ioctl(serialPortFD, TIOCNXCL);
-				tcdrain(serialPortFD);
-				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
-				serialPortFD = -1;
-				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+				// Problem reading, close the port
+				Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 				break;
 			}
 
@@ -614,13 +595,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			do { numBytesRead = read(serialPortFD, readBuffer+numBytesReadTotal, bytesRemaining); } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
-				// Problem reading, allow others to open the port and close it ourselves
-				ioctl(serialPortFD, TIOCNXCL);
-				tcdrain(serialPortFD);
-				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
-				serialPortFD = -1;
-				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+				// Problem reading, close the port
+				Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 				break;
 			}
 
@@ -638,13 +614,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		do { numBytesRead = read(serialPortFD, readBuffer, bytesToRead); } while ((numBytesRead < 0) && (errno == EINTR));
 		if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 		{
-			// Problem reading, allow others to open the port and close it ourselves
-			ioctl(serialPortFD, TIOCNXCL);
-			tcdrain(serialPortFD);
-			while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
-			serialPortFD = -1;
-			(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
+			// Problem reading, close the port
+			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 		}
 		else
 			numBytesReadTotal = numBytesRead;
@@ -664,41 +635,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
 	int numBytesWritten, result = 0, ioctlResult = 0;
 
-	// Set the DTR line to high if using RS-422
-	//ioctl(serialPortFD, TIOCMGET, &result);
-	//result |= TIOCM_DTR;
-	//ioctl(serialPortFD, TIOCMSET, &result);
-
 	// Write to port
 	do { numBytesWritten = write(serialPortFD, writeBuffer+offset, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
 	if ((numBytesWritten == -1) || ((numBytesWritten == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 	{
-		// Problem writing, allow others to open the port and close it ourselves
-		ioctl(serialPortFD, TIOCNXCL);
-		tcdrain(serialPortFD);
-		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+		// Problem writing, close the port
+		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
 		serialPortFD = -1;
-		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
 
 	// Wait until all bytes were written in write-blocking mode
-	if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0)
+	if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0) && (serialPortFD > 0))
 		tcdrain(serialPortFD);
-
-	// Clear the DTR line if using RS-422
-//#ifdef TIOCSERGETLSR
-	//do
-	//{
-		//result = ioctl(serialPortFD, TIOCSERGETLSR);
-		//if (result != TIOCSER_TEMT)
-			//usleep(100);
-	//} while (result != TIOCSER_TEMT);
-//#endif
-	//ioctl(serialPortFD, TIOCMGET, &result);
-	//result &= ~TIOCM_DTR;
-	//ioctl(serialPortFD, TIOCMSET, &result);
-	//do { result = tcflush(serialPortFD, TCIFLUSH); } while ((result < 0) && (errno == EINTR));
 
 	// Return number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);

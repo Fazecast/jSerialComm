@@ -2,7 +2,7 @@
  * SerialPort_Android.c
  *
  *       Created on:  Mar 13, 2015
- *  Last Updated on:  Jan 21, 2020
+ *  Last Updated on:  Feb 18, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -176,6 +176,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		else
 		{
 			// Close the port if there was a problem setting the parameters
+			tcdrain(serialPortFD);
 			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
 			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
@@ -457,11 +458,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	int numBytesAvailable = -1;
 	if ((serialPortFD > 0) && (ioctl(serialPortFD, FIONREAD, &numBytesAvailable) == -1))
 	{
-		// Problem detected, allow others to open the port and close it ourselves
-		ioctl(serialPortFD, TIOCNXCL);
+		// Problem detected, close the port
 		tcdrain(serialPortFD);
 		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
-		serialPortFD = -1;
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
 		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
@@ -579,8 +578,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	do { numBytesWritten = write(serialPortFD, writeBuffer+offset, bytesToWrite); } while ((numBytesWritten < 0) && (errno == EINTR));
 	if ((numBytesWritten == -1) || ((numBytesWritten == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 	{
-		// Problem writing, allow others to open the port and close it ourselves
-		ioctl(serialPortFD, TIOCNXCL);
+		// Problem writing, close the port
 		ioctl(serialPortFD, TCSBRK, 1);
 		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
 		serialPortFD = -1;
@@ -589,7 +587,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	}
 
 	// Wait until all bytes were written in write-blocking mode
-	if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0)
+	if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0) && (serialPortFD > 0))
 		ioctl(serialPortFD, TCSBRK, 1);
 
 	// Return number of bytes written if successful
