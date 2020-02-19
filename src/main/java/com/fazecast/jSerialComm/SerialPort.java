@@ -43,14 +43,14 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.5.4
+ * @version 2.6.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	private static final String versionString = "2.5.4";
+	private static final String versionString = "2.6.0";
 	private static volatile boolean isAndroid = false;
 	private static volatile boolean isUnixBased = false;
 	private static volatile boolean isWindows = false;
