@@ -55,7 +55,7 @@ jfieldID serialPortFdField;
 jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
-jfieldID isOpenedField;
+jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
@@ -114,7 +114,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
-	isOpenedField = (*env)->GetFieldID(env, serialCommClass, "isOpened", "Z");
+	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
@@ -172,14 +172,13 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 
 		// Configure the port parameters and timeouts
 		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD))
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_TRUE);
+			(*env)->SetLongField(env, obj, serialPortHandleField, serialPortFD);
 		else
 		{
 			// Close the port if there was a problem setting the parameters
 			tcdrain(serialPortFD);
 			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 		}
 	}
 
@@ -435,7 +434,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	// Ensure that the port is open
 	if (serialPortFD <= 0)
 		return JNI_TRUE;
-	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 
 	// Force the port to enter non-blocking mode to ensure that any current reads return
 	struct termios options = {0};
@@ -460,9 +458,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	{
 		// Problem detected, close the port
 		tcdrain(serialPortFD);
-		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+		while ((close(serialPortFD) == -1) && (errno != EBADF));
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
 
 	return numBytesAvailable;
@@ -497,10 +494,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
 				// Problem reading, close port
-				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+				while ((close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 				break;
 			}
 
@@ -528,10 +524,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 			{
 				// Problem reading, close port
-				while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+				while ((close(serialPortFD) == -1) && (errno != EBADF));
 				serialPortFD = -1;
 				(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 				break;
 			}
 
@@ -551,10 +546,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(serialPortFD, FIONREAD, &ioctlResult) == -1)))
 		{
 			// Problem reading, close port
-			while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+			while ((close(serialPortFD) == -1) && (errno != EBADF));
 			serialPortFD = -1;
 			(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-			(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 		}
 		else
 			numBytesReadTotal = numBytesRead;
@@ -563,7 +557,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	// Return number of bytes read if successful
 	(*env)->SetByteArrayRegion(env, buffer, offset, numBytesReadTotal, (jbyte*)readBuffer);
 	free(readBuffer);
-	return (numBytesRead == -1) || !((*env)->GetBooleanField(env, obj, isOpenedField)) ? -1 : numBytesReadTotal;
+	return (numBytesRead == -1) || (serialPortFD == -1) ? -1 : numBytesReadTotal;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite, jlong offset)
@@ -580,10 +574,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	{
 		// Problem writing, close the port
 		ioctl(serialPortFD, TCSBRK, 1);
-		while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno != EBADF));
+		while ((close(serialPortFD) == -1) && (errno != EBADF));
 		serialPortFD = -1;
 		(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-		(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	}
 
 	// Wait until all bytes were written in write-blocking mode

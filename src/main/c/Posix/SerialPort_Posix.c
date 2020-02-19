@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 18, 2020
+ *  Last Updated on:  Feb 19, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -53,7 +53,7 @@ jfieldID serialPortFdField;
 jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
-jfieldID isOpenedField;
+jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
@@ -218,7 +218,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
-	isOpenedField = (*env)->GetFieldID(env, serialCommClass, "isOpened", "Z");
+	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
@@ -259,7 +259,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
 		{
-			while ((close(serialPortFD) == -1) && (errno == EINTR));
+			tcdrain(serialPortFD);
+			while ((close(serialPortFD) == -1) && (errno == EINTR))
+				errno = 0;
 			serialPortFD = -1;
 		}
 		else
@@ -284,14 +286,14 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 
 			// Configure the port parameters and timeouts
 			if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, serialPortFD))
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_TRUE);
+				(*env)->SetLongField(env, obj, serialPortFdField, serialPortFD);
 			else
 			{
 				// Close the port if there was a problem setting the parameters
 				tcdrain(serialPortFD);
-				while ((close(serialPortFD) == -1) && (errno == EINTR));
+				while ((close(serialPortFD) == -1) && (errno == EINTR))
+					errno = 0;
 				serialPortFD = -1;
-				(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 			}
 		}
 	}
@@ -499,7 +501,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	struct pollfd waitingSet = { serialPortFD, POLLIN, 0 };
 
 	// Wait for a serial port event
-	if (poll(&waitingSet, 1, 1000) <= 0)
+	if (poll(&waitingSet, 1, 500) <= 0)
 		return 0;
 	return (waitingSet.revents & POLLIN) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
 }
@@ -523,10 +525,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 
 	// Close the port
 	flock(serialPortFD, LOCK_UN | LOCK_NB);
-	while (((*env)->GetBooleanField(env, obj, isOpenedField)) && (close(serialPortFD) == -1) && (errno == EINTR))
+	while ((close(serialPortFD) == -1) && (errno == EINTR))
 		errno = 0;
 	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
-	(*env)->SetBooleanField(env, obj, isOpenedField, JNI_FALSE);
 	return JNI_TRUE;
 }
 
@@ -569,6 +570,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			{
 				// Problem reading, close the port
 				Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
+				serialPortFD = -1;
 				break;
 			}
 
@@ -597,6 +599,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			{
 				// Problem reading, close the port
 				Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
+				serialPortFD = -1;
 				break;
 			}
 
@@ -616,6 +619,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		{
 			// Problem reading, close the port
 			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
+			serialPortFD = -1;
 		}
 		else
 			numBytesReadTotal = numBytesRead;
@@ -624,7 +628,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	// Return number of bytes read if successful
 	(*env)->SetByteArrayRegion(env, buffer, offset, numBytesReadTotal, (jbyte*)readBuffer);
 	free(readBuffer);
-	return (numBytesRead == -1) || !((*env)->GetBooleanField(env, obj, isOpenedField)) ? -1 : numBytesReadTotal;
+	return ((numBytesRead == -1) || (serialPortFD == -1)) ? -1 : numBytesReadTotal;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite, jlong offset)
