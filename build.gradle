@@ -1,7 +1,14 @@
-apply plugin: 'java'
-apply plugin: 'eclipse'
-apply plugin: 'maven'
-apply plugin: 'osgi'
+buildscript {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+plugins {
+  id 'maven-publish'
+  id 'biz.aQute.bnd.builder' version '5.0.0'
+}
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
@@ -77,15 +84,17 @@ jar {
   from sourceSets.main.output
   from sourceSets.moduleInfo.output
 
-  manifest {
-    instruction 'Bundle-Description', 'Java Serial Communications Library'
-    instruction 'Bundle-Vendor', 'Fazecast, Inc.'
-    instruction 'Require-Capability', 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"'
-    attributes 'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-	           'Implementation-Version': version,
-               'Implementation-Vendor': 'Fazecast, Inc.',
-               'Sealed': 'true'
-  }
+  bnd (
+    'Export-Package': 'com.fazecast.jSerialComm;version="' + version + '"',
+    'Bundle-SymbolicName': 'com.fazecast.jSerialComm',
+    'Bundle-Description': 'Java Serial Communications Library',
+    'Bundle-Vendor': 'Fazecast, Inc.',
+    'Require-Capability': 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"',
+    'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
+	'Implementation-Version': version,
+    'Implementation-Vendor': 'Fazecast, Inc.',
+    'Sealed': 'true'
+  )
 }
 
 task testJar(type: Jar) {
