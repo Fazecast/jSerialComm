@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 18, 2020
+ *  Last Updated on:  Feb 19, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -46,7 +46,7 @@ jfieldID serialPortHandleField;
 jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
-jfieldID isOpenedField;
+jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
@@ -350,7 +350,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	comPortField = env->GetFieldID(serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = env->GetFieldID(serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = env->GetFieldID(serialCommClass, "portDescription", "Ljava/lang/String;");
-	isOpenedField = env->GetFieldID(serialCommClass, "isOpened", "Z");
+	eventListenerRunningField = env->GetFieldID(serialCommClass, "eventListenerRunning", "Z");
 	disableConfigField = env->GetFieldID(serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = env->GetFieldID(serialCommClass, "isDtrEnabled", "Z");
 	isRtsEnabledField = env->GetFieldID(serialCommClass, "isRtsEnabled", "Z");
@@ -387,7 +387,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	{
 		// Configure the port parameters and timeouts
 		if (Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)serialPortHandle))
-			env->SetBooleanField(obj, isOpenedField, JNI_TRUE);
+			env->SetLongField(obj, serialPortHandleField, (jlong)serialPortHandle);
 		else
 		{
 			// Close the port if there was a problem setting the parameters
@@ -395,7 +395,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			PurgeComm(serialPortHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 			while (!CloseHandle(serialPortHandle) && (numRetries-- > 0));
 			serialPortHandle = INVALID_HANDLE_VALUE;
-			env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
+			env->SetLongField(obj, serialPortHandleField, -1l);
 		}
 	}
 
@@ -566,33 +566,43 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	}
 
 	// Wait for a serial port event
-	DWORD eventMask = 0, numBytesRead, errorsMask, readResult = WAIT_FAILED;
+	BOOL listenerRunning = TRUE;
+	DWORD eventMask = 0, numBytesRead = 0, errorsMask, readResult = WAIT_FAILED;
 	if (WaitCommEvent(serialPortHandle, &eventMask, &overlappedStruct) == FALSE)
 	{
 		if (GetLastError() != ERROR_IO_PENDING)			// Problem occurred
 		{
 			// Problem reading, close port
 			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
-			serialPortHandle = INVALID_HANDLE_VALUE;
+			listenerRunning = FALSE;
 		}
 		else
 		{
-			BOOL continueWaiting = TRUE;
-			while (continueWaiting)
+			do
 			{
-				readResult = WaitForSingleObject(overlappedStruct.hEvent, 750);
-				continueWaiting = ((readResult == WAIT_TIMEOUT) && (env->GetIntField(obj, eventFlagsField) != 0));
-			}
+				listenerRunning = env->GetBooleanField(obj, eventListenerRunningField);
+				if (listenerRunning)
+					readResult = WaitForSingleObject(overlappedStruct.hEvent, 500);
+				else
+				{
+					CancelIo(serialPortHandle);
+					readResult = WaitForSingleObject(overlappedStruct.hEvent, INFINITE);
+				}
+			} while ((readResult == WAIT_TIMEOUT) && listenerRunning);
 			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(serialPortHandle, &overlappedStruct, &numBytesRead, FALSE) == FALSE))
 				numBytesRead = 0;
 		}
 	}
 
 	// Ensure that new data actually was received
-	COMSTAT commInfo;
-	if ((serialPortHandle != INVALID_HANDLE_VALUE) && !ClearCommError(serialPortHandle, &errorsMask, &commInfo))
-		Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
-	numBytesRead = commInfo.cbInQue;
+	if (listenerRunning)
+	{
+		COMSTAT commInfo;
+		if (!ClearCommError(serialPortHandle, &errorsMask, &commInfo))
+			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, obj, serialPortFD);
+		else
+			numBytesRead = commInfo.cbInQue;
+	}
 
 	// Return type of event if successful
 	CloseHandle(overlappedStruct.hEvent);
@@ -619,11 +629,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 
 	// Close the port
 	int numRetries = 10;
-	while (env->GetBooleanField(obj, isOpenedField) && !CloseHandle(serialPortHandle) && (GetLastError() != ERROR_INVALID_HANDLE) && (numRetries-- > 0));
+	while (!CloseHandle(serialPortHandle) && (GetLastError() != ERROR_INVALID_HANDLE) && (numRetries-- > 0));
 	if (numRetries > 0)
 	{
 		env->SetLongField(obj, serialPortHandleField, -1l);
-		env->SetBooleanField(obj, isOpenedField, JNI_FALSE);
 		return JNI_TRUE;
 	}
 
@@ -707,7 +716,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
     CloseHandle(overlappedStruct.hEvent);
     env->SetByteArrayRegion(buffer, offset, numBytesRead, (jbyte*)readBuffer);
     free(readBuffer);
-	return (result == TRUE) && (env->GetBooleanField(obj, isOpenedField)) ? numBytesRead : -1;
+	return (result == TRUE) ? numBytesRead : -1;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortFD, jbyteArray buffer, jlong bytesToWrite, jlong offset)
