@@ -53,7 +53,6 @@ OBJECTSsolaris32			:= $(BUILD_DIR)/solaris_x86/SerialPort_Posix.o $(BUILD_DIR)/s
 OBJECTSsolaris64			:= $(BUILD_DIR)/solaris_x86_64/SerialPort_Posix.o $(BUILD_DIR)/solaris_x86_64/PosixHelperFunctions.o
 OBJECTSsolarisSparc32		:= $(BUILD_DIR)/solaris_sparc32/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc32/PosixHelperFunctions.o
 OBJECTSsolarisSparc64		:= $(BUILD_DIR)/solaris_sparc64/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc64/PosixHelperFunctions.o
-OBJECTSosx32				:= $(BUILD_DIR)/osx_x86/SerialPort_Posix.o $(BUILD_DIR)/osx_x86/PosixHelperFunctions.o
 OBJECTSosx64				:= $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUILD_DIR)/osx_x86_64/PosixHelperFunctions.o
 CPATH_APPLE					:= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 FLAGSlinux32				:= -m32
@@ -69,13 +68,12 @@ FLAGSsolaris32				:= -m32
 FLAGSsolaris64				:= -m64
 FLAGSsolarisSparc32			:= -mno-app-regs -mcpu=v8 -mv8plus -m32
 FLAGSsolarisSparc64			:= -mno-app-regs -mcpu=v9 -m64
-FLAGSosx32					:= -m32
 FLAGSosx64					:= -m64
 JNI_HEADER					:= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS					:= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
@@ -152,9 +150,6 @@ solarisSparc64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_sparc64 $(BUILD_DIR)/sol
 	$(COPY) $(BUILD_DIR)/solaris_sparc64/*.* $(RESOURCE_DIR_SOLARIS)/sparcv9_64/
 
 # Build architecture-specific OSX libraries
-osx32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86 $(BUILD_DIR)/osx_x86/$(LIBRARY_NAME_APPLE)
-	$(DELETE) -rf $(BUILD_DIR)/osx_x86/*.o
-	$(COPY) $(BUILD_DIR)/osx_x86/*.* $(RESOURCE_DIR_OSX)/x86
 osx64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86_64 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86_64/*.o
 	$(COPY) $(BUILD_DIR)/osx_x86_64/*.* $(RESOURCE_DIR_OSX)/x86_64
@@ -185,8 +180,6 @@ $(BUILD_DIR)/solaris_x86_64 :
 $(BUILD_DIR)/solaris_sparc32 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/solaris_sparc64 :
-	$(MKDIR) -p $@
-$(BUILD_DIR)/osx_x86 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/osx_x86_64 :
 	$(MKDIR) -p $@
@@ -220,8 +213,6 @@ $(BUILD_DIR)/solaris_sparc32/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsola
 	$(LINK_SOLARIS_SPARC) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSsolarisSparc32) -o $@ $(OBJECTSsolarisSparc32) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/solaris_sparc64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsolarisSparc64)
 	$(LINK_SOLARIS_SPARC) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSsolarisSparc64) -o $@ $(OBJECTSsolarisSparc64) $(LIBRARIES_POSIX)
-$(BUILD_DIR)/osx_x86/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx32)
-	$(LINK_APPLE) $(LDFLAGS) $(LDFLAGS_APPLE) $(FLAGSosx32) -o $@ $(OBJECTSosx32) $(LIBRARIES_APPLE)
 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx64)
 	$(LINK_APPLE) $(LDFLAGS) $(LDFLAGS_APPLE) $(FLAGSosx64) -o $@ $(OBJECTSosx64) $(LIBRARIES_APPLE)
 
@@ -252,8 +243,6 @@ $(BUILD_DIR)/solaris_sparc32/%.o : %.c
 	$(COMPILE_SOLARIS_SPARC) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolarisSparc32) -c $< -o $@
 $(BUILD_DIR)/solaris_sparc64/%.o : %.c
 	$(COMPILE_SOLARIS_SPARC) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolarisSparc64) -c $< -o $@
-$(BUILD_DIR)/osx_x86/%.o : %.c
-	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx32) -c $< -o $@
 $(BUILD_DIR)/osx_x86_64/%.o : %.c
 	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
 
