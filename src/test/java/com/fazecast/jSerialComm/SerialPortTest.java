@@ -2,7 +2,7 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Jan 03, 2020
+ *  Last Updated on:  Feb 20, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.6.0
+ * @version 2.6.1
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */

@@ -31,7 +31,7 @@ import java.io.InterruptedIOException;
  * This class describes a serial port timeout exception.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.6.0
+ * @version 2.6.1
  * @see java.io.InterruptedIOException
  */
 public final class SerialPortTimeoutException extends InterruptedIOException
