@@ -43,7 +43,11 @@ char keyExists(struct charTupleVector* vector, const char* key);
 // Linux-specific functionality
 #if defined(__linux__)
 typedef int baud_rate;
+#ifdef __ANDROID__
+extern int ioctl(int __fd, int __request, ...);
+#else
 extern int ioctl(int __fd, unsigned long int __request, ...);
+#endif
 void getDriverName(const char* directoryToSearch, char* friendlyName);
 void getFriendlyName(const char* productFile, char* friendlyName);
 void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription);
