@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 20, 2020
+ *  Last Updated on:  Apr 01, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -1492,7 +1492,7 @@ public final class SerialPort
 			byteBuffer[0] = (byte)(b & 0xFF);
 			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L, 0);
 			if (bytesWritten < 0)
-				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
+				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 			else if (bytesWritten == 0)
 				throw new SerialPortTimeoutException("The write operation timed out before all data was written.");
 		}
@@ -1519,7 +1519,7 @@ public final class SerialPort
 			// Write to the serial port
 			int numWritten = writeBytes(portHandle, b, len, off);
 			if (numWritten < 0)
-				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
+				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 			else if (numWritten == 0)
 				throw new SerialPortTimeoutException("The write operation timed out before all data was written.");
 		}
