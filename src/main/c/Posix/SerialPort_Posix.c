@@ -251,6 +251,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
+	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 
 	// Try to open existing serial port with read/write access
 	int serialPortFD = -1;
@@ -281,7 +282,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 #endif
 			if (!isDtrEnabled || !isRtsEnabled)
 				options.c_cflag &= ~HUPCL;
-			options.c_iflag |= BRKINT;
+			if (!rs485ModeEnabled)
+				options.c_iflag |= BRKINT;
 			tcsetattr(serialPortFD, TCSANOW, &options);
 
 			// Configure the port parameters and timeouts
