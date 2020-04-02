@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Mar 07, 2019
+ *  Last Updated on:  Apr 01, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -68,6 +68,7 @@ void searchForComPorts(charTupleVector* comPorts);
 
 // Apple-specific functionality
 #elif defined(__APPLE__)
+#define fdatasync(a) fsync(a)
 #include <termios.h>
 typedef speed_t baud_rate;
 
