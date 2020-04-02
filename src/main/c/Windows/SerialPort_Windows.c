@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 19, 2020
+ *  Last Updated on:  Apr 01, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -437,8 +437,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
 	// Retrieve existing port configuration
-	SetupComm(serialPortHandle, receiveDeviceQueueSize, sendDeviceQueueSize);
-	if (!configDisabled && !GetCommState(serialPortHandle, &dcbSerialParams))
+	if (!configDisabled && (!SetupComm(serialPortHandle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(serialPortHandle, &dcbSerialParams)))
 		return JNI_FALSE;
 
 	// Set updated port parameters
