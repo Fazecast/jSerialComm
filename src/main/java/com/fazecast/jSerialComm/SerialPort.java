@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 01, 2020
+ *  Last Updated on:  Apr 02, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -840,7 +840,7 @@ public final class SerialPort
 	 * @param newDataBits The number of data bits to use per word.
 	 * @param newStopBits The number of stop bits to use.
 	 * @param newParity The type of parity error-checking desired.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
@@ -878,7 +878,7 @@ public final class SerialPort
 	 * @param newStopBits The number of stop bits to use.
 	 * @param newParity The type of parity error-checking desired.
 	 * @param useRS485Mode Whether to enable RS-485 mode.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
@@ -949,7 +949,7 @@ public final class SerialPort
 	 * @param newTimeoutMode The new timeout mode as specified above.
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
 	 * @param newWriteTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call (effective only on Windows).
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
 	public final synchronized boolean setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
@@ -979,7 +979,7 @@ public final class SerialPort
 	 * The default baud rate is 9600 baud.
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
 	public final synchronized boolean setBaudRate(int newBaudRate)
 	{
@@ -1000,7 +1000,7 @@ public final class SerialPort
 	 * The default number of data bits per word is 8.
 	 *
 	 * @param newDataBits The desired number of data bits per word.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
 	public final synchronized boolean setNumDataBits(int newDataBits)
 	{
@@ -1024,7 +1024,7 @@ public final class SerialPort
 	 * Note that {@link #ONE_POINT_FIVE_STOP_BITS} stop bits may not be available on non-Windows systems.
 	 *
 	 * @param newStopBits The desired number of stop bits per word.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
@@ -1068,7 +1068,7 @@ public final class SerialPort
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Linux: RTS/CTS, Xon, Xoff, Xon/Xoff
 	 *
 	 * @param newFlowControlSettings The desired type of flow control to enable for this serial port.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 * @see #FLOW_CONTROL_DISABLED
 	 * @see #FLOW_CONTROL_RTS_ENABLED
 	 * @see #FLOW_CONTROL_CTS_ENABLED
@@ -1097,7 +1097,7 @@ public final class SerialPort
 	 * Acceptable values are {@link #NO_PARITY}, {@link #EVEN_PARITY}, {@link #ODD_PARITY}, {@link #MARK_PARITY}, and {@link #SPACE_PARITY}.
 	 *
 	 * @param newParity The desired parity scheme to be used.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 * @see #NO_PARITY
 	 * @see #EVEN_PARITY
 	 * @see #ODD_PARITY
@@ -1134,7 +1134,7 @@ public final class SerialPort
 	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting.
 	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
 	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
-	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
 	public final synchronized boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
