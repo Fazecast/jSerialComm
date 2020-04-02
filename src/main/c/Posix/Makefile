@@ -30,7 +30,6 @@ MOVE						:= @mv
 PRINT						:= @echo
 FULL_CLASS					:= com.fazecast.jSerialComm.SerialPort
 JAVAC						:= "$(JDK_HOME)/bin/javac"
-JAVAH						:= "$(JDK_HOME)/bin/javah" -jni
 JFLAGS 						:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME_POSIX			:= libjSerialComm.so
 LIBRARY_NAME_APPLE			:= libjSerialComm.jnilib
@@ -248,8 +247,7 @@ $(BUILD_DIR)/osx_x86_64/%.o : %.c
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)
-	$(JAVAH) -d .. -classpath $(JAVA_CLASS_DIR)/../../.. $(FULL_CLASS)
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :
-	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java
+	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..
