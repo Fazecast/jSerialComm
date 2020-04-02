@@ -83,15 +83,17 @@ compileModuleInfoJava {
 jar {
   from sourceSets.main.output
   from sourceSets.moduleInfo.output
+  classpath = files()
 
   bnd (
-    'Export-Package': 'com.fazecast.jSerialComm;version="' + version + '"',
+    '-exportcontents': 'com.fazecast.jSerialComm;version="' + version + '"',
+    'Bundle-Name': 'jSerialComm',
     'Bundle-SymbolicName': 'com.fazecast.jSerialComm',
     'Bundle-Description': 'Java Serial Communications Library',
     'Bundle-Vendor': 'Fazecast, Inc.',
     'Require-Capability': 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"',
     'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-	'Implementation-Version': version,
+    'Implementation-Version': version,
     'Implementation-Vendor': 'Fazecast, Inc.',
     'Sealed': 'true'
   )
