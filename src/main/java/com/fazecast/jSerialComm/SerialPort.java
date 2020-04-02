@@ -304,7 +304,7 @@ public final class SerialPort
 	 *
 	 * @param portDescriptor The desired serial port to use with this library.
 	 * @return A {@link SerialPort} object.
-	 * @exception SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
+	 * @throws SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
 	static public SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
 	{
@@ -392,7 +392,7 @@ public final class SerialPort
 	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
 	 * @param deviceSendQueueSize The requested size in bytes of the internal device driver's output queue (no effect on OSX)
 	 * @param deviceReceiveQueueSize The requested size in bytes of the internal device driver's input queue (no effect on Linux/OSX)
-	 * @return Whether the port was successfully opened.
+	 * @return Whether the port was successfully opened with a valid configuration.
 	 */
 	public final synchronized boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
@@ -456,7 +456,7 @@ public final class SerialPort
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
 	 * @param safetySleepTime The number of milliseconds to sleep before opening the port in case of frequent closing/openings.
-	 * @return Whether the port was successfully opened.
+	 * @return Whether the port was successfully opened with a valid configuration.
 	 */
 	public final boolean openPort(int safetySleepTime) { return openPort(safetySleepTime, sendDeviceQueueSize, receiveDeviceQueueSize); }
 
@@ -469,7 +469,7 @@ public final class SerialPort
 	 * <p>
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
-	 * @return Whether the port was successfully opened.
+	 * @return Whether the port was successfully opened with a valid configuration.
 	 */
 	public final boolean openPort() { return openPort(200); }
 
@@ -840,6 +840,7 @@ public final class SerialPort
 	 * @param newDataBits The number of data bits to use per word.
 	 * @param newStopBits The number of stop bits to use.
 	 * @param newParity The type of parity error-checking desired.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
@@ -849,9 +850,9 @@ public final class SerialPort
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity)
+	public final boolean setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity)
 	{
-		setComPortParameters(newBaudRate, newDataBits, newStopBits, newParity, rs485Mode);
+		return setComPortParameters(newBaudRate, newDataBits, newStopBits, newParity, rs485Mode);
 	}
 
 	/**
@@ -877,6 +878,7 @@ public final class SerialPort
 	 * @param newStopBits The number of stop bits to use.
 	 * @param newParity The type of parity error-checking desired.
 	 * @param useRS485Mode Whether to enable RS-485 mode.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
@@ -886,7 +888,7 @@ public final class SerialPort
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final synchronized void setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
+	public final synchronized boolean setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
 	{
 		baudRate = newBaudRate;
 		dataBits = newDataBits;
@@ -898,8 +900,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -946,8 +949,9 @@ public final class SerialPort
 	 * @param newTimeoutMode The new timeout mode as specified above.
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.
 	 * @param newWriteTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #writeBytes(byte[],long)} call (effective only on Windows).
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 */
-	public final synchronized void setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
+	public final synchronized boolean setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
 		timeoutMode = newTimeoutMode;
 		if (isWindows)
@@ -964,8 +968,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configTimeouts(portHandle);
+			return configTimeouts(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -974,8 +979,9 @@ public final class SerialPort
 	 * The default baud rate is 9600 baud.
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 */
-	public final synchronized void setBaudRate(int newBaudRate)
+	public final synchronized boolean setBaudRate(int newBaudRate)
 	{
 		baudRate = newBaudRate;
 
@@ -983,8 +989,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -993,8 +1000,9 @@ public final class SerialPort
 	 * The default number of data bits per word is 8.
 	 *
 	 * @param newDataBits The desired number of data bits per word.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 */
-	public final synchronized void setNumDataBits(int newDataBits)
+	public final synchronized boolean setNumDataBits(int newDataBits)
 	{
 		dataBits = newDataBits;
 
@@ -1002,8 +1010,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -1015,11 +1024,12 @@ public final class SerialPort
 	 * Note that {@link #ONE_POINT_FIVE_STOP_BITS} stop bits may not be available on non-Windows systems.
 	 *
 	 * @param newStopBits The desired number of stop bits per word.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 * @see #ONE_STOP_BIT
 	 * @see #ONE_POINT_FIVE_STOP_BITS
 	 * @see #TWO_STOP_BITS
 	 */
-	public final synchronized void setNumStopBits(int newStopBits)
+	public final synchronized boolean setNumStopBits(int newStopBits)
 	{
 		stopBits = newStopBits;
 
@@ -1027,8 +1037,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -1057,6 +1068,7 @@ public final class SerialPort
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Linux: RTS/CTS, Xon, Xoff, Xon/Xoff
 	 *
 	 * @param newFlowControlSettings The desired type of flow control to enable for this serial port.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 * @see #FLOW_CONTROL_DISABLED
 	 * @see #FLOW_CONTROL_RTS_ENABLED
 	 * @see #FLOW_CONTROL_CTS_ENABLED
@@ -1065,7 +1077,7 @@ public final class SerialPort
 	 * @see #FLOW_CONTROL_XONXOFF_IN_ENABLED
 	 * @see #FLOW_CONTROL_XONXOFF_OUT_ENABLED
 	 */
-	public final synchronized void setFlowControl(int newFlowControlSettings)
+	public final synchronized boolean setFlowControl(int newFlowControlSettings)
 	{
 		flowControl = newFlowControlSettings;
 
@@ -1073,8 +1085,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -1084,13 +1097,14 @@ public final class SerialPort
 	 * Acceptable values are {@link #NO_PARITY}, {@link #EVEN_PARITY}, {@link #ODD_PARITY}, {@link #MARK_PARITY}, and {@link #SPACE_PARITY}.
 	 *
 	 * @param newParity The desired parity scheme to be used.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 * @see #NO_PARITY
 	 * @see #EVEN_PARITY
 	 * @see #ODD_PARITY
 	 * @see #MARK_PARITY
 	 * @see #SPACE_PARITY
 	 */
-	public final synchronized void setParity(int newParity)
+	public final synchronized boolean setParity(int newParity)
 	{
 		parity = newParity;
 
@@ -1098,8 +1112,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
@@ -1119,8 +1134,9 @@ public final class SerialPort
 	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting.
 	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
 	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
+	 * @return Whether the port configuration is valid or disallowed on this system (only valid after the port is already opened).
 	 */
-	public final synchronized void setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
+	public final synchronized boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
 		rs485Mode = useRS485Mode;
 		rs485ActiveHigh = rs485RtsActiveHigh;
@@ -1131,8 +1147,9 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			configPort(portHandle);
+			return configPort(portHandle);
 		}
+		return true;
 	}
 
 	/**
