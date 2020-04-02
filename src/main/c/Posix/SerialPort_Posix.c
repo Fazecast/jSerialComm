@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 25, 2020
+ *  Last Updated on:  Apr 01, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -525,6 +525,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 
 	// Close the port
 	flock(serialPortFD, LOCK_UN | LOCK_NB);
+	fdatasync(serialPortFD);
 	while ((close(serialPortFD) == -1) && (errno == EINTR))
 		errno = 0;
 	(*env)->SetLongField(env, obj, serialPortFdField, -1l);
