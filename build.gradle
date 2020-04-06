@@ -83,7 +83,6 @@ compileModuleInfoJava {
 jar {
   from sourceSets.main.output
   from sourceSets.moduleInfo.output
-  classpath = files()
 
   bnd (
     '-exportcontents': 'com.fazecast.jSerialComm;version="' + version + '"',
