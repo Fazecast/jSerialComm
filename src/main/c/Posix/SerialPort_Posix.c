@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 01, 2020
+ *  Last Updated on:  Apr 03, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -326,18 +326,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
-	tcflag_t stopBits = ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) || (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS)) ? 0 : CSTOPB;
 	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-	tcflag_t CTSRTSEnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ||
-			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0)) ? CRTSCTS : 0;
 	tcflag_t XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0) ? IXOFF : 0;
 	tcflag_t XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0) ? IXON : 0;
 
 	// Set updated port parameters
 	tcgetattr(serialPortFD, &options);
-	options.c_cflag = (byteSize | stopBits | parity | CLOCAL | CREAD | CTSRTSEnabled);
-	if (parityInt == com_fazecast_jSerialComm_SerialPort_SPACE_PARITY)
-		options.c_cflag &= ~PARODD;
+	options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD);
+	options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
+	if (stopBitsInt == com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS)
+		options.c_cflag |= CSTOPB;
+	else
+		options.c_cflag &= ~CSTOPB;
+	if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
+		options.c_cflag |= CRTSCTS;
+	else
+		options.c_cflag &= ~CRTSCTS;
 	if (!isDtrEnabled || !isRtsEnabled)
 		options.c_cflag &= ~HUPCL;
 	options.c_iflag &= ~(INPCK | IGNPAR | PARMRK | ISTRIP);
