@@ -300,17 +300,22 @@ bool configPort(long serialPortFD)
    unsigned char isDtrEnabled = true;
    unsigned char isRtsEnabled = true;
    tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
-   tcflag_t stopBits = ((stopBitsInt == 1) || (stopBitsInt == 2)) ? 0 : CSTOPB;
    tcflag_t parity = (parityInt == 0) ? 0 : (parityInt == 1) ? (PARENB | PARODD) : (parityInt == 2) ? PARENB : (parityInt == 3) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-   tcflag_t CTSRTSEnabled = (((flowControl & 0x10) > 0) || ((flowControl & 0x1) > 0)) ? CRTSCTS : 0;
    tcflag_t XonXoffInEnabled = ((flowControl & 0x10000) > 0) ? IXOFF : 0;
    tcflag_t XonXoffOutEnabled = ((flowControl & 0x100000) > 0) ? IXON : 0;
 
    // Set updated port parameters
    tcgetattr(serialPortFD, &options);
-   options.c_cflag = (byteSize | stopBits | parity | CLOCAL | CREAD | CTSRTSEnabled);
-   if (parityInt == 4)
-      options.c_cflag &= ~PARODD;
+   options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD);
+   options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
+   if (stopBitsInt == 3)
+      options.c_cflag |= CSTOPB;
+   else
+      options.c_cflag &= ~CSTOPB;
+   if (((flowControl & 0x00000010) > 0) || ((flowControl & 0x00000001) > 0))
+      options.c_cflag |= CRTSCTS;
+   else
+      options.c_cflag &= ~CRTSCTS;
    if (!isDtrEnabled || !isRtsEnabled)
       options.c_cflag &= ~HUPCL;
    options.c_iflag &= ~(INPCK | IGNPAR | PARMRK | ISTRIP);
@@ -450,16 +455,8 @@ bool closePortNative(long serialPortFD)
    return true;
 }
 
-int main(int argc, char *argv[])
+int testFull(void)
 {
-   // Check for correct input parameters
-   if (argc != 2)
-   {
-      printf("USAGE: ./testClose [PORT_FILE_NAME]\n");
-      return -1;
-   }
-   comPort = argv[1];
-
    // Open the serial port
    if ((portHandle = openPortNative()) <= 0)
    {
@@ -476,6 +473,19 @@ int main(int argc, char *argv[])
       return -3;
    }
    printf("Port closed\n");
-
    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+   // Check for correct input parameters
+   if (argc != 2)
+   {
+	  printf("USAGE: ./testOpenClose [PORT_FILE_NAME]\n");
+	  return -1;
+   }
+   comPort = argv[1];
+
+   // Perform one of the above open/close tests
+   return testFull();
 }
