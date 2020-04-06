@@ -80,7 +80,7 @@ public class SerialPortTest
 		@Override
 		public boolean delimiterIndicatesEndOfMessage() { return false; }
 	}
-	
+
 	static public void main(String[] args)
 	{
 		System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
