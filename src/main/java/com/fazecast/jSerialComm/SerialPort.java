@@ -291,8 +291,13 @@ public final class SerialPort
 	 * Note that the {@link #openPort()} method must be called before any attempts to read from or write to the port.  Likewise, {@link #closePort()} should be called when you are finished accessing the port.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time after the port has been opened.
+	 * <p>
+	 * <b>Important NOTE:</b>
+	 * Always keep a ptr copy of related SerialPort instance, and try not to retrieve it from return type of this method.
+	 * e.g. If you grab the required SerialPort from return array/object, then open it, you may not close it later using finding the same way for openning and close it.
+	 * The return value(array) is a unique(not-shared) object.
 	 *
-	 * @return An array of {@link SerialPort} objects.
+	 * @return An array of {@link SerialPort} objects. (not a shared object, each call may result a completely unique array object)
 	 */
 	static public native SerialPort[] getCommPorts();
 
