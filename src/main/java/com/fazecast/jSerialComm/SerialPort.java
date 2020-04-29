@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 02, 2020
+ *  Last Updated on:  Apr 29, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -288,7 +288,12 @@ public final class SerialPort
 	 * <p>
 	 * The serial ports can be accessed by iterating through each of the SerialPort objects in this array.
 	 * <p>
-	 * Note that the {@link #openPort()} method must be called before any attempts to read from or write to the port.  Likewise, {@link #closePort()} should be called when you are finished accessing the port.
+	 * Note that the {@link #openPort()} method must be called before any attempts to read from or write to the port.
+	 * Likewise, {@link #closePort()} should be called when you are finished accessing the port.
+	 * <p>
+	 * Also note that repeated calls to this function will re-enumerate all serial ports and will return a completely
+	 * unique set of array objects. As such, you should store a reference to the serial port object(s) you are
+	 * interested in in your own application code.
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time after the port has been opened.
 	 *
