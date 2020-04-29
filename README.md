@@ -107,14 +107,15 @@ recommended to simply use the pre-built ```jSerialComm``` library in your
 application. For installation/usage instructions, please skip to the [usage](#usage) section.
 
 If you do choose to build this library for your specific system, the recommended
-methodology is to use [Gradle](https://gradle.org/) coupled with the
-Java SDK, [version 1.6](http://www.oracle.com/technetwork/java/archive-139210.html)
+methodology is to use [Gradle](https://gradle.org/) coupled with two
+Java SDKs, [version 1.6](https://www.oracle.com/java/technologies/javase-java-archive-javase6-downloads.html)
+and [version 9.0.4](https://www.oracle.com/java/technologies/javase/javase9-archive-downloads.html)
 (for backward compatibility).
 
-Once the Java SDK 1.6 has been installed, ensure that you have an environment
-variable called ```JDK_HOME``` set to the base directory of your JDK installation.
-Once this has been done, refer to the section corresponding to your specific
-Operating System for further instructions.
+Once the Java SDKs have been installed, ensure that you have an environment
+variable called ```JDK_HOME``` set to the base directory of your JDK 9.0.4
+installation. Once this has been done, refer to the section corresponding to
+your specific Operating System for further instructions.
 
 Please note, if you would like to edit any of the source code or view it in an
 IDE (such as Eclipse), you can automatically build the Eclipse project files by
@@ -135,7 +136,7 @@ Ensure that the following tools are installed on your Linux distribution:
     # On some distros, these may be called multilib tools for gcc and binutils
     gcc make glibc-devel.x86_64 glibc-devel.i686
 
-Ensure that the ```JDK_HOME``` environment variable has been set for the 1.6
+Ensure that the ```JDK_HOME``` environment variable has been set for the 9.0.4
 version of your Java SDK. The correct directory can usually be found by entering
 the following command:
 
@@ -143,8 +144,8 @@ the following command:
 
 Export the result of this command ***up to but not including*** the
 ```/jre/...``` portion using the ```export``` command. For example, if
-```readlink``` produced ```/usr/lib/jvm/java-6-jdk/jre/bin/java``` as an output,
-the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk```
+```readlink``` produced ```/usr/lib/jvm/java-9.0.4/jre/bin/java``` as an output,
+the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-9.0.4```
 
 Run the following commands:
 
@@ -164,7 +165,7 @@ capable of compiling for both x86 and Sparc-based Solaris architectures.
 Instructions for creating such a toolchain can be found on the
 [Solaris Cross-Compiler wiki](https://github.com/Fazecast/jSerialComm/wiki/Building-Solaris-Cross-Compilers).
 
-Ensure that the ```JDK_HOME``` environment variable has been set for the 1.6
+Ensure that the ```JDK_HOME``` environment variable has been set for the 9.0.4
 version of your Java SDK. The correct directory can usually be found by entering
 the following command:
 
@@ -172,8 +173,8 @@ the following command:
 
 Export the result of this command ***up to but not including*** the
 ```/jre/...``` portion using the ```export``` command. For example, if
-```readlink``` produced ```/usr/lib/jvm/java-6-jdk/jre/bin/java``` as an output,
-the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk```
+```readlink``` produced ```/usr/lib/jvm/java-9.0.4/jre/bin/java``` as an output,
+the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-9.0.4```
 
 Run the following commands:
 
@@ -192,7 +193,7 @@ Ensure that you have a cross-compiler installed on your Linux distribution
 capable of compiling for ARM-based architectures. I prefer ```crosstool-ng```
 for this purpose.
 
-Ensure that the ```JDK_HOME``` environment variable has been set for the 1.6
+Ensure that the ```JDK_HOME``` environment variable has been set for the 9.0.4
 version of your Java SDK. The correct directory can usually be found by entering
 the following command:
 
@@ -200,8 +201,8 @@ the following command:
 
 Export the result of this command ***up to but not including*** the
 ```/jre/...``` portion using the ```export``` command. For example, if
-```readlink``` produced ```/usr/lib/jvm/java-6-jdk/jre/bin/java``` as an output,
-the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-6-jdk```
+```readlink``` produced ```/usr/lib/jvm/java-9.0.4/jre/bin/java``` as an output,
+the export command would look like: ```export JDK_HOME=/usr/lib/jvm/java-9.0.4```
 
 Run the following commands:
 

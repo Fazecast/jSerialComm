@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 03, 2020
+ *  Last Updated on:  Apr 29, 2020
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2020 Fazecast, Inc.
@@ -260,7 +260,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
 		{
-			tcdrain(serialPortFD);
 			while ((close(serialPortFD) == -1) && (errno == EINTR))
 				errno = 0;
 			serialPortFD = -1;
@@ -292,7 +291,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			else
 			{
 				// Close the port if there was a problem setting the parameters
-				tcdrain(serialPortFD);
 				while ((close(serialPortFD) == -1) && (errno == EINTR))
 					errno = 0;
 				serialPortFD = -1;
@@ -366,6 +364,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (ioctl(serialPortFD, TIOCGSERIAL, &serInfo) == 0)
 	{
 		serInfo.xmit_fifo_size = sendDeviceQueueSize;
+		serInfo.flags |= ASYNC_LOW_LATENCY;
 		ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
 	}
 #else
@@ -527,7 +526,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNat
 	options.c_cc[VTIME] = 0;
 	int retVal = fcntl(serialPortFD, F_SETFL, flags);
 	tcsetattr(serialPortFD, TCSANOW, &options);
-	tcdrain(serialPortFD);
 
 	// Close the port
 	flock(serialPortFD, LOCK_UN | LOCK_NB);
