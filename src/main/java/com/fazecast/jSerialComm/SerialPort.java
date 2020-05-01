@@ -381,6 +381,8 @@ public final class SerialPort
 	private volatile boolean rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
 	private final SerialPortInputStream inputStream = new SerialPortInputStream();
 	private final SerialPortOutputStream outputStream = new SerialPortOutputStream();
+	private boolean suppressTimeoutExceptionDuringInputStreamRead = false;
+
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
@@ -1118,6 +1120,24 @@ public final class SerialPort
 	}
 
 	/**
+	 * @return boolean value of flag that enables suppression of timeout exceptions when reading from port in InputStream mode of
+	 */
+	public boolean shouldSuppressTimeoutExceptionDuringInputStreamRead() {
+		return suppressTimeoutExceptionDuringInputStreamRead;
+	}
+
+	/**
+	 * Sets boolean value that enables suppression of timeout exceptions when reading from port in InputStream mode of
+	 * operation.
+	 * @param suppressTimeoutExceptionDuringInputStreamRead
+	 * @return
+	 */
+	public SerialPort setSuppressTimeoutExceptionDuringInputStreamRead(boolean suppressTimeoutExceptionDuringInputStreamRead) {
+		this.suppressTimeoutExceptionDuringInputStreamRead = suppressTimeoutExceptionDuringInputStreamRead;
+		return this;
+	}
+
+	/**
 	 * Sets whether to enable RS-485 mode for this device.
 	 * <p>
 	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
@@ -1479,7 +1499,7 @@ public final class SerialPort
 
 			// Read from the serial port
 			int numRead = readBytes(portHandle, b, len, off);
-			if (numRead == 0)
+			if (numRead == 0 && !suppressTimeoutExceptionDuringInputStreamRead)
 				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
 			return numRead;
 		}
