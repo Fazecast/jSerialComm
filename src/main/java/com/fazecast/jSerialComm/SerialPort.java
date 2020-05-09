@@ -321,9 +321,9 @@ public final class SerialPort
 			else if (isSymbolicLink(new File(portDescriptor)))
 				portDescriptor = (new File(portDescriptor)).getCanonicalPath();
 			else if (portDescriptor.contains("/pts/"))
-				portDescriptor = "/dev/pts/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
+				portDescriptor = "/dev/pts/" + portDescriptor;
 			else if (!((new File(portDescriptor)).exists()))
-				portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
+				portDescriptor = "/dev/" + portDescriptor;
 		}
 		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
 
