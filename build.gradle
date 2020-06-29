@@ -12,7 +12,7 @@ plugins {
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.6.1'
+version = '2.6.4'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
