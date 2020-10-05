@@ -1,0 +1,3 @@
+rootProject.name = 'jSerialComm'
+
+include 'jSerialComm'
