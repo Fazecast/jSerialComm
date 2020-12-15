@@ -6,6 +6,7 @@ COMPILE_ARM64				:= aarch64-unknown-linux-gnueabi-gcc
 COMPILE_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC		:= sparc-sun-solaris2.10-gcc
 COMPILE_APPLE				:= /usr/local/bin/gcc-9
+COMPILE_PPC64LE				:= powerpc64le-linux-gnu-gcc
 LINK						:= gcc
 LINK_ARM32					:= arm32-unknown-linux-gnueabi-gcc
 LINK_ARM32HF				:= arm32hf-unknown-linux-gnueabi-gcc
@@ -13,6 +14,7 @@ LINK_ARM64					:= aarch64-unknown-linux-gnueabi-gcc
 LINK_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 LINK_SOLARIS_SPARC			:= sparc-sun-solaris2.10-gcc
 LINK_APPLE					:= /usr/local/bin/gcc-9
+LINK_PPC64LE				:= powerpc64le-linux-gnu-gcc
 CFLAGS						:= -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 CFLAGS_POSIX				:= -fuse-linker-plugin
 CFLAGS_APPLE				:= 
@@ -53,6 +55,7 @@ OBJECTSsolaris64			:= $(BUILD_DIR)/solaris_x86_64/SerialPort_Posix.o $(BUILD_DIR
 OBJECTSsolarisSparc32		:= $(BUILD_DIR)/solaris_sparc32/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc32/PosixHelperFunctions.o
 OBJECTSsolarisSparc64		:= $(BUILD_DIR)/solaris_sparc64/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc64/PosixHelperFunctions.o
 OBJECTSosx64				:= $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUILD_DIR)/osx_x86_64/PosixHelperFunctions.o
+OBJECTSppc64le				:= $(BUILD_DIR)/linux_ppc64le/SerialPort_Posix.o $(BUILD_DIR)/linux_ppc64le/PosixHelperFunctions.o
 CPATH_APPLE					:= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 FLAGSlinux32				:= -m32
 FLAGSlinux64				:= -m64
@@ -68,17 +71,18 @@ FLAGSsolaris64				:= -m64
 FLAGSsolarisSparc32			:= -mno-app-regs -mcpu=v8 -mv8plus -m32
 FLAGSsolarisSparc64			:= -mno-app-regs -mcpu=v9 -m64
 FLAGSosx64					:= -m64
+FLAGSppc64le				:= -mtune=powerpc64le -m64
 JNI_HEADER					:= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS					:= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx64 ppc64le
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target does nothing
 all :
-	$(PRINT) You must specify either linux, arm, solaris, or osx!
+	$(PRINT) You must specify either linux, arm, solaris, osx or powerpc!
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
@@ -101,6 +105,11 @@ solaris : solaris32 solaris64 solarisSparc32 solarisSparc64
 # Build all OSX libraries
 osx : osx64
 	$(DELETE) -rf "$(BUILD_DIR)"
+	$(DELETE) -rf ../*.h
+
+# Build all PPC64LE libraries
+powerpc : ppc64le
+	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
 	$(DELETE) -rf ../*.h
 
 # Build architecture-specific Linux libraries
@@ -152,6 +161,11 @@ solarisSparc64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_sparc64 $(BUILD_DIR)/sol
 osx64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86_64 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86_64/*.o
 	$(COPY) $(BUILD_DIR)/osx_x86_64/*.* $(RESOURCE_DIR_OSX)/x86_64
+
+# Build architecture-specific POWERPC libraries
+ppc64le : $(JAVA_CLASS_DIR) $(BUILD_DIR)/linux_ppc64le $(BUILD_DIR)/linux_ppc64le/$(LIBRARY_NAME_POSIX)
+	$(DELETE) -rf $(BUILD_DIR)/linux_ppc64le/*.o
+	$(COPY) $(BUILD_DIR)/linux_ppc64le/*.* $(RESOURCE_DIR_LINUX)/ppc64le
 	
 # Rule to create build directories
 $(BUILD_DIR)/linux_x86 :
@@ -181,6 +195,8 @@ $(BUILD_DIR)/solaris_sparc32 :
 $(BUILD_DIR)/solaris_sparc64 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/osx_x86_64 :
+	$(MKDIR) -p $@
+$(BUILD_DIR)/linux_ppc64le :
 	$(MKDIR) -p $@
 $(JAVA_CLASS_DIR) :
 	$(MKDIR) -p $@
@@ -214,6 +230,8 @@ $(BUILD_DIR)/solaris_sparc64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsola
 	$(LINK_SOLARIS_SPARC) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSsolarisSparc64) -o $@ $(OBJECTSsolarisSparc64) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx64)
 	$(LINK_APPLE) $(LDFLAGS) $(LDFLAGS_APPLE) $(FLAGSosx64) -o $@ $(OBJECTSosx64) $(LIBRARIES_APPLE)
+$(BUILD_DIR)/linux_ppc64le/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSppc64le)
+	$(LINK_PPC64LE) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSppc64le) -o $@ $(OBJECTSppc64le) $(LIBRARIES_POSIX)
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/linux_x86/%.o : %.c
@@ -244,6 +262,8 @@ $(BUILD_DIR)/solaris_sparc64/%.o : %.c
 	$(COMPILE_SOLARIS_SPARC) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolarisSparc64) -c $< -o $@
 $(BUILD_DIR)/osx_x86_64/%.o : %.c
 	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
+$(BUILD_DIR)/linux_ppc64le/%.o : %.c
+	$(COMPILE_PPC64LE) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSppc64le) -c $< -o $@
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)

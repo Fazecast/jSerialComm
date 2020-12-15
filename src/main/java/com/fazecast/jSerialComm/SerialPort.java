@@ -194,6 +194,8 @@ public final class SerialPort
 				libraryPath = "Linux/armv8_32";
 			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
 				libraryPath = "Linux/armv8_64";
+			else if (System.getProperty("os.arch").indexOf("ppc64le") >= 0)
+				libraryPath = "Linux/ppc64le";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Linux/x86_64";
 			else

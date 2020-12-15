@@ -105,7 +105,7 @@ task testJar(type: Jar) {
   manifest {
     attributes 'Main-Class': 'com.fazecast.jSerialComm.SerialPortTest', 
                'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-	           'Implementation-Version': version,
+               'Implementation-Version': version,
                'Implementation-Vendor': 'Fazecast, Inc.',
                'Sealed': 'true'
   }
