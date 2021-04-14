@@ -31,7 +31,7 @@ package com.fazecast.jSerialComm;
  * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.6.2
+ * @version 2.7.0
  * @see com.fazecast.jSerialComm.SerialPortMessageListener
  * @see com.fazecast.jSerialComm.SerialPortDataListener
  * @see java.util.EventListener

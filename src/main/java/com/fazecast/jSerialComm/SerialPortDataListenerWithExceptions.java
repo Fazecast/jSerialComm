@@ -29,7 +29,7 @@ package com.fazecast.jSerialComm;
  * This interface must be implemented to enable simple event-based serial port I/O with a custom Exception callback.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.6.2
+ * @version 2.7.0
  * @see com.fazecast.jSerialComm.SerialPortDataListener
  * @see java.util.EventListener
  */

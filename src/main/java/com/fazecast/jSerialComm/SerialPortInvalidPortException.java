@@ -29,7 +29,7 @@ package com.fazecast.jSerialComm;
  * This class describes a serial port invalid port exception.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.6.2
+ * @version 2.7.0
  * @see java.lang.RuntimeException
  */
 public final class SerialPortInvalidPortException extends RuntimeException
