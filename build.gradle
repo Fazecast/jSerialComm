@@ -15,8 +15,11 @@ archivesBaseName = 'jSerialComm'
 version = '2.6.2'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
-assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
-assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
+if (!System.getProperty("automated", "false").equals("true"))
+{
+  assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
+  assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
+}
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
