@@ -11,6 +11,9 @@ build
 *.war
 *.ear
 
+# Allow Gradle Wrapper Files
+!gradle-wrapper.jar
+
 # Gradle Files #
 .gradle
 gradle.properties
