@@ -105,7 +105,9 @@ public final class SerialPort
 		}
 		else if (OS.indexOf("mac") >= 0)
 		{
-			if (System.getProperty("os.arch").indexOf("64") >= 0)
+			if (System.getProperty("os.arch").equals("aarch64")) 
+				libraryPath = "OSX/aarch64";
+			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "OSX/x86_64";
 			else
 				libraryPath = "OSX/x86";
