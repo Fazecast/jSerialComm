@@ -44,7 +44,7 @@
 #include <IOKit/serial/ioss.h>
 #endif
 #include "PosixHelperFunctions.h"
-#include "../com_fazecast_jSerialComm_SerialPort.h"
+#include "com_fazecast_jSerialComm_SerialPort.h"
 
 // Cached class, method, and field IDs
 jclass serialCommClass;
