@@ -327,10 +327,15 @@ public final class SerialPort
 				portDescriptor = (new File(portDescriptor)).getCanonicalPath();
 			else if (!((new File(portDescriptor)).exists()))
 			{
+				// Attempt to locate the correct port descriptor
 				if (portDescriptor.contains("/"))
 					portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
 				else
 					portDescriptor = "/dev/" + portDescriptor;
+
+				// Check if the updated port descriptor exists
+				if (!((new File(portDescriptor)).exists()))
+					throw new IOException();
 			}
 		}
 		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
