@@ -328,10 +328,9 @@ public final class SerialPort
 			else if (!((new File(portDescriptor)).exists()))
 			{
 				// Attempt to locate the correct port descriptor
-				if (portDescriptor.contains("/"))
+				portDescriptor = "/dev/" + portDescriptor;
+				if (!((new File(portDescriptor)).exists()))
 					portDescriptor = "/dev/" + portDescriptor.substring(portDescriptor.lastIndexOf('/')+1);
-				else
-					portDescriptor = "/dev/" + portDescriptor;
 
 				// Check if the updated port descriptor exists
 				if (!((new File(portDescriptor)).exists()))
