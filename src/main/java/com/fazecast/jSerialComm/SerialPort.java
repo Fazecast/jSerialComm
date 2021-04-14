@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 29, 2020
+ *  Last Updated on:  Apr 14, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -196,6 +196,8 @@ public final class SerialPort
 				libraryPath = "Linux/armv8_32";
 			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
 				libraryPath = "Linux/armv8_64";
+			else if (System.getProperty("os.arch").indexOf("ppc64le") >= 0)
+				libraryPath = "Linux/ppc64le";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Linux/x86_64";
 			else

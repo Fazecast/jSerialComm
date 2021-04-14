@@ -517,7 +517,7 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 		serInfo.flags &= ~ASYNC_SPD_MASK;
 		serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
 		serInfo.custom_divisor = serInfo.baud_base / baudRate;
-		if (sersInfo.custom_divisor == 0)
+		if (serInfo.custom_divisor == 0)
 			serInfo.custom_divisor = 1;
 		retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
 	}

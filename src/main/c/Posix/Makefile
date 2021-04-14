@@ -3,6 +3,7 @@ COMPILE						:= gcc
 COMPILE_ARM32				:= arm32-unknown-linux-gnueabi-gcc
 COMPILE_ARM32HF				:= arm32hf-unknown-linux-gnueabi-gcc
 COMPILE_ARM64				:= aarch64-unknown-linux-gnueabi-gcc
+COMPILE_PPC64LE				:= powerpc64le-linux-gnu-gcc
 COMPILE_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC		:= sparc-sun-solaris2.10-gcc
 COMPILE_APPLE				:= /usr/local/bin/gcc-9
@@ -11,6 +12,7 @@ LINK						:= gcc
 LINK_ARM32					:= arm32-unknown-linux-gnueabi-gcc
 LINK_ARM32HF				:= arm32hf-unknown-linux-gnueabi-gcc
 LINK_ARM64					:= aarch64-unknown-linux-gnueabi-gcc
+LINK_PPC64LE				:= powerpc64le-linux-gnu-gcc
 LINK_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 LINK_SOLARIS_SPARC			:= sparc-sun-solaris2.10-gcc
 LINK_APPLE					:= /usr/local/bin/gcc-9
@@ -53,6 +55,7 @@ OBJECTSarmv7				:= $(BUILD_DIR)/armv7/SerialPort_Posix.o $(BUILD_DIR)/armv7/Posi
 OBJECTSarmv7-hf				:= $(BUILD_DIR)/armv7-hf/SerialPort_Posix.o $(BUILD_DIR)/armv7-hf/PosixHelperFunctions.o
 OBJECTSarmv8_32				:= $(BUILD_DIR)/armv8_32/SerialPort_Posix.o $(BUILD_DIR)/armv8_32/PosixHelperFunctions.o
 OBJECTSarmv8_64				:= $(BUILD_DIR)/armv8_64/SerialPort_Posix.o $(BUILD_DIR)/armv8_64/PosixHelperFunctions.o
+OBJECTSppc64le				:= $(BUILD_DIR)/ppc64le/SerialPort_Posix.o $(BUILD_DIR)/ppc64le/PosixHelperFunctions.o
 OBJECTSsolaris32			:= $(BUILD_DIR)/solaris_x86/SerialPort_Posix.o $(BUILD_DIR)/solaris_x86/PosixHelperFunctions.o
 OBJECTSsolaris64			:= $(BUILD_DIR)/solaris_x86_64/SerialPort_Posix.o $(BUILD_DIR)/solaris_x86_64/PosixHelperFunctions.o
 OBJECTSsolarisSparc32		:= $(BUILD_DIR)/solaris_sparc32/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc32/PosixHelperFunctions.o
@@ -69,6 +72,7 @@ FLAGSarmv7					:= -mthumb -mthumb-interwork -march=armv7 -mfloat-abi=soft
 FLAGSarmv7hf				:= -mthumb -mthumb-interwork -march=armv7 -mfloat-abi=hard
 FLAGSarmv8_32				:= -mthumb -mthumb-interwork -march=armv8-a
 FLAGSarmv8_64				:= -march=armv8-a
+FLAGSppc64le				:= -mtune=powerpc64le -m64
 FLAGSsolaris32				:= -m32
 FLAGSsolaris64				:= -m64
 FLAGSsolarisSparc32			:= -mno-app-regs -mcpu=v8 -mv8plus -m32
@@ -79,13 +83,13 @@ JNI_HEADER					:= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS					:= $(JAVA_CLASS_DIR)/SerialPort.class
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64 ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx64 osxaarch64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target does nothing
 all :
-	$(PRINT) You must specify either linux, arm, solaris, or osx!
+	$(PRINT) You must specify either linux, arm, solaris, osx, or powerpc!
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
@@ -97,6 +101,11 @@ linux : linux32 linux64
 
 # Build all ARM libraries
 arm : armv5 armv6 armv6-hf armv7 armv7-hf armv8_32 armv8_64
+	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
+	$(DELETE) -rf ../*.h
+
+# Build all PPC64LE libraries
+powerpc : ppc64le
 	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
 	$(DELETE) -rf ../*.h
 
@@ -146,6 +155,11 @@ armv8_64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv8_64 $(BUILD_DIR)/armv8_64/$(LIBRA
 	$(DELETE) -rf $(BUILD_DIR)/armv8_64/*.o
 	$(COPY) $(BUILD_DIR)/armv8_64/*.* $(RESOURCE_DIR_LINUX)/armv8_64/
 
+# Build architecture-specific POWERPC libraries
+ppc64le : $(JAVA_CLASS_DIR) $(BUILD_DIR)/ppc64le $(BUILD_DIR)/ppc64le/$(LIBRARY_NAME_POSIX)
+	$(DELETE) -rf $(BUILD_DIR)/ppc64le/*.o
+	$(COPY) $(BUILD_DIR)/ppc64le/*.* $(RESOURCE_DIR_LINUX)/ppc64le/
+
 # Build architecture-specific Solaris libraries
 solaris32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_x86 $(BUILD_DIR)/solaris_x86/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/solaris_x86/*.o
@@ -188,6 +202,8 @@ $(BUILD_DIR)/armv8_32 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv8_64 :
 	$(MKDIR) -p $@
+$(BUILD_DIR)/ppc64le :
+	$(MKDIR) -p $@
 $(BUILD_DIR)/solaris_x86 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/solaris_x86_64 :
@@ -222,6 +238,8 @@ $(BUILD_DIR)/armv8_32/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv8_32)
 	$(LINK_ARM32) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSarmv8_32) -o $@ $(OBJECTSarmv8_32) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv8_64)
 	$(LINK_ARM64) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSarmv8_64) -o $@ $(OBJECTSarmv8_64) $(LIBRARIES_POSIX)
+$(BUILD_DIR)/ppc64le/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSppc64le)
+	$(LINK_PPC64LE) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSppc64le) -o $@ $(OBJECTSppc64le) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/solaris_x86/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsolaris32)
 	$(LINK_SOLARIS_X86) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSsolaris32) -o $@ $(OBJECTSsolaris32) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/solaris_x86_64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsolaris64)
@@ -254,6 +272,8 @@ $(BUILD_DIR)/armv8_32/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSarmv8_32) -c $< -o $@
 $(BUILD_DIR)/armv8_64/%.o : %.c
 	$(COMPILE_ARM64) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSarmv8_64) -c $< -o $@
+$(BUILD_DIR)/ppc64le/%.o : %.c
+	$(COMPILE_PPC64LE) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSppc64le) -c $< -o $@
 $(BUILD_DIR)/solaris_x86/%.o : %.c
 	$(COMPILE_SOLARIS_X86) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolaris32) -c $< -o $@
 $(BUILD_DIR)/solaris_x86_64/%.o : %.c
