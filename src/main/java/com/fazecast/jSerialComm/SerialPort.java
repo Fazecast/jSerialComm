@@ -392,8 +392,8 @@ public final class SerialPort
 	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, rs485Mode = false;
 	private volatile boolean rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
-	private final SerialPortInputStream inputStream = new SerialPortInputStream();
-	private final SerialPortOutputStream outputStream = new SerialPortOutputStream();
+	private SerialPortInputStream inputStream = null;
+	private SerialPortOutputStream outputStream = null;
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
@@ -813,14 +813,44 @@ public final class SerialPort
 	 * @return An {@link java.io.InputStream} object associated with this serial port.
 	 * @see java.io.InputStream
 	 */
-	public final InputStream getInputStream() { return inputStream; }
+	public final InputStream getInputStream()
+	{
+		inputStream = new SerialPortInputStream(false);
+		return inputStream;
+	}
+
+	/**
+	 * Returns an {@link java.io.InputStream} object associated with this serial port, with read timeout exceptions
+	 * completely suppressed.
+	 * <p>
+	 * Allows for easier read access of the underlying data stream and abstracts away many low-level read details.
+	 * <p>
+	 * Note that any time a method is marked as throwable for an {@link java.io.IOException} in the official Java
+	 * {@link java.io.InputStream} documentation, you can catch this exception directly, or you can choose to catch
+	 * either a {@link SerialPortIOException} or a {@link SerialPortTimeoutException} (or both) which may make it
+	 * easier for your code to determine why the exception was thrown. In general, a {@link SerialPortIOException}
+	 * means that the port is having connectivity issues, while a {@link SerialPortTimeoutException} indicates that
+	 * a user timeout has been reached before valid data was able to be returned (as specified in the
+	 * {@link #setComPortTimeouts(int, int, int)} method). When an {@link java.io.InputStream} is returned using
+	 * this method, a {@link SerialPortTimeoutException} will never be thrown.
+	 * <p>
+	 * Make sure to call the {@link java.io.InputStream#close()} method when you are done using this stream.
+	 *
+	 * @return An {@link java.io.InputStream} object associated with this serial port.
+	 * @see java.io.InputStream
+	 */
+	public final InputStream getInputStreamWithSuppressedTimeoutExceptions()
+	{
+		inputStream = new SerialPortInputStream(true);
+		return inputStream;
+	}
 
 	/**
 	 * Returns an {@link java.io.OutputStream} object associated with this serial port.
 	 * <p>
 	 * Allows for easier write access to the underlying data stream and abstracts away many low-level writing details.
 	 * <p>
-	 * Note that any time a method is marked as throwable for an {@link java.io.IOException} in the official Java 
+	 * Note that any time a method is marked as throwable for an {@link java.io.IOException} in the official Java
 	 * {@link java.io.InputStream} documentation, you can catch this exception directly, or you can choose to catch
 	 * either a {@link SerialPortIOException} or a {@link SerialPortTimeoutException} (or both) which may make it
 	 * easier for your code to determine why the exception was thrown. In general, a {@link SerialPortIOException}
@@ -833,7 +863,11 @@ public final class SerialPort
 	 * @return An {@link java.io.OutputStream} object associated with this serial port.
 	 * @see java.io.OutputStream
 	 */
-	public final OutputStream getOutputStream() { return outputStream; }
+	public final OutputStream getOutputStream()
+	{
+		outputStream = new SerialPortOutputStream();
+		return outputStream;
+	}
 
 	/**
 	 * Sets all serial port parameters at one time.
@@ -1433,9 +1467,13 @@ public final class SerialPort
 	// InputStream interface class
 	private final class SerialPortInputStream extends InputStream
 	{
+		private final boolean timeoutExceptionsSuppressed;
 		private byte[] byteBuffer = new byte[1];
 
-		public SerialPortInputStream() {}
+		public SerialPortInputStream(boolean suppressReadTimeoutExceptions)
+		{
+			timeoutExceptionsSuppressed = suppressReadTimeoutExceptions;
+		}
 
 		@Override
 		public final int available() throws SerialPortIOException
@@ -1455,7 +1493,12 @@ public final class SerialPort
 			// Read from the serial port
 			int numRead = readBytes(portHandle, byteBuffer, 1L, 0);
 			if (numRead == 0)
-				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
+			{
+				if (timeoutExceptionsSuppressed)
+					return -1;
+				else
+					throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
+			}
 			return (numRead < 0) ? -1 : ((int)byteBuffer[0] & 0xFF);
 		}
 
@@ -1472,7 +1515,7 @@ public final class SerialPort
 
 			// Read from the serial port
 			int numRead = readBytes(portHandle, b, b.length, 0);
-			if (numRead == 0)
+			if ((numRead == 0) && !timeoutExceptionsSuppressed)
 				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
 			return numRead;
 		}
@@ -1492,7 +1535,7 @@ public final class SerialPort
 
 			// Read from the serial port
 			int numRead = readBytes(portHandle, b, len, off);
-			if (numRead == 0)
+			if ((numRead == 0) && !timeoutExceptionsSuppressed)
 				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
 			return numRead;
 		}
