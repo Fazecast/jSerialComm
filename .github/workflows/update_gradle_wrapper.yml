@@ -1,0 +1,16 @@
+name: Update Gradle Wrapper
+
+on: [push]
+
+jobs:
+  update-gradle-wrapper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update Gradle Wrapper
+        uses: gradle-update/update-gradle-wrapper-action@v1
+        with:
+          repo-token: ${{ secrets.GRADLE_UPDATE_PAT }}
+          reviewers: hedgecrw
+          labels: automated pr
