@@ -1,6 +1,8 @@
 name: Update Gradle Wrapper
 
-on: [push]
+on:
+  schedule:
+    - cron: "0 0 1 * *"
 
 jobs:
   update-gradle-wrapper:
@@ -12,5 +14,4 @@ jobs:
         uses: gradle-update/update-gradle-wrapper-action@v1
         with:
           repo-token: ${{ secrets.GRADLE_UPDATE_PAT }}
-          reviewers: hedgecrw
           labels: automated pr
