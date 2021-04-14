@@ -11,7 +11,6 @@ jobs:
       - name: Update Gradle Wrapper
         uses: gradle-update/update-gradle-wrapper-action@v1
         with:
-          arguments: -Dautomated=true
           repo-token: ${{ secrets.GRADLE_UPDATE_PAT }}
           reviewers: hedgecrw
           labels: automated pr
