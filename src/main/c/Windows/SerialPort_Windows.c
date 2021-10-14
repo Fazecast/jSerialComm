@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 01, 2020
+ *  Last Updated on:  Oct 14, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -69,6 +69,7 @@ jfieldID eventFlagsField;
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
 typedef int (__stdcall *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
+typedef int (__stdcall *FT_SetLatencyTimerFunction)(FT_HANDLE, UCHAR);
 typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
 typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
@@ -277,6 +278,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		FT_GetComPortNumberFunction FT_GetComPortNumber = (FT_GetComPortNumberFunction)GetProcAddress(ftdiLibInstance, "FT_GetComPortNumber");
 		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
 		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
+		FT_SetLatencyTimerFunction FT_SetLatencyTimer = (FT_SetLatencyTimerFunction)GetProcAddress(ftdiLibInstance, "FT_SetLatencyTimer");
 		if ((FT_CreateDeviceInfoList != NULL) && (FT_GetDeviceInfoList != NULL) && (FT_GetComPortNumber != NULL) && (FT_Open != NULL) && (FT_Close != NULL))
 		{
 			DWORD numDevs;
@@ -292,6 +294,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 						LONG comPortNumber = 0;
 						if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
 						{
+							if (FT_SetLatencyTimer != NULL)
+							{
+								// Reduce latency timer
+								FT_SetLatencyTimer(devInfo[i].ftHandle, 2); // Minimum value is 2. Ignore errors
+							}
 							// Update port description if COM port is actually connected and present in the port list
 							FT_Close(devInfo[i].ftHandle);
 							swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
