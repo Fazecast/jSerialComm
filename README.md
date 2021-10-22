@@ -8,8 +8,8 @@ _A platform-independent serial port access library for Java._
 For usage examples, please refer to the [Usage wiki](https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples).
 
 If you intend to use the library in multiple applications simultaneously, please make sure
-to set ```fazecast.jSerialComm.appid``` property before accessing the SerialPort class so that 
-applications don't accidentally delete each others temporary files during boot-up:
+to set the ```fazecast.jSerialComm.appid``` property before accessing the SerialPort class
+so that applications don't accidentally delete each others' temporary files during boot-up:
 ```
 System.setProperty("fazecast.jSerialComm.appid", "YOUR_APPLICATION_IDENTIFIER")
 ```
