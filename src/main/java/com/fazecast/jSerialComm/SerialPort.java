@@ -51,6 +51,9 @@ public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
 	private static final String versionString = "2.7.0";
+	// Used to distinguish multiple processes running this lib
+	private static final String TMPDIR_APPID_PROPERTY = "fazecast.jSerialComm.appid";
+
 	private static volatile boolean isAndroid = false;
 	private static volatile boolean isUnixBased = false;
 	private static volatile boolean isWindows = false;
@@ -62,7 +65,13 @@ public final class SerialPort
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		if ((tempFileDirectory.charAt(tempFileDirectory.length()-1) != '\\') && (tempFileDirectory.charAt(tempFileDirectory.length()-1) != '/'))
 			tempFileDirectory += "/";
+
+		// Make sure to use appId to separate tmpdir directories if library is used by multiple modules, so they don't erase each others folders accidentally.
+		String appId = System.getProperty(TMPDIR_APPID_PROPERTY, "");
 		tempFileDirectory += "jSerialComm/";
+		if (!appId.isEmpty()) {
+			tempFileDirectory += appId + (!appId.endsWith("/") ? "/" : "");
+		}
 		deleteDirectory(new File(tempFileDirectory));
 
 		// Determine Operating System and architecture
