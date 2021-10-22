@@ -396,8 +396,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
 			rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
 		}
-		rs485Conf.delay_rts_before_send = rs485DelayBefore;
-		rs485Conf.delay_rts_after_send = rs485DelayAfter;
+		// SerialPort defines delays in microseconds and Linux expects
+		// milliseconds (see
+		// https://github.com/torvalds/linux/blob/0c18f29aae7ce3dadd26d8ee3505d07cc982df75/include/uapi/linux/serial.h#L129).
+		rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
+		rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
 		ioctl(serialPortFD, TIOCSRS485, &rs485Conf);
 	}
 #endif
