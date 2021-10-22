@@ -393,8 +393,8 @@ public final class SerialPort
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
-	private volatile boolean eventListenerRunning = false, disableConfig = false, rs485Mode = false;
-	private volatile boolean rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
+	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
+	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
 	private SerialPortInputStream inputStream = null;
 	private SerialPortOutputStream outputStream = null;
 
@@ -519,6 +519,14 @@ public final class SerialPort
 	 * open the port.
 	 */
 	public final synchronized void disablePortConfiguration() { disableConfig = true; }
+
+	/**
+	 * Disables the library from obtaining an exclusive lock on the serial port.
+	 * <p>
+	 * This function should never be called except on very specific systems which do not support obtaining
+	 * exclusive locks on system resources.
+	 */
+	public final synchronized void disableExclusiveLock() { disableExclusiveLock = true; }
 
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code

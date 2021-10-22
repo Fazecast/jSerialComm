@@ -64,6 +64,7 @@ jfieldID parityField;
 jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
+jfieldID disableExclusiveLockField;
 jfieldID rs485ModeField;
 jfieldID rs485ActiveHighField;
 jfieldID rs485DelayBeforeField;
@@ -229,6 +230,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	flowControlField = (*env)->GetFieldID(env, serialCommClass, "flowControl", "I");
 	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
 	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
+	disableExclusiveLockField = (*env)->GetFieldID(env, serialCommClass, "disableExclusiveLock", "Z");
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
 	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
 	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
@@ -252,13 +254,14 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
+	unsigned char disableExclusiveLock = (*env)->GetBooleanField(env, obj, disableExclusiveLockField);
 
 	// Try to open existing serial port with read/write access
 	int serialPortFD = -1;
 	if ((serialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK)) > 0)
 	{
 		// Ensure that multiple root users cannot access the device simultaneously
-		if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
+		if (!disableExclusiveLock && (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1))
 		{
 			while ((close(serialPortFD) == -1) && (errno == EINTR))
 				errno = 0;
