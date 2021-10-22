@@ -67,6 +67,8 @@ jfieldID receiveDeviceQueueSizeField;
 jfieldID disableExclusiveLockField;
 jfieldID rs485ModeField;
 jfieldID rs485ActiveHighField;
+jfieldID rs485EnableTerminationField;
+jfieldID rs485RxDuringTxField;
 jfieldID rs485DelayBeforeField;
 jfieldID rs485DelayAfterField;
 jfieldID timeoutModeField;
@@ -233,6 +235,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	disableExclusiveLockField = (*env)->GetFieldID(env, serialCommClass, "disableExclusiveLock", "Z");
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
 	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
+	rs485EnableTerminationField = (*env)->GetFieldID(env, serialCommClass, "rs485EnableTermination", "Z");
+	rs485RxDuringTxField = (*env)->GetFieldID(env, serialCommClass, "rs485RxDuringTx", "Z");
 	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
 	rs485DelayAfterField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayAfter", "I");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
@@ -324,6 +328,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	unsigned char configDisabled = (*env)->GetBooleanField(env, obj, disableConfigField);
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 	unsigned char rs485ActiveHigh = (*env)->GetBooleanField(env, obj, rs485ActiveHighField);
+	unsigned char rs485EnableTermination = (*env)->GetBooleanField(env, obj, rs485EnableTerminationField);
+	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
@@ -396,9 +402,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
 			rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
 		}
-		// SerialPort defines delays in microseconds and Linux expects
-		// milliseconds (see
-		// https://github.com/torvalds/linux/blob/0c18f29aae7ce3dadd26d8ee3505d07cc982df75/include/uapi/linux/serial.h#L129).
+		if (rs485RxDuringTx)
+			rs485Conf.flags |= SER_RS485_RX_DURING_TX;
+		else
+			rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
+		if (rs485EnableTermination)
+			rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
+		else
+			rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
 		rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
 		rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
 		ioctl(serialPortFD, TIOCSRS485, &rs485Conf);

@@ -401,7 +401,8 @@ public final class SerialPort
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
-	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, isRtsEnabled = true, isDtrEnabled = true;
+	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
+	private volatile boolean isRtsEnabled = true, isDtrEnabled = true;
 	private SerialPortInputStream inputStream = null;
 	private SerialPortOutputStream outputStream = null;
 
@@ -1183,28 +1184,53 @@ public final class SerialPort
 	}
 
 	/**
-	 * Sets whether to enable RS-485 mode for this device.
-	 * <p>
-	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
-	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
-	 * may not work with all RS-485 devices.
-	 * <p>
-	 * The RTS "active high" parameter specifies that the logical level of the RTS line will be set to 1 when transmitting and
-	 * 0 when receiving.
-	 * <p>
-	 * The delay parameters specify how long to wait before or after transmission of data before enabling or disabling
-	 * transmission mode via the RTS pin.
+	 * Sets RS-485 mode and its parameters for the device. This is a wrapper around
+	 * {@link #setRs485ModeParameters(boolean, boolean, boolean, boolean, int, int)} for backward-compatibility which disables bus termination and
+	 * receiving data while transmitting.
+	 *
+	 * @see #setRs485ModeParameters(boolean, boolean, boolean, boolean, int, int)
 	 *
 	 * @param useRS485Mode Whether to enable RS-485 mode.
-	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting.
-	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit.
-	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode.
+	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting (effective only on Linux).
+	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit (effective only on Linux).
+	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode (effective only on Linux).
 	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
 	public final synchronized boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
+		return setRs485ModeParameters(useRS485Mode, rs485RtsActiveHigh, false, false, delayBeforeSendMicroseconds, delayAfterSendMicroseconds);
+	}
+
+	/**
+	 * Sets RS-485 mode and its parameters for the device.
+	 * <p>
+	 * RS-485 mode can be used to enable transmit/receive mode signaling using the RTS pin. This mode should be set if you plan
+	 * to use this library with an RS-485 device. Note that this mode requires support from the underlying device driver, so it
+	 * may not work with all RS-485 devices. On the other hand there are devices that operate in RS-485 mode by
+	 * default and do not require explicit configuration (like some USB to RS-485 adapters).
+	 * <p>
+	 * Please note that the parameters beyond <i>useRS485Mode</i> are only effective on Linux.
+	 * <p>
+	 * The RTS "active high" parameter specifies that the logical level of the RTS line will be set to 1 when transmitting and
+	 * 0 when receiving.
+	 * <p>
+	 * The delay parameters specify how long to wait before or after transmission of data after enabling or before disabling
+	 * transmission mode via the RTS pin.
+	 *
+	 * @param useRS485Mode Whether to enable RS-485 mode.
+	 * @param rs485RtsActiveHigh Whether to set the RTS line to 1 when transmitting (effective only on Linux).
+	 * @param enableTermination Whether to enable RS-485 bus termination on systems supporting this feature (effective only on Linux).
+	 * @param rxDuringTx Whether to receive data while transmitting. This usually means that data sent will be read back (effective only on Linux).
+	 * @param delayBeforeSendMicroseconds The time to wait after enabling transmit mode before sending the first data bit (effective only on Linux).
+	 * @param delayAfterSendMicroseconds The time to wait after sending the last data bit before disabling transmit mode (effective only on Linux).
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
+	 */
+	public final synchronized boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, boolean enableTermination, boolean rxDuringTx,int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
+	{
 		rs485Mode = useRS485Mode;
 		rs485ActiveHigh = rs485RtsActiveHigh;
+		rs485EnableTermination = enableTermination;
+		rs485RxDuringTx = rxDuringTx;
 		rs485DelayBefore = delayBeforeSendMicroseconds;
 		rs485DelayAfter = delayAfterSendMicroseconds;
 
