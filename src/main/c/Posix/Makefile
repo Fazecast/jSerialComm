@@ -2,7 +2,7 @@
 COMPILE						:= gcc
 COMPILE_ARM32				:= arm-unknown-linux-gnueabi-gcc
 COMPILE_ARM32HF				:= arm-unknown-linux-gnueabihf-gcc
-COMPILE_ARM64				:= aarch64-unknown-linux-gnueabi-gcc
+COMPILE_ARM64				:= aarch64-unknown-linux-gnu-gcc
 COMPILE_PPC64LE				:= powerpc64le-unknown-linux-gnu-gcc
 COMPILE_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC		:= sparc-sun-solaris2.10-gcc
@@ -11,7 +11,7 @@ COMPILE_APPLE_AARCH64		:= /usr/bin/gcc
 LINK						:= gcc
 LINK_ARM32					:= arm-unknown-linux-gnueabi-gcc
 LINK_ARM32HF				:= arm-unknown-linux-gnueabihf-gcc
-LINK_ARM64					:= aarch64-unknown-linux-gnueabi-gcc
+LINK_ARM64					:= aarch64-unknown-linux-gnu-gcc
 LINK_PPC64LE				:= powerpc64le-unknown-linux-gnu-gcc
 LINK_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 LINK_SOLARIS_SPARC			:= sparc-sun-solaris2.10-gcc
