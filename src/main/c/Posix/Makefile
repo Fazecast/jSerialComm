@@ -1,43 +1,38 @@
 # Architecture-dependent library variables
-COMPILE						:= gcc
-COMPILE_ARM32				:= arm-unknown-linux-gnueabi-gcc
+COMPILE							:= gcc
+COMPILE_ARM32					:= arm-unknown-linux-gnueabi-gcc
 COMPILE_ARM32HF				:= arm-unknown-linux-gnueabihf-gcc
-COMPILE_ARM64				:= aarch64-unknown-linux-gnu-gcc
+COMPILE_ARM64					:= aarch64-unknown-linux-gnu-gcc
 COMPILE_PPC64LE				:= powerpc64le-unknown-linux-gnu-gcc
 COMPILE_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
 COMPILE_SOLARIS_SPARC		:= sparc-sun-solaris2.10-gcc
-COMPILE_APPLE				:= /usr/local/bin/gcc-9
-COMPILE_APPLE_AARCH64		:= /usr/bin/gcc
-LINK						:= gcc
-LINK_ARM32					:= arm-unknown-linux-gnueabi-gcc
-LINK_ARM32HF				:= arm-unknown-linux-gnueabihf-gcc
-LINK_ARM64					:= aarch64-unknown-linux-gnu-gcc
-LINK_PPC64LE				:= powerpc64le-unknown-linux-gnu-gcc
-LINK_SOLARIS_X86			:= x86_64-sun-solaris2.10-gcc
+COMPILE_APPLE					:= /usr/bin/gcc
+LINK								:= gcc
+LINK_ARM32						:= arm-unknown-linux-gnueabi-gcc
+LINK_ARM32HF					:= arm-unknown-linux-gnueabihf-gcc
+LINK_ARM64						:= aarch64-unknown-linux-gnu-gcc
+LINK_PPC64LE					:= powerpc64le-unknown-linux-gnu-gcc
+LINK_SOLARIS_X86				:= x86_64-sun-solaris2.10-gcc
 LINK_SOLARIS_SPARC			:= sparc-sun-solaris2.10-gcc
-LINK_APPLE					:= /usr/local/bin/gcc-9
-LINK_APPLE_AARCH64			:= /usr/bin/gcc
-CFLAGS						:= -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-CFLAGS_POSIX				:= -fuse-linker-plugin
-CFLAGS_APPLE				:= 
-CFLAGS_APPLE_AARCH64		:= -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-LDFLAGS						:= -Os -flto -static-libgcc
-LDFLAGS_POSIX				:= -shared -fuse-linker-plugin -s
-LDFLAGS_APPLE				:= -dynamiclib
-LDFLAGS_APPLE_AARCH64		:= -Os -flto -dynamiclib
-JDK_HOME					:= $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
-INCLUDES					:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
+LINK_APPLE						:= /usr/bin/gcc
+CFLAGS							:= -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+CFLAGS_POSIX					:= -fuse-linker-plugin
+CFLAGS_APPLE					:= -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+LDFLAGS							:= -Os -flto -static-libgcc
+LDFLAGS_POSIX					:= -shared -fuse-linker-plugin -s
+LDFLAGS_APPLE					:= -Os -dynamiclib -flto -shared -fuse-linker-plugin
+JDK_HOME							:= $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
+INCLUDES							:= -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
 LIBRARIES_POSIX				:=
-LIBRARIES_APPLE				:= -framework Cocoa -framework IOKit -framework JavaVM
-LIBRARIES_APPLE_AARCH64		:= -framework Cocoa -framework IOKit
-DELETE						:= @rm
-MKDIR						:= @mkdir
-COPY						:= @cp
-MOVE						:= @mv
-PRINT						:= @echo
-FULL_CLASS					:= com.fazecast.jSerialComm.SerialPort
-JAVAC						:= "$(JDK_HOME)/bin/javac"
-JFLAGS 						:= -source 1.6 -target 1.6 -Xlint:-options
+LIBRARIES_APPLE				:= -framework Cocoa -framework IOKit
+DELETE							:= @rm
+MKDIR								:= @mkdir
+COPY								:= @cp
+MOVE								:= @mv
+PRINT								:= @echo
+FULL_CLASS						:= com.fazecast.jSerialComm.SerialPort
+JAVAC								:= "$(JDK_HOME)/bin/javac"
+JFLAGS 							:= -source 1.6 -target 1.6 -Xlint:-options
 LIBRARY_NAME_POSIX			:= libjSerialComm.so
 LIBRARY_NAME_APPLE			:= libjSerialComm.jnilib
 JAVA_SOURCE_DIR				:= ../../../../src/main/java/com/fazecast/jSerialComm
@@ -62,7 +57,6 @@ OBJECTSsolarisSparc32		:= $(BUILD_DIR)/solaris_sparc32/SerialPort_Posix.o $(BUIL
 OBJECTSsolarisSparc64		:= $(BUILD_DIR)/solaris_sparc64/SerialPort_Posix.o $(BUILD_DIR)/solaris_sparc64/PosixHelperFunctions.o
 OBJECTSosx64				:= $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUILD_DIR)/osx_x86_64/PosixHelperFunctions.o
 OBJECTSosxaarch64			:= $(BUILD_DIR)/osx_aarch64/SerialPort_Posix.o $(BUILD_DIR)/osx_aarch64/PosixHelperFunctions.o
-CPATH_APPLE					:= /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
 FLAGSlinux32				:= -m32
 FLAGSlinux64				:= -m64
 FLAGSarmv5					:= -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
@@ -75,10 +69,10 @@ FLAGSarmv8_64				:= -march=armv8-a
 FLAGSppc64le				:= -mtune=powerpc64le -m64
 FLAGSsolaris32				:= -m32
 FLAGSsolaris64				:= -m64
-FLAGSsolarisSparc32			:= -mno-app-regs -mcpu=v8 -mv8plus -m32
-FLAGSsolarisSparc64			:= -mno-app-regs -mcpu=v9 -m64
-FLAGSosx64					:= -m64
-FLAGSosxaarch64				:= 
+FLAGSsolarisSparc32		:= -mno-app-regs -mcpu=v8 -mv8plus -m32
+FLAGSsolarisSparc64		:= -mno-app-regs -mcpu=v9 -m64
+FLAGSosx64					:= -arch x86_64 -m64
+FLAGSosxaarch64			:= -arch arm64
 JNI_HEADER					:= ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS					:= $(JAVA_CLASS_DIR)/SerialPort.class
 
@@ -115,12 +109,7 @@ solaris : solaris32 solaris64 solarisSparc32 solarisSparc64
 	$(DELETE) -rf ../*.h
 
 # Build all OSX libraries
-osx : osx64
-	$(DELETE) -rf "$(BUILD_DIR)"
-	$(DELETE) -rf ../*.h
-
-# Build all OSX (Apple Silicon) libraries
-osx_aarch64 : osxaarch64
+osx : osx64 osxaarch64
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
 
@@ -178,7 +167,6 @@ solarisSparc64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_sparc64 $(BUILD_DIR)/sol
 osx64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86_64 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86_64/*.o
 	$(COPY) $(BUILD_DIR)/osx_x86_64/*.* $(RESOURCE_DIR_OSX)/x86_64
-
 osxaarch64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_aarch64 $(BUILD_DIR)/osx_aarch64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_aarch64/*.o
 	$(COPY) $(BUILD_DIR)/osx_aarch64/*.* $(RESOURCE_DIR_OSX)/aarch64
@@ -249,9 +237,9 @@ $(BUILD_DIR)/solaris_sparc32/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsola
 $(BUILD_DIR)/solaris_sparc64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSsolarisSparc64)
 	$(LINK_SOLARIS_SPARC) $(LDFLAGS) $(LDFLAGS_POSIX) $(FLAGSsolarisSparc64) -o $@ $(OBJECTSsolarisSparc64) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx64)
-	$(LINK_APPLE) $(LDFLAGS) $(LDFLAGS_APPLE) $(FLAGSosx64) -o $@ $(OBJECTSosx64) $(LIBRARIES_APPLE)
+	$(LINK_APPLE) $(LDFLAGS_APPLE) $(FLAGSosx64) -o $@ $(OBJECTSosx64) $(LIBRARIES_APPLE)
 $(BUILD_DIR)/osx_aarch64/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosxaarch64)
-	$(LINK_APPLE_AARCH64) $(LDFLAGS_APPLE_AARCH64) $(FLAGSosxaarch64) -o $@ $(OBJECTSosxaarch64) $(LIBRARIES_APPLE_AARCH64)
+	$(LINK_APPLE) $(LDFLAGS_APPLE) $(FLAGSosxaarch64) -o $@ $(OBJECTSosxaarch64) $(LIBRARIES_APPLE)
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/linux_x86/%.o : %.c
@@ -283,9 +271,9 @@ $(BUILD_DIR)/solaris_sparc32/%.o : %.c
 $(BUILD_DIR)/solaris_sparc64/%.o : %.c
 	$(COMPILE_SOLARIS_SPARC) $(INCLUDES) $(CFLAGS) $(CFLAGS_POSIX) $(FLAGSsolarisSparc64) -c $< -o $@
 $(BUILD_DIR)/osx_x86_64/%.o : %.c
-	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE) $(INCLUDES) $(CFLAGS) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
+	$(COMPILE_APPLE) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSosx64) -c $< -o $@
 $(BUILD_DIR)/osx_aarch64/%.o : %.c
-	CPATH=$(CPATH_APPLE) $(COMPILE_APPLE_AARCH64) $(INCLUDES) $(CFLAGS_APPLE_AARCH64) $(FLAGSosxaarch64) -c $< -o $@
+	$(COMPILE_APPLE) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSosxaarch64) -c $< -o $@
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)
