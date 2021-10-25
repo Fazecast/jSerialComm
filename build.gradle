@@ -91,14 +91,14 @@ jar {
   from sourceSets.moduleInfo.output
 
   bnd (
-    '-exportcontents': 'com.fazecast.jSerialComm;version="' + version + '"',
+    '-exportcontents': 'com.fazecast.jSerialComm;version="' + archiveVersion.get() + '"',
     'Bundle-Name': 'jSerialComm',
     'Bundle-SymbolicName': 'com.fazecast.jSerialComm',
     'Bundle-Description': 'Java Serial Communications Library',
     'Bundle-Vendor': 'Fazecast, Inc.',
     'Require-Capability': 'osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.6))"',
     'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-    'Implementation-Version': version,
+    'Implementation-Version': archiveVersion.get(),
     'Implementation-Vendor': 'Fazecast, Inc.',
     'Sealed': 'true'
   )
@@ -111,7 +111,7 @@ task testJar(type: Jar) {
   manifest {
     attributes 'Main-Class': 'com.fazecast.jSerialComm.SerialPortTest', 
                'Implementation-Title': 'jSerialComm: Java Serial Communications Library',
-	           'Implementation-Version': version,
+               'Implementation-Version': archiveVersion.get(),
                'Implementation-Vendor': 'Fazecast, Inc.',
                'Sealed': 'true'
   }
