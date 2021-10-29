@@ -1261,6 +1261,13 @@ public final class SerialPort
 	public final String getSystemPortName() { return (isWindows ? comPort.substring(comPort.lastIndexOf('\\')+1) : comPort.substring(comPort.lastIndexOf('/')+1)); }
 
 	/**
+	 * Gets the operating system-defined device path corresponding to this serial port.
+	 *
+	 * @return The system-defined device path of this serial port.
+	 */
+	public final String getSystemPortPath() { return comPort; }
+
+	/**
 	 * Gets a description of the port as reported by the device itself.
 	 * <p>
 	 * This will only be available for USB-connected devices that report a product description.
