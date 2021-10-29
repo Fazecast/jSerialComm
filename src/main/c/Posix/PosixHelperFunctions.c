@@ -2,10 +2,10 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Feb 25, 2020
+ *  Last Updated on:  Oct 29, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -489,6 +489,54 @@ baud_rate getBaudRateCode(baud_rate baudRate)
 		case 921600:
 #ifdef B921600
 			return B921600;
+#else
+			return 0;
+#endif
+		case 1000000:
+#ifdef B1000000
+			return B1000000;
+#else
+			return 0;
+#endif
+		case 1152000:
+#ifdef B1152000
+			return B1152000;
+#else
+			return 0;
+#endif
+		case 1500000:
+#ifdef B1500000
+			return B1500000;
+#else
+			return 0;
+#endif
+		case 2000000:
+#ifdef B2000000
+			return B2000000;
+#else
+			return 0;
+#endif
+		case 2500000:
+#ifdef B2500000
+			return B2500000;
+#else
+			return 0;
+#endif
+		case 3000000:
+#ifdef B3000000
+			return B3000000;
+#else
+			return 0;
+#endif
+		case 3500000:
+#ifdef B3500000
+			return B3500000;
+#else
+			return 0;
+#endif
+		case 4000000:
+#ifdef B4000000
+			return B4000000;
 #else
 			return 0;
 #endif
