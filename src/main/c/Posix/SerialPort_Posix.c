@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 01, 2021
+ *  Last Updated on:  Nov 03, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -39,10 +39,14 @@
 #elif defined(__sun__)
 #include <sys/filio.h>
 #elif defined(__APPLE__)
+#include <AvailabilityMacros.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
 #include <IOKit/serial/ioss.h>
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 120000) // Before macOS 12 Monterey
+  #define kIOMainPortDefault kIOMasterPortDefault
+#endif
 #endif
 #include "PosixHelperFunctions.h"
 #include "../com_fazecast_jSerialComm_SerialPort.h"
@@ -141,7 +145,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	char friendlyName[1024], comPortCu[1024], comPortTty[1024], portDescription[1024];
 
 	// Enumerate serial ports on machine
-	IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
+	IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
 	while ((serialPort = IOIteratorNext(serialPortIterator)))
 	{
 		++numValues;
