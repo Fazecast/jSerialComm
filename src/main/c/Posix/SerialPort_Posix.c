@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 29, 2021
+ *  Last Updated on:  Nov 01, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
@@ -216,7 +217,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	serialCommClass = (jclass)(*env)->NewGlobalRef(env, serialComm);
 	serialCommConstructor = (*env)->GetMethodID(env, serialCommClass, "<init>", "()V");
 
-	// Cache
+	// Cache Java fields as global references
 	serialPortFdField = (*env)->GetFieldID(env, serialCommClass, "portHandle", "J");
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
@@ -243,6 +244,14 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
 	eventFlagsField = (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I");
+
+	// Disable handling of SIGIO POSIX signals
+	sigset_t blockMask;
+	sigemptyset(&blockMask);
+	struct sigaction ignoreAction = { 0 };
+	ignoreAction.sa_handler = SIG_IGN;
+	ignoreAction.sa_mask = blockMask;
+	sigaction(SIGIO, &ignoreAction, NULL);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
