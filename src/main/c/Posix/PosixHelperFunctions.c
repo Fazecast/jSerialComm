@@ -794,6 +794,48 @@ baud_rate getBaudRateCode(baud_rate baudRate)
 			return B19200;
 		case 38400:
 			return B38400;
+		case 7200:
+#ifdef B7200
+			return B7200;
+#else
+			return 0;
+#endif
+		case 14400:
+#ifdef B14400
+			return B14400;
+#else
+			return 0;
+#endif
+		case 28800:
+#ifdef B28800
+			return B28800;
+#else
+			return 0;
+#endif
+		case 57600:
+#ifdef B57600
+			return B57600;
+#else
+			return 0;
+#endif
+		case 76800:
+#ifdef B76800
+			return B76800;
+#else
+			return 0;
+#endif
+		case 115200:
+#ifdef B115200
+			return B115200;
+#else
+			return 0;
+#endif
+		case 230400:
+#ifdef B230400
+			return B230400;
+#else
+			return 0;
+#endif
 		default:
 			return 0;
 	}

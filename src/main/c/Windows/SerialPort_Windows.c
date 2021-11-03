@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 22, 2021
+ *  Last Updated on:  Nov 01, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -352,7 +352,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	serialCommClass = (jclass)env->NewGlobalRef(serialComm);
 	serialCommConstructor = env->GetMethodID(serialCommClass, "<init>", "()V");
 
-	// Cache
+	// Cache Java fields as global references
 	serialPortHandleField = env->GetFieldID(serialCommClass, "portHandle", "J");
 	comPortField = env->GetFieldID(serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = env->GetFieldID(serialCommClass, "friendlyName", "Ljava/lang/String;");
@@ -465,7 +465,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.fTXContinueOnXoff = TRUE;
 	dcbSerialParams.fErrorChar = FALSE;
 	dcbSerialParams.fNull = FALSE;
-	dcbSerialParams.fAbortOnError = FALSE;
 	dcbSerialParams.XonLim = 2048;
 	dcbSerialParams.XoffLim = 512;
 	dcbSerialParams.XonChar = (char)17;
