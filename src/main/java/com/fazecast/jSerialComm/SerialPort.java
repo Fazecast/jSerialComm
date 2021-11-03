@@ -50,26 +50,24 @@ import java.util.Date;
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	private static final String versionString = "2.8.0";
-	private static final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
-	private static volatile boolean isAndroid = false;
-	private static volatile boolean isUnixBased = false;
-	private static volatile boolean isWindows = false;
+	static private final String versionString = "2.8.0";
+	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
+	static private volatile boolean isAndroid = false;
+	static private volatile boolean isUnixBased = false;
+	static private volatile boolean isWindows = false;
 	static
 	{
 		// Determine the temporary file directory for Java and remove any previous versions of this library
 		String OS = System.getProperty("os.name").toLowerCase();
 		String libraryPath = "", fileName = "";
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
-		if ((tempFileDirectory.charAt(tempFileDirectory.length()-1) != '\\') && (tempFileDirectory.charAt(tempFileDirectory.length()-1) != '/'))
+		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
 			tempFileDirectory += "/";
 
 		// Make sure to use appId to separate tmpdir directories if library is used by multiple modules so they don't erase each others' folders
-		String appId = System.getProperty(tmpdirAppIdProperty, "");
-		tempFileDirectory += "jSerialComm/";
-		if (!appId.isEmpty()) {
-			tempFileDirectory += appId + (!appId.endsWith("/") ? "/" : "");
-		}
+		tempFileDirectory += "jSerialComm/" + System.getProperty(tmpdirAppIdProperty, "");
+		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
+			tempFileDirectory += "/";
 		deleteDirectory(new File(tempFileDirectory));
 
 		// Determine Operating System and architecture
@@ -264,14 +262,14 @@ public final class SerialPort
 	}
 
 	// Static symbolic link testing function
-	private static boolean isSymbolicLink(File file) throws IOException
+	static private final boolean isSymbolicLink(File file) throws IOException
 	{
 		File canonicalFile = (file.getParent() == null) ? file : new File(file.getParentFile().getCanonicalFile(), file.getName());
 		return !canonicalFile.getCanonicalFile().equals(canonicalFile.getAbsoluteFile());
 	}
 
 	// Static recursive directory deletion function
-	private static void deleteDirectory(File path)
+	static private final void deleteDirectory(File path)
 	{
 		if (path.isDirectory())
 			for (File file : path.listFiles())
@@ -285,14 +283,14 @@ public final class SerialPort
 	 * @return The port description as reported by the device itself.
 	 */
 	@Override
-	public String toString() { return getPortDescription(); }
+	public final String toString() { return getPortDescription(); }
 
 	/**
 	 * Returns the current version of the jSerialComm library.
 	 *
 	 * @return The current library version.
 	 */
-	static public String getVersion() { return versionString; }
+	static public final String getVersion() { return versionString; }
 
 	/**
 	 * Returns a list of all available serial ports on this machine.
@@ -310,7 +308,7 @@ public final class SerialPort
 	 *
 	 * @return An array of {@link SerialPort} objects.
 	 */
-	static public native SerialPort[] getCommPorts();
+	static public final native SerialPort[] getCommPorts();
 
 	/**
 	 * Allocates a {@link SerialPort} object corresponding to the user-specified port descriptor.
@@ -322,7 +320,7 @@ public final class SerialPort
 	 * @return A {@link SerialPort} object.
 	 * @throws SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
-	static public SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
+	static public final SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
 	{
 		// Correct port descriptor, if needed
 		try
