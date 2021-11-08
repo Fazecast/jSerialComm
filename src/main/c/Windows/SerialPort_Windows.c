@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 01, 2021
+ *  Last Updated on:  Nov 03, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -107,7 +107,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				wchar_t* descriptionString = wcsrchr(valueName, L'\\') ? (wcsrchr(valueName, L'\\') + 1) : valueName;
 
 				// Add new SerialComm object to vector
-				push_back(&serialCommPorts, comPortString, descriptionString, descriptionString);
+				pushBack(&serialCommPorts, comPortString, descriptionString, descriptionString);
 			}
 		}
 

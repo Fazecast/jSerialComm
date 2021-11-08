@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Apr 01, 2018
+ *  Last Updated on:  Nov 03, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,7 +31,8 @@ typedef struct charTupleVector
 	wchar_t **first, **second, **third;
 	size_t length;
 } charTupleVector;
-void push_back(struct charTupleVector* vector, const wchar_t* firstString, const wchar_t* secondString, const wchar_t* thirdString);
+
+void pushBack(struct charTupleVector* vector, const wchar_t* key, const wchar_t* firstString, const wchar_t* secondString);
 char keyExists(struct charTupleVector* vector, const wchar_t* key);
 
 #endif		// #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__

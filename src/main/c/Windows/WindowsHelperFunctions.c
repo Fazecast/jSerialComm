@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Mar 25, 2016
+ *  Last Updated on:  Nov 03, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -28,7 +28,7 @@
 #include <string.h>
 #include "WindowsHelperFunctions.h"
 
-void push_back(struct charTupleVector* vector, const wchar_t* firstString, const wchar_t* secondString, const wchar_t* thirdString)
+void pushBack(struct charTupleVector* vector, const wchar_t* key, const wchar_t* firstString, const wchar_t* secondString)
 {
 	// Allocate memory for new string storage
 	vector->length++;
@@ -43,12 +43,12 @@ void push_back(struct charTupleVector* vector, const wchar_t* firstString, const
 		vector->third = newMemory;
 
 	// Store new strings
-	vector->first[vector->length-1] = (wchar_t*)malloc((wcslen(firstString)+1)*sizeof(wchar_t));
-	vector->second[vector->length-1] = (wchar_t*)malloc((wcslen(secondString)+1)*sizeof(wchar_t));
-	vector->third[vector->length-1] = (wchar_t*)malloc((wcslen(thirdString)+1)*sizeof(wchar_t));
-	wcscpy(vector->first[vector->length-1], firstString);
-	wcscpy(vector->second[vector->length-1], secondString);
-	wcscpy(vector->third[vector->length-1], thirdString);
+	vector->first[vector->length-1] = (wchar_t*)malloc((wcslen(key)+1)*sizeof(wchar_t));
+	vector->second[vector->length-1] = (wchar_t*)malloc((wcslen(firstString)+1)*sizeof(wchar_t));
+	vector->third[vector->length-1] = (wchar_t*)malloc((wcslen(secondString)+1)*sizeof(wchar_t));
+	wcscpy(vector->first[vector->length-1], key);
+	wcscpy(vector->second[vector->length-1], firstString);
+	wcscpy(vector->third[vector->length-1], secondString);
 }
 
 char keyExists(struct charTupleVector* vector, const wchar_t* key)
