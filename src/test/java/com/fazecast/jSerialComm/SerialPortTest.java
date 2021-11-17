@@ -85,7 +85,11 @@ public class SerialPortTest
 	{
 		System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
 		SerialPort[] ports = SerialPort.getCommPorts();
-		System.out.println("\nAvailable Ports:\n");
+		System.out.println("\nAvailable Ports (First Try):\n");
+		for (int i = 0; i < ports.length; ++i)
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
+		ports = SerialPort.getCommPorts();
+		System.out.println("\nAvailable Ports (Second Try):\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
 		SerialPort ubxPort;
