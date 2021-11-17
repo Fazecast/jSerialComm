@@ -507,7 +507,7 @@ public final class SerialPort
 		if (serialEventListener != null)
 			serialEventListener.stopListening();
 		portHandle = closePortNative(portHandle);
-		return (portHandle <= 0);
+		return (portHandle < 0);
 	}
 
 	/**
