@@ -88,9 +88,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    closePortNative
- * Signature: (J)Z
+ * Signature: (J)J
  */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
+JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
   (JNIEnv *, jobject, jlong);
 
 /*
@@ -104,18 +104,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    configTimeouts
- * Signature: (J)Z
+ * Signature: (JIIII)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts
-  (JNIEnv *, jobject, jlong);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    configEventFlags
- * Signature: (J)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configEventFlags
-  (JNIEnv *, jobject, jlong);
+  (JNIEnv *, jobject, jlong, jint, jint, jint, jint);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
@@ -144,18 +136,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    readBytes
- * Signature: (J[BJJ)I
+ * Signature: (J[BJJII)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong, jint, jint);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    writeBytes
- * Signature: (J[BJJ)I
+ * Signature: (J[BJJI)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong);
+  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong, jint);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
@@ -283,6 +275,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRTS
  * Signature: (J)Z
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getLastErrorLocation
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorLocation
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getLastErrorCode
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorCode
   (JNIEnv *, jobject, jlong);
 
 #ifdef __cplusplus
