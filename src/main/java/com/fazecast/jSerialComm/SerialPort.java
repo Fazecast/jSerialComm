@@ -173,7 +173,7 @@ public final class SerialPort
 					{
 						File linkerFile = new File("/lib/ld-linux-armhf.so.3");
 						if (linkerFile.exists())
-							libraryPath += "-hf";
+							libraryPath += "hf";
 						else
 						{
 							String line;
@@ -182,7 +182,7 @@ public final class SerialPort
 							p.waitFor();
 							BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 							if (((line = br.readLine()) != null) && line.contains("armhf"))
-								libraryPath += "-hf";
+								libraryPath += "hf";
 							else
 							{
 								pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
@@ -190,7 +190,7 @@ public final class SerialPort
 								p.waitFor();
 								br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 								if (((line = br.readLine()) != null) && line.contains("armhf"))
-									libraryPath += "-hf";
+									libraryPath += "hf";
 							}
 						}
 					}
