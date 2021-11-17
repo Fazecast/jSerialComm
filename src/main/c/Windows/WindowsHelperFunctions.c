@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Nov 03, 2021
+ *  Last Updated on:  Nov 14, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -28,37 +28,73 @@
 #include <string.h>
 #include "WindowsHelperFunctions.h"
 
-void pushBack(struct charTupleVector* vector, const wchar_t* key, const wchar_t* firstString, const wchar_t* secondString)
+// Common storage functionality
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description)
 {
-	// Allocate memory for new string storage
-	vector->length++;
-	wchar_t** newMemory = (wchar_t**)realloc(vector->first, vector->length*sizeof(wchar_t*));
-	if (newMemory)
-		vector->first = newMemory;
-	newMemory = (wchar_t**)realloc(vector->second, vector->length*sizeof(wchar_t*));
-	if (newMemory)
-		vector->second = newMemory;
-	newMemory = (wchar_t**)realloc(vector->third, vector->length*sizeof(wchar_t*));
-	if (newMemory)
-		vector->third = newMemory;
+	// Allocate memory for the new SerialPort storage structure
+	if (vector->capacity == vector->length)
+	{
+		serialPort** newArray = (serialPort**)realloc(vector->ports, ++vector->capacity * sizeof(serialPort*));
+		if (newArray)
+			vector->ports = newArray;
+		else
+		{
+			vector->capacity--;
+			return NULL;
+		}
+	}
+	serialPort* port = (serialPort*)malloc(sizeof(serialPort));
+	if (port)
+		vector->ports[vector->length++] = port;
+	else
+		return NULL;
 
-	// Store new strings
-	vector->first[vector->length-1] = (wchar_t*)malloc((wcslen(key)+1)*sizeof(wchar_t));
-	vector->second[vector->length-1] = (wchar_t*)malloc((wcslen(firstString)+1)*sizeof(wchar_t));
-	vector->third[vector->length-1] = (wchar_t*)malloc((wcslen(secondString)+1)*sizeof(wchar_t));
-	wcscpy(vector->first[vector->length-1], key);
-	wcscpy(vector->second[vector->length-1], firstString);
-	wcscpy(vector->third[vector->length-1], secondString);
+	// Initialize the storage structure
+	memset(port, 0, sizeof(serialPort));
+	port->handle = (void*)-1;
+	port->enumerated = 1;
+	port->portPath = (wchar_t*)malloc((wcslen(key)+1)*sizeof(wchar_t));
+	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
+	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
+
+	// Store port strings
+	wcscpy(port->portPath, key);
+	wcscpy(port->friendlyName, friendlyName);
+	wcscpy(port->portDescription, description);
+
+	// Return the newly created serial port structure
+	return port;
 }
 
-char keyExists(struct charTupleVector* vector, const wchar_t* key)
+serialPort* fetchPort(serialPortVector* vector, const wchar_t* key)
 {
-	// Search for a vector item with a matching key
-	size_t i;
-	for (i = 0; i < vector->length; ++i)
-		if (wcscmp(key, vector->first[i]) == 0)
-			return 1;
-	return 0;
+	for (int i = 0; i < vector->length; ++i)
+		if (wcscmp(key, vector->ports[i]->portPath) == 0)
+			return vector->ports[i];
+	return NULL;
+}
+
+void removePort(serialPortVector* vector, serialPort* port)
+{
+	// Clean up memory associated with the port
+	free(port->portPath);
+	free(port->friendlyName);
+	free(port->portDescription);
+	if (port->readBuffer)
+		free(port->readBuffer);
+
+	// Move up all remaining ports in the serial port listing
+	for (int i = 0; i < vector->length; ++i)
+		if (vector->ports[i] == port)
+		{
+			for (int j = i; j < (vector->length - 1); ++j)
+				vector->ports[j] = vector->ports[j+1];
+			vector->length--;
+			break;
+		}
+
+	// Free the serial port structure memory
+	free(port);
 }
 
 #endif

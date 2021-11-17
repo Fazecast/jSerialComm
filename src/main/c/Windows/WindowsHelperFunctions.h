@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Nov 03, 2021
+ *  Last Updated on:  Nov 14, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -26,13 +26,27 @@
 #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__
 #define __WINDOWS_HELPER_FUNCTIONS_HEADER_H__
 
-typedef struct charTupleVector
-{
-	wchar_t **first, **second, **third;
-	size_t length;
-} charTupleVector;
+// Serial port JNI header file
+#include "../com_fazecast_jSerialComm_SerialPort.h"
 
-void pushBack(struct charTupleVector* vector, const wchar_t* key, const wchar_t* firstString, const wchar_t* secondString);
-char keyExists(struct charTupleVector* vector, const wchar_t* key);
+// Serial port data structure
+typedef struct serialPort
+{
+	void *handle;
+	char *readBuffer;
+	wchar_t *portPath, *friendlyName, *portDescription;
+	int errorLineNumber, errorNumber, readBufferLength;
+	volatile char enumerated, eventListenerRunning;
+} serialPort;
+
+// Common storage functionality
+typedef struct serialPortVector
+{
+	serialPort **ports;
+	int length, capacity;
+} serialPortVector;
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description);
+serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
+void removePort(serialPortVector* vector, serialPort* port);
 
 #endif		// #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__
