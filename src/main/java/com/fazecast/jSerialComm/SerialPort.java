@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 22, 2021
+ *  Last Updated on:  Nov 12, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -308,7 +308,7 @@ public final class SerialPort
 	 *
 	 * @return An array of {@link SerialPort} objects.
 	 */
-	static public final native SerialPort[] getCommPorts();
+	static public final synchronized native SerialPort[] getCommPorts();
 
 	/**
 	 * Allocates a {@link SerialPort} object corresponding to the user-specified port descriptor.
@@ -506,7 +506,7 @@ public final class SerialPort
 	{
 		if (serialEventListener != null)
 			serialEventListener.stopListening();
-		closePortNative(portHandle);
+		portHandle = closePortNative(portHandle);
 		return (portHandle <= 0);
 	}
 
@@ -533,20 +533,40 @@ public final class SerialPort
 	 * exclusive locks on system resources.
 	 */
 	public final synchronized void disableExclusiveLock() { disableExclusiveLock = true; }
+	
+	/**
+	 * Returns the source code line location of the latest error encountered during execution of
+	 * the native code for this port.
+	 * <p>
+	 * This function must be called while the port is still open as soon as an error is encountered,
+	 * or it may return an incorrect source code line location.
+	 * 
+	 * @return Source line of latest native code error.
+	 */
+	public final synchronized int getLastErrorLocation() { return (portHandle > 0) ? getLastErrorLocation(portHandle) : -1; }
+	
+	/**
+	 * Returns the error number returned by the most recent native source code line that failed execution.
+	 * <p>
+	 * This function must be called while the port is still open as soon as an error is encountered,
+	 * or it may return an incorrect or invalid error code.
+	 * 
+	 * @return Error number of the latest native code error.
+	 */
+	public final synchronized int getLastErrorCode() { return (portHandle > 0) ? getLastErrorCode(portHandle) : 0; }
 
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
 	private final native long openPortNative();							// Opens serial port
-	private final native boolean closePortNative(long portHandle);		// Closes serial port
+	private final native long closePortNative(long portHandle);			// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
-	private final native boolean configTimeouts(long portHandle);		// Changes/sets serial port timeouts as defined by this class
-	private final native boolean configEventFlags(long portHandle);		// Changes/sets which serial events to listen for as defined by this class
+	private final native boolean configTimeouts(long portHandle, int timeoutMode, int readTimeout, int writeTimeout, int eventsToMonitor);	// Changes/sets serial port timeouts as defined by this class
 	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
 	private final native int bytesAvailable(long portHandle);			// Returns number of bytes available for reading
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
-	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead, long offset);		// Reads bytes from serial port
-	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite, long offset);	// Write bytes to serial port
+	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead, long offset, int timeoutMode, int readTimeout);	// Reads bytes from serial port
+	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite, long offset, int timeoutMode);	// Write bytes to serial port
 	private final native boolean setBreak(long portHandle);				// Set BREAK status on serial line
 	private final native boolean clearBreak(long portHandle);			// Clear BREAK status on serial line
 	private final native boolean setRTS(long portHandle);				// Set RTS line to 1
@@ -563,6 +583,8 @@ public final class SerialPort
 	private final native boolean getDTR(long portHandle);				// Returns whether the DTR signal is 1
 	private final native boolean getRTS(long portHandle);				// Returns whether the RTS signal is 1
 	private final native boolean getRI(long portHandle);				// Returns whether the RI signal is 1
+	private final native int getLastErrorLocation(long portHandle);		// Returns the source code line location of the latest native code error
+	private final native int getLastErrorCode(long portHandle);			// Returns the errno value of the latest native code error
 
 	/**
 	 * Returns the number of bytes available without blocking if {@link #readBytes(byte[], long)} were to be called immediately
@@ -570,7 +592,7 @@ public final class SerialPort
 	 *
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
-	public final int bytesAvailable() { return bytesAvailable(portHandle); }
+	public final int bytesAvailable() { return (portHandle > 0) ? bytesAvailable(portHandle) : -1; }
 
 	/**
 	 * Returns the number of bytes still waiting to be written in the device's output queue.
@@ -579,7 +601,7 @@ public final class SerialPort
 	 *
 	 * @return The number of bytes currently waiting to be written, or -1 if the port is not open.
 	 */
-	public final int bytesAwaitingWrite() { return bytesAwaitingWrite(portHandle); }
+	public final int bytesAwaitingWrite() { return (portHandle > 0) ? bytesAwaitingWrite(portHandle) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
@@ -594,7 +616,7 @@ public final class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, long bytesToRead) { return readBytes(portHandle, buffer, bytesToRead, 0); }
+	public final int readBytes(byte[] buffer, long bytesToRead) { return (portHandle > 0) ? readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
@@ -610,7 +632,7 @@ public final class SerialPort
 	 * @param offset The read buffer index into which to begin storing data.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, long bytesToRead, long offset) { return readBytes(portHandle, buffer, bytesToRead, offset); }
+	public final int readBytes(byte[] buffer, long bytesToRead, long offset) { return (portHandle > 0) ? readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout) : -1; }
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -625,7 +647,7 @@ public final class SerialPort
 	 * @param bytesToWrite The number of bytes to write to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, long bytesToWrite) { return writeBytes(portHandle, buffer, bytesToWrite, 0); }
+	public final int writeBytes(byte[] buffer, long bytesToWrite) { return (portHandle > 0) ? writeBytes(portHandle, buffer, bytesToWrite, 0, timeoutMode) : -1; }
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port starting at the indicated offset.
@@ -641,7 +663,7 @@ public final class SerialPort
 	 * @param offset The buffer index from which to begin writing to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset) { return writeBytes(portHandle, buffer, bytesToWrite, offset); }
+	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset) { return (portHandle > 0) ? writeBytes(portHandle, buffer, bytesToWrite, offset, timeoutMode) : -1; }
 	
 	/**
 	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
@@ -659,13 +681,13 @@ public final class SerialPort
 	 * Sets the BREAK signal on the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setBreak()   { return setBreak(portHandle); }
+	public final boolean setBreak()   { return (portHandle > 0) && setBreak(portHandle); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean clearBreak() { return clearBreak(portHandle); }
+	public final boolean clearBreak() { return (portHandle > 0) && clearBreak(portHandle); }
 
 	/**
 	 * Sets the state of the RTS line to 1.
@@ -674,7 +696,7 @@ public final class SerialPort
 	public final boolean setRTS()
 	{
 		isRtsEnabled = true;
-		return ((portHandle > 0) ? setRTS(portHandle) : presetRTS());
+		return (portHandle > 0) ? setRTS(portHandle) : presetRTS();
 	}
 
 	/**
@@ -684,7 +706,7 @@ public final class SerialPort
 	public final boolean clearRTS()
 	{
 		isRtsEnabled = false;
-		return ((portHandle > 0) ? clearRTS(portHandle) : preclearRTS());
+		return (portHandle > 0) ? clearRTS(portHandle) : preclearRTS();
 	}
 
 	/**
@@ -694,7 +716,7 @@ public final class SerialPort
 	public final boolean setDTR()
 	{
 		isDtrEnabled = true;
-		return ((portHandle > 0) ? setDTR(portHandle) : presetDTR());
+		return (portHandle > 0) ? setDTR(portHandle) : presetDTR();
 	}
 
 	/**
@@ -704,26 +726,26 @@ public final class SerialPort
 	public final boolean clearDTR()
 	{
 		isDtrEnabled = false;
-		return ((portHandle > 0) ? clearDTR(portHandle) : preclearDTR());
+		return (portHandle > 0) ? clearDTR(portHandle) : preclearDTR();
 	}
 
 	/**
 	 * Returns whether the CTS line is currently asserted.
 	 * @return Whether or not the CTS line is asserted.
 	 */
-	public final boolean getCTS() { return getCTS(portHandle); }
+	public final boolean getCTS() { return (portHandle > 0) && getCTS(portHandle); }
 
 	/**
 	 * Returns whether the DSR line is currently asserted.
 	 * @return Whether or not the DSR line is asserted.
 	 */
-	public final boolean getDSR() { return getDSR(portHandle); }
+	public final boolean getDSR() { return (portHandle > 0) && getDSR(portHandle); }
 	
 	/**
 	 * Returns whether the DCD line is currently asserted.
 	 * @return Whether or not the DCD line is asserted.
 	 */
-	public final boolean getDCD() { return getDCD(portHandle); }
+	public final boolean getDCD() { return (portHandle > 0) && getDCD(portHandle); }
 
 	/**
 	 * Returns whether the DTR line is currently asserted.
@@ -731,7 +753,7 @@ public final class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the DTR line is asserted.
 	 */
-	public final boolean getDTR() { return getDTR(portHandle); }
+	public final boolean getDTR() { return (portHandle > 0) && getDTR(portHandle); }
 
 	/**
 	 * Returns whether the RTS line is currently asserted.
@@ -739,13 +761,13 @@ public final class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the RTS line is asserted.
 	 */
-	public final boolean getRTS() { return getRTS(portHandle); }
+	public final boolean getRTS() { return (portHandle > 0) && getRTS(portHandle); }
 
 	/**
 	 * Returns whether the RI line is currently asserted.
 	 * @return Whether or not the RI line is asserted.
 	 */
-	public final boolean getRI() { return getRI(portHandle); }
+	public final boolean getRI() { return (portHandle > 0) && getRI(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}
@@ -792,7 +814,7 @@ public final class SerialPort
 
 		if (portHandle > 0)
 		{
-			configEventFlags(portHandle);
+			configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
 			serialEventListener.startListening();
 		}
 		return true;
@@ -808,6 +830,7 @@ public final class SerialPort
 		{
 			serialEventListener.stopListening();
 			serialEventListener = null;
+			configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
 		}
 		userDataListener = null;
 	}
@@ -1032,7 +1055,7 @@ public final class SerialPort
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-			return configTimeouts(portHandle);
+			return configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
 		}
 		return true;
 	}
@@ -1402,7 +1425,7 @@ public final class SerialPort
 				@Override
 				public void run()
 				{
-					while (eventListenerRunning && (portHandle > 0))
+					while (eventListenerRunning)
 					{
 						try { waitForSerialEvent(); }
 						catch (Exception e)
@@ -1414,7 +1437,6 @@ public final class SerialPort
 								((SerialPortMessageListenerWithExceptions)userDataListener).catchException(e);
 						}
 					}
-					eventListenerRunning = false;
 				}
 			});
 			serialEventThread.start();
@@ -1425,11 +1447,8 @@ public final class SerialPort
 			if (!eventListenerRunning)
 				return;
 			eventListenerRunning = false;
-
-			int oldEventFlags = eventFlags;
-			eventFlags = 0;
-			configEventFlags(portHandle);
-			eventFlags = oldEventFlags;
+			configTimeouts(portHandle, TIMEOUT_NONBLOCKING, 0, 0, 0);
+			
 			try
 			{
 				serialEventThread.join(500);
@@ -1453,9 +1472,9 @@ public final class SerialPort
 						int numBytesAvailable, bytesRemaining, newBytesIndex;
 						while (eventListenerRunning && ((numBytesAvailable = bytesAvailable(portHandle)) > 0))
 						{
-							byte[] newBytes = new byte[numBytesAvailable];
 							newBytesIndex = 0;
-							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length, 0);
+							byte[] newBytes = new byte[numBytesAvailable];
+							bytesRemaining = readBytes(portHandle, newBytes, newBytes.length, 0, timeoutMode, readTimeout);
 							if (delimiters.length > 0)
 							{
 								int startIndex = 0;
@@ -1542,7 +1561,7 @@ public final class SerialPort
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 
 			// Read from the serial port
-			int numRead = readBytes(portHandle, byteBuffer, 1L, 0);
+			int numRead = readBytes(portHandle, byteBuffer, 1L, 0, timeoutMode, readTimeout);
 			if (numRead == 0)
 			{
 				if (timeoutExceptionsSuppressed)
@@ -1565,7 +1584,7 @@ public final class SerialPort
 				return 0;
 
 			// Read from the serial port
-			int numRead = readBytes(portHandle, b, b.length, 0);
+			int numRead = readBytes(portHandle, b, b.length, 0, timeoutMode, readTimeout);
 			if ((numRead == 0) && !timeoutExceptionsSuppressed)
 				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
 			return numRead;
@@ -1585,7 +1604,7 @@ public final class SerialPort
 				return 0;
 
 			// Read from the serial port
-			int numRead = readBytes(portHandle, b, len, off);
+			int numRead = readBytes(portHandle, b, len, off, timeoutMode, readTimeout);
 			if ((numRead == 0) && !timeoutExceptionsSuppressed)
 				throw new SerialPortTimeoutException("The read operation timed out before any data was returned.");
 			return numRead;
@@ -1597,7 +1616,7 @@ public final class SerialPort
 			if (portHandle <= 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			byte[] buffer = new byte[(int)n];
-			return readBytes(portHandle, buffer, n, 0);
+			return readBytes(portHandle, buffer, n, 0, timeoutMode, readTimeout);
 		}
 	}
 
@@ -1614,7 +1633,7 @@ public final class SerialPort
 			if (portHandle <= 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			byteBuffer[0] = (byte)(b & 0xFF);
-			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L, 0);
+			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L, 0, timeoutMode);
 			if (bytesWritten < 0)
 				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 			else if (bytesWritten == 0)
@@ -1641,7 +1660,7 @@ public final class SerialPort
 				return;
 
 			// Write to the serial port
-			int numWritten = writeBytes(portHandle, b, len, off);
+			int numWritten = writeBytes(portHandle, b, len, off, timeoutMode);
 			if (numWritten < 0)
 				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 			else if (numWritten == 0)
