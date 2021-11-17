@@ -2,10 +2,10 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Feb 20, 2020
+ *  Last Updated on:  Nov 16, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.6.2
+ * @version 2.8.0
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -91,20 +91,18 @@ public class SerialPortTest
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
+		Scanner inputScanner = new Scanner(System.in);
 		try {
-			Scanner inputScanner = new Scanner(System.in);
 			serialPortChoice = inputScanner.nextInt();
-			inputScanner.close();
 		} catch (Exception e) {}
 		if (serialPortChoice == -1)
 		{
 			String serialPortDescriptor = "";
 			System.out.print("\nSpecify your desired serial port descriptor: ");
 			try {
-				Scanner inputScanner = new Scanner(System.in);
-				serialPortDescriptor = inputScanner.nextLine();
-				inputScanner.close();
-			} catch (Exception e) {}
+				while (serialPortDescriptor.isEmpty())
+					serialPortDescriptor = inputScanner.nextLine();
+			} catch (Exception e) { e.printStackTrace(); }
 			ubxPort = SerialPort.getCommPort(serialPortDescriptor);
 		}
 		else
@@ -281,5 +279,6 @@ public class SerialPortTest
 				System.out.println("Full Line #" + i + ": " + scanner.nextLine());
 		scanner.close();
 		System.out.println("\n\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());*/
+		inputScanner.close();
 	}
 }
