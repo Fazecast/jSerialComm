@@ -2,10 +2,10 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Apr 01, 2020
+ *  Last Updated on:  Nov 14, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -26,22 +26,38 @@
 #ifndef __POSIX_HELPER_FUNCTIONS_HEADER_H__
 #define __POSIX_HELPER_FUNCTIONS_HEADER_H__
 
-// Common functionality
-typedef struct charTupleVector
+// Serial port JNI header file
+#include "../com_fazecast_jSerialComm_SerialPort.h"
+
+// Serial port data structure
+typedef struct serialPort
 {
-	char **first, **second, **third;
-	size_t length;
-} charTupleVector;
-void push_back(struct charTupleVector* vector, const char* firstString, const char* secondString, const char* thirdString);
-char keyExists(struct charTupleVector* vector, const char* key);
+	char *portPath, *friendlyName, *portDescription, *readBuffer;
+	int errorLineNumber, errorNumber, handle, readBufferLength;
+	volatile char enumerated, eventListenerRunning;
+} serialPort;
+
+// Common storage functionality
+typedef struct serialPortVector
+{
+	serialPort **ports;
+	int length, capacity;
+} serialPortVector;
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description);
+serialPort* fetchPort(serialPortVector* vector, const char* key);
+void removePort(serialPortVector* vector, serialPort* port);
 
 // Forced definitions
 #ifndef CMSPAR
 #define CMSPAR 010000000000
 #endif
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
 // Linux-specific functionality
 #if defined(__linux__)
+
 typedef int baud_rate;
 #ifdef __ANDROID__
 extern int ioctl(int __fd, int __request, ...);
@@ -51,12 +67,13 @@ extern int ioctl(int __fd, unsigned long int __request, ...);
 void getDriverName(const char* directoryToSearch, char* friendlyName);
 void getFriendlyName(const char* productFile, char* friendlyName);
 void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription);
-void recursiveSearchForComPorts(charTupleVector* comPorts, const char* fullPathToSearch);
-void lastDitchSearchForComPorts(charTupleVector* comPorts);
-void driverBasedSearchForComPorts(charTupleVector* comPorts);
+void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPathToSearch);
+void driverBasedSearchForComPorts(serialPortVector* comPorts, const char* fullPathToDriver, const char* fullBasePathToPort);
+void lastDitchSearchForComPorts(serialPortVector* comPorts);
 
 // Solaris-specific functionality
 #elif defined(__sun__)
+
 #define LOCK_SH 1
 #define LOCK_EX 2
 #define LOCK_NB 4
@@ -64,13 +81,14 @@ void driverBasedSearchForComPorts(charTupleVector* comPorts);
 typedef int baud_rate;
 extern int ioctl(int __fd, int __request, ...);
 int flock(int fd, int op);
-void searchForComPorts(charTupleVector* comPorts);
+void searchForComPorts(serialPortVector* comPorts);
 
 // Apple-specific functionality
 #elif defined(__APPLE__)
-#define fdatasync(a) fsync(a)
+
 #include <termios.h>
 typedef speed_t baud_rate;
+void searchForComPorts(serialPortVector* comPorts);
 
 #endif
 
