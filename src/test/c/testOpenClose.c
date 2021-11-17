@@ -26,186 +26,7 @@
 #endif
 #include <sys/ioctl.h>
 #include <termios.h>
-
-
-// OS-specific functionality
-#ifndef CMSPAR
-#define CMSPAR 010000000000
-#endif
-
-#if defined(__linux__)
-typedef int baud_rate;
-#ifdef __ANDROID__
-extern int ioctl(int __fd, int __request, ...);
-#else
-extern int ioctl(int __fd, unsigned long int __request, ...);
-#endif
-#elif defined(__APPLE__)
-#define fdatasync(a) fsync(a)
-#include <termios.h>
-typedef speed_t baud_rate;
-#endif
-
-#if defined(__linux__)
-baud_rate getBaudRateCode(baud_rate baudRate)
-{
-   // Translate a raw baud rate into a system-specified one
-   switch (baudRate)
-   {
-      case 50:
-         return B50;
-      case 75:
-         return B75;
-      case 110:
-         return B110;
-      case 134:
-         return B134;
-      case 150:
-         return B150;
-      case 200:
-         return B200;
-      case 300:
-         return B300;
-      case 600:
-         return B600;
-      case 1200:
-         return B1200;
-      case 1800:
-         return B1800;
-      case 2400:
-         return B2400;
-      case 4800:
-         return B4800;
-      case 9600:
-         return B9600;
-      case 19200:
-         return B19200;
-      case 38400:
-         return B38400;
-      case 57600:
-#ifdef B57600
-         return B57600;
-#else
-         return 0;
-#endif
-      case 115200:
-#ifdef B115200
-         return B115200;
-#else
-         return 0;
-#endif
-      case 230400:
-#ifdef B230400
-         return B230400;
-#else
-         return 0;
-#endif
-      case 460800:
-#ifdef B460800
-         return B460800;
-#else
-         return 0;
-#endif
-      case 500000:
-#ifdef B500000
-         return B500000;
-#else
-         return 0;
-#endif
-      case 576000:
-#ifdef B576000
-         return B576000;
-#else
-         return 0;
-#endif
-      case 921600:
-#ifdef B921600
-         return B921600;
-#else
-         return 0;
-#endif
-      default:
-         return 0;
-   }
-
-   return 0;
-}
-int setBaudRateCustom(int portFD, baud_rate baudRate)
-{
-#ifdef TCSETS2
-   struct termios2 options = { 0 };
-   ioctl(portFD, TCGETS2, &options);
-   options.c_cflag &= ~CBAUD;
-   options.c_cflag |= BOTHER;
-   options.c_ispeed = baudRate;
-   options.c_ospeed = baudRate;
-   int retVal = ioctl(portFD, TCSETS2, &options);
-#else
-   struct serial_struct serInfo;
-   int retVal = ioctl(portFD, TIOCGSERIAL, &serInfo);
-   if (retVal == 0)
-   {
-      serInfo.flags &= ~ASYNC_SPD_MASK;
-      serInfo.flags |= ASYNC_SPD_CUST | ASYNC_LOW_LATENCY;
-      serInfo.custom_divisor = serInfo.baud_base / baudRate;
-      if (sersInfo.custom_divisor == 0)
-         serInfo.custom_divisor = 1;
-      retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
-   }
-#endif
-   return (retVal == 0);
-}
-#elif defined(__APPLE__)
-baud_rate getBaudRateCode(baud_rate baudRate)
-{
-   // Translate a raw baud rate into a system-specified one
-   switch (baudRate)
-   {
-      case 50:
-         return B50;
-      case 75:
-         return B75;
-      case 110:
-         return B110;
-      case 134:
-         return B134;
-      case 150:
-         return B150;
-      case 200:
-         return B200;
-      case 300:
-         return B300;
-      case 600:
-         return B600;
-      case 1200:
-         return B1200;
-      case 1800:
-         return B1800;
-      case 2400:
-         return B2400;
-      case 4800:
-         return B4800;
-      case 9600:
-         return B9600;
-      case 19200:
-         return B19200;
-      case 38400:
-         return B38400;
-      default:
-         return 0;
-   }
-
-   return 0;
-}
-int setBaudRateCustom(int portFD, baud_rate baudRate)
-{
-   // Use OSX-specific ioctls to set a custom baud rate
-   unsigned long microseconds = 1000;
-   int retVal = ioctl(portFD, IOSSIOSPEED, &baudRate);
-   ioctl(portFD, IOSSDATALAT, &microseconds);
-   return (retVal == 0);
-}
-#endif
+#include "PosixHelperFunctions.h"
 
 
 // Global static variables
@@ -214,76 +35,59 @@ static char* comPort = NULL;
 
 
 // JNI functionality
-bool configTimeouts(long serialPortFD)
+bool configTimeouts(long serialPortFD, int timeoutMode, int readTimeout, int writeTimeout, int eventsToMonitor)
 {
    // Get port timeouts from Java class
-   if (serialPortFD <= 0)
-      return false;
+   int flags = 0;
+   struct termios options = { 0 };
    baud_rate baudRate = 9600;
-   baud_rate baudRateCode = getBaudRateCode(baudRate);
-   int timeoutMode = 0;
-   int readTimeout = 0;
-
-   // Retrieve existing port configuration
-   struct termios options = {0};
    tcgetattr(serialPortFD, &options);
-   int flags = fcntl(serialPortFD, F_GETFL);
-   if (flags == -1)
-      return false;
 
    // Set updated port timeouts
    if (((timeoutMode & 0x1) > 0) && (readTimeout > 0)) // Read Semi-blocking with timeout
    {
-      flags &= ~O_NONBLOCK;
       options.c_cc[VMIN] = 0;
       options.c_cc[VTIME] = readTimeout / 100;
    }
    else if ((timeoutMode & 0x1) > 0)             // Read Semi-blocking without timeout
    {
-      flags &= ~O_NONBLOCK;
       options.c_cc[VMIN] = 1;
       options.c_cc[VTIME] = 0;
    }
    else if (((timeoutMode & 0x10) > 0)  && (readTimeout > 0))   // Read Blocking with timeout
    {
-      flags &= ~O_NONBLOCK;
       options.c_cc[VMIN] = 0;
       options.c_cc[VTIME] = readTimeout / 100;
    }
    else if ((timeoutMode & 0x10) > 0)                     // Read Blocking without timeout
    {
-      flags &= ~O_NONBLOCK;
       options.c_cc[VMIN] = 1;
       options.c_cc[VTIME] = 0;
    }
    else if ((timeoutMode & 0x1000) > 0)                        // Scanner Mode
    {
-      flags &= ~O_NONBLOCK;
       options.c_cc[VMIN] = 1;
       options.c_cc[VTIME] = 1;
    }
    else                                                       // Non-blocking
    {
-      flags |= O_NONBLOCK;
+      flags = O_NONBLOCK;
       options.c_cc[VMIN] = 0;
       options.c_cc[VTIME] = 0;
    }
 
    // Apply changes
-   int retVal = fcntl(serialPortFD, F_SETFL, flags);
-   if (retVal != -1)
-      retVal = tcsetattr(serialPortFD, TCSANOW, &options);
-   if (baudRateCode == 0)
-      setBaudRateCustom(serialPortFD, baudRate);
-   return ((retVal == 0) ? true : false);
+   if (fcntl(serialPortFD, F_SETFL, flags))
+      return false;
+   if (tcsetattr(serialPortFD, TCSANOW, &options) || tcsetattr(serialPortFD, TCSANOW, &options))
+      return false;
+   if (!getBaudRateCode(baudRate) && setBaudRateCustom(serialPortFD, baudRate))
+      return false;
+   return true;
 }
 
 bool configPort(long serialPortFD)
 {
-   if (serialPortFD <= 0)
-      return false;
-   struct termios options = {0};
-
    // Get port parameters from Java class
    baud_rate baudRate = 9600;
    int byteSizeInt = 8;
@@ -294,65 +98,69 @@ bool configPort(long serialPortFD)
    int receiveDeviceQueueSize = 4096;
    int rs485DelayBefore = 0;
    int rs485DelayAfter = 0;
-   unsigned char configDisabled = false;
+   int timeoutMode = 0;
+   int readTimeout = 0;
+   int writeTimeout = 0;
+   int eventsToMonitor = 0;
    unsigned char rs485ModeEnabled = false;
    unsigned char rs485ActiveHigh = true;
+   unsigned char rs485EnableTermination = false;
+   unsigned char rs485RxDuringTx = false;
    unsigned char isDtrEnabled = true;
    unsigned char isRtsEnabled = true;
+
+   // Clear any serial port flags and set up raw non-canonical port parameters
+   struct termios options = { 0 };
+   tcgetattr(serialPortFD, &options);
+   options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | INPCK | IGNPAR | IGNCR | ICRNL | IXON | IXOFF);
+   options.c_oflag &= ~OPOST;
+   options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+   options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD | CSTOPB | CRTSCTS);
+
+   // Update the user-specified port parameters
    tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
    tcflag_t parity = (parityInt == 0) ? 0 : (parityInt == 1) ? (PARENB | PARODD) : (parityInt == 2) ? PARENB : (parityInt == 3) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-   tcflag_t XonXoffInEnabled = ((flowControl & 0x10000) > 0) ? IXOFF : 0;
-   tcflag_t XonXoffOutEnabled = ((flowControl & 0x100000) > 0) ? IXON : 0;
-
-   // Set updated port parameters
-   tcgetattr(serialPortFD, &options);
-   options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD);
    options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
-   if (stopBitsInt == 3)
-      options.c_cflag |= CSTOPB;
-   else
-      options.c_cflag &= ~CSTOPB;
-   if (((flowControl & 0x00000010) > 0) || ((flowControl & 0x00000001) > 0))
-      options.c_cflag |= CRTSCTS;
-   else
-      options.c_cflag &= ~CRTSCTS;
    if (!isDtrEnabled || !isRtsEnabled)
       options.c_cflag &= ~HUPCL;
-   options.c_iflag &= ~(INPCK | IGNPAR | PARMRK | ISTRIP);
+   if (!rs485ModeEnabled)
+      options.c_iflag |= BRKINT;
+   if (stopBitsInt == 3)
+      options.c_cflag |= CSTOPB;
+   if (((flowControl & 0x00000010) > 0) || ((flowControl & 0x00000001) > 0))
+      options.c_cflag |= CRTSCTS;
    if (byteSizeInt < 8)
       options.c_iflag |= ISTRIP;
    if (parityInt != 0)
       options.c_iflag |= (INPCK | IGNPAR);
-   options.c_iflag |= (XonXoffInEnabled | XonXoffOutEnabled);
+   if ((flowControl & 0x10000) > 0)
+      options.c_iflag |= IXOFF;
+   if ((flowControl & 0x100000) > 0)
+      options.c_iflag |= IXON;
 
    // Set baud rate and apply changes
    baud_rate baudRateCode = getBaudRateCode(baudRate);
-   unsigned char nonStandardBaudRate = (baudRateCode == 0);
-   if (nonStandardBaudRate)
+   if (!baudRateCode)
       baudRateCode = B38400;
    cfsetispeed(&options, baudRateCode);
    cfsetospeed(&options, baudRateCode);
-   int retVal = configDisabled ? 0 : tcsetattr(serialPortFD, TCSANOW, &options);
+   if (tcsetattr(serialPortFD, TCSANOW, &options) || tcsetattr(serialPortFD, TCSANOW, &options))
+      return false;
 
    // Attempt to set the transmit buffer size and any necessary custom baud rates
 #if defined(__linux__)
-   struct serial_struct serInfo = {0};
-   if (ioctl(serialPortFD, TIOCGSERIAL, &serInfo) == 0)
+
+   struct serial_struct serInfo = { 0 };
+   if (!ioctl(serialPortFD, TIOCGSERIAL, &serInfo))
    {
       serInfo.xmit_fifo_size = sendDeviceQueueSize;
+      serInfo.flags |= ASYNC_LOW_LATENCY;
       ioctl(serialPortFD, TIOCSSERIAL, &serInfo);
    }
-#else
-   sendDeviceQueueSize = sysconf(_SC_PAGESIZE);
-#endif
-   receiveDeviceQueueSize, sysconf(_SC_PAGESIZE);
-   if (nonStandardBaudRate)
-      setBaudRateCustom(serialPortFD, baudRate);
 
    // Attempt to set the requested RS-485 mode
-#if defined(__linux__)
-   struct serial_rs485 rs485Conf = {0};
-   if (ioctl(serialPortFD, TIOCGRS485, &rs485Conf) == 0)
+   struct serial_rs485 rs485Conf = { 0 };
+   if (!ioctl(serialPortFD, TIOCGRS485, &rs485Conf))
    {
       if (rs485ModeEnabled)
          rs485Conf.flags |= SER_RS485_ENABLED;
@@ -368,55 +176,49 @@ bool configPort(long serialPortFD)
          rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
          rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
       }
-      rs485Conf.delay_rts_before_send = rs485DelayBefore;
-      rs485Conf.delay_rts_after_send = rs485DelayAfter;
-      ioctl(serialPortFD, TIOCSRS485, &rs485Conf);
+      if (rs485RxDuringTx)
+         rs485Conf.flags |= SER_RS485_RX_DURING_TX;
+      else
+         rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
+      if (rs485EnableTermination)
+         rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
+      else
+         rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
+      rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
+      rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
+      if (ioctl(serialPortFD, TIOCSRS485, &rs485Conf))
+         return false;
    }
 #endif
-   return ((retVal == 0) && configTimeouts(serialPortFD) ? true : false);
+
+   // Configure the serial port read and write timeouts
+   return configTimeouts(serialPortFD, timeoutMode, readTimeout, writeTimeout, eventsToMonitor);
 }
 
 long openPortNative(void)
 {
    const char *portName = comPort;
-   unsigned char isDtrEnabled = true;
-   unsigned char isRtsEnabled = true;
+   unsigned char disableExclusiveLock = false;
+   unsigned char disableAutoConfig = false;
 
    // Try to open existing serial port with read/write access
    int serialPortFD = -1;
-   if ((serialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK)) > 0)
+   if ((serialPortFD = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC)) > 0)
    {
       // Ensure that multiple root users cannot access the device simultaneously
-      if (flock(serialPortFD, LOCK_EX | LOCK_NB) == -1)
+      if (!disableExclusiveLock && flock(serialPortFD, LOCK_EX | LOCK_NB))
       {
-         tcdrain(serialPortFD);
-         while ((close(serialPortFD) == -1) && (errno == EINTR))
+         while (close(serialPortFD) && (errno == EINTR))
             errno = 0;
          serialPortFD = -1;
       }
-      else
+      else if (!disableAutoConfig && !configPort(serialPortFD))
       {
-         // Clear any serial port flags and set up raw, non-canonical port parameters
-         struct termios options = {0};
-         fcntl(serialPortFD, F_SETFL, 0);
-         tcgetattr(serialPortFD, &options);
-         cfmakeraw(&options);
-         if (!isDtrEnabled || !isRtsEnabled)
-            options.c_cflag &= ~HUPCL;
-         options.c_iflag |= BRKINT;
-         tcsetattr(serialPortFD, TCSANOW, &options);
-
-         // Configure the port parameters and timeouts
-         if (configPort(serialPortFD))
-            portHandle = serialPortFD;
-         else
-         {
-            // Close the port if there was a problem setting the parameters
-            tcdrain(serialPortFD);
-            while ((close(serialPortFD) == -1) && (errno == EINTR))
-               errno = 0;
-            serialPortFD = -1;
-         }
+    	  // Close the port if there was a problem setting the parameters
+         fcntl(serialPortFD, F_SETFL, O_NONBLOCK);
+         while ((close(serialPortFD) == -1) && (errno == EINTR))
+            errno = 0;
+         serialPortFD = -1;
       }
    }
 
@@ -425,34 +227,16 @@ long openPortNative(void)
 
 bool closePortNative(long serialPortFD)
 {
-   // Ensure that the port is open
-   if (serialPortFD <= 0)
-      return true;
-
-   // Force the port to enter non-blocking mode to ensure that any current reads return
-   struct termios options = {0};
-   tcgetattr(serialPortFD, &options);
-   int flags = fcntl(serialPortFD, F_GETFL);
-   flags |= O_NONBLOCK;
-   options.c_cc[VMIN] = 0;
-   options.c_cc[VTIME] = 0;
-   int retVal = fcntl(serialPortFD, F_SETFL, flags);
-   tcsetattr(serialPortFD, TCSANOW, &options);
+   // Unblock, unlock, and close the port
+   fsync(serialPortFD);
    tcdrain(serialPortFD);
-
-   // Close the port
-   int closeResult = 0;
+   tcflush(serialPortFD, TCIOFLUSH);
+   fcntl(serialPortFD, F_SETFL, O_NONBLOCK);
    flock(serialPortFD, LOCK_UN | LOCK_NB);
-   fdatasync(serialPortFD);
-   while (((closeResult = close(serialPortFD)) == -1) && (errno == EINTR))
-   {
-      printf("CLOSE INTERRUPTED, ERROR CODE: %d\n", closeResult);
+   while (close(serialPortFD) && (errno == EINTR))
       errno = 0;
-   }
-   if (closeResult == -1)
-      printf("CLOSE FAILED, ERROR CODE: %d\n", closeResult);
-   portHandle = -1l;
-   return true;
+   serialPortFD = -1;
+   return 0;
 }
 
 int testFull(void)
