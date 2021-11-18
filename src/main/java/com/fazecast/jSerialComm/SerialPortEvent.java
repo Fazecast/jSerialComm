@@ -2,10 +2,10 @@
  * SerialPortEvent.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Nov 18, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -34,7 +34,7 @@ import java.util.EventObject;
  * @version 2.8.0
  * @see java.util.EventObject
  */
-public final class SerialPortEvent extends EventObject
+public class SerialPortEvent extends EventObject
 {
 	private static final long serialVersionUID = 3060830619653354150L;
 	private final int eventType;
