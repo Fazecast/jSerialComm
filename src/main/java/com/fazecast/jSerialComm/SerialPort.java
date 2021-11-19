@@ -648,7 +648,20 @@ public final class SerialPort
 	 * @param bytesToWrite The number of bytes to write to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, long bytesToWrite) { return (portHandle > 0) ? writeBytes(portHandle, buffer, bytesToWrite, 0, timeoutMode) : -1; }
+	public final int writeBytes(byte[] buffer, long bytesToWrite)
+	{
+		// Write to the serial port until all bytes have been consumed
+		int totalNumWritten = 0;
+		while ((portHandle > 0) && (totalNumWritten != bytesToWrite))
+		{
+			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode);
+			if (numWritten > 0)
+				totalNumWritten += numWritten;
+			else
+				break;
+		}
+		return ((portHandle > 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
+	}
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port starting at the indicated offset.
@@ -664,7 +677,20 @@ public final class SerialPort
 	 * @param offset The buffer index from which to begin writing to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset) { return (portHandle > 0) ? writeBytes(portHandle, buffer, bytesToWrite, offset, timeoutMode) : -1; }
+	public final int writeBytes(byte[] buffer, long bytesToWrite, long offset)
+	{
+		// Write to the serial port until all bytes have been consumed
+		int totalNumWritten = 0;
+		while ((portHandle > 0) && (totalNumWritten != bytesToWrite))
+		{
+			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
+			if (numWritten > 0)
+				totalNumWritten += numWritten;
+			else
+				break;
+		}
+		return ((portHandle > 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
+	}
 	
 	/**
 	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
@@ -1657,15 +1683,19 @@ public final class SerialPort
 				throw new IndexOutOfBoundsException("The specified write offset plus length extends past the end of the specified buffer.");
 			if (portHandle <= 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
-			if (len == 0)
-				return;
 
-			// Write to the serial port
-			int numWritten = writeBytes(portHandle, b, len, off, timeoutMode);
-			if (numWritten < 0)
-				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
-			else if (numWritten == 0)
-				throw new SerialPortTimeoutException("The write operation timed out before all data was written.");
+			// Write to the serial port until all bytes have been consumed
+			int totalNumWritten = 0;
+			while (totalNumWritten != len)
+			{
+				int numWritten = writeBytes(portHandle, b, len - totalNumWritten, off + totalNumWritten, timeoutMode);
+				if (numWritten < 0)
+					throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
+				else if (numWritten == 0)
+					throw new SerialPortTimeoutException("The write operation timed out before all data was written.");
+				else
+					totalNumWritten += numWritten;
+			}
 		}
 	}
 }
