@@ -7,7 +7,7 @@ buildscript {
 
 plugins {
   id 'maven-publish'
-  id 'biz.aQute.bnd.builder' version '5.0.0'
+  id 'biz.aQute.bnd.builder' version '6.0.0'
 }
 
 group = 'com.fazecast'
