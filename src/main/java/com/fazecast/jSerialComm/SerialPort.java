@@ -1681,13 +1681,16 @@ public final class SerialPort
 				throw new NullPointerException("A null pointer was passed in for the write buffer.");
 			if ((len < 0) || (off < 0) || ((off + len) > b.length))
 				throw new IndexOutOfBoundsException("The specified write offset plus length extends past the end of the specified buffer.");
-			if (portHandle <= 0)
-				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 
 			// Write to the serial port until all bytes have been consumed
 			int totalNumWritten = 0;
 			while (totalNumWritten != len)
 			{
+				// Always ensure that the port has not been closed
+				if (portHandle <= 0)
+					throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
+				
+				// Write the actual bytes to the serial port
 				int numWritten = writeBytes(portHandle, b, len - totalNumWritten, off + totalNumWritten, timeoutMode);
 				if (numWritten < 0)
 					throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
