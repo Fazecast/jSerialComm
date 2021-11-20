@@ -389,6 +389,15 @@ public final class SerialPort
 	static final public int LISTENING_EVENT_DATA_AVAILABLE = 0x00000001;
 	static final public int LISTENING_EVENT_DATA_RECEIVED = 0x00000010;
 	static final public int LISTENING_EVENT_DATA_WRITTEN = 0x00000100;
+	static final public int LISTENING_EVENT_BREAK_INTERRUPT = 0x00010000;
+	static final public int LISTENING_EVENT_CARRIER_DETECT = 0x00020000;
+	static final public int LISTENING_EVENT_CTS = 0x00040000;
+	static final public int LISTENING_EVENT_DSR = 0x00080000;
+	static final public int LISTENING_EVENT_RING_INDICATOR = 0x00100000;
+	static final public int LISTENING_EVENT_FRAMING_ERROR = 0x00200000;
+	static final public int LISTENING_EVENT_OVERRUN_ERROR = 0x00400000;
+	static final public int LISTENING_EVENT_PARITY_ERROR = 0x00800000;
+	static final public int LISTENING_EVENT_OUTPUT_EMPTY = 0x01000000;
 
 	// Serial Port Parameters
 	private volatile long portHandle = -1;
