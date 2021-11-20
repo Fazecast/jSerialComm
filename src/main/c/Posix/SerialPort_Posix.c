@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 14, 2021
+ *  Last Updated on:  Nov 19, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -66,6 +66,8 @@ jfieldID rs485EnableTerminationField;
 jfieldID rs485RxDuringTxField;
 jfieldID rs485DelayBeforeField;
 jfieldID rs485DelayAfterField;
+jfieldID xonStartCharField;
+jfieldID xoffStopCharField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -147,6 +149,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	rs485RxDuringTxField = (*env)->GetFieldID(env, serialCommClass, "rs485RxDuringTx", "Z");
 	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
 	rs485DelayAfterField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayAfter", "I");
+	xonStartCharField = (*env)->GetFieldID(env, serialCommClass, "xonStartChar", "B");
+	xoffStopCharField = (*env)->GetFieldID(env, serialCommClass, "xoffStopChar", "B");
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
@@ -248,10 +252,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
+	char xonStartChar = (*env)->GetByteField(env, obj, xonStartCharField);
+	char xoffStopChar = (*env)->GetByteField(env, obj, xoffStopCharField);
 
 	// Clear any serial port flags and set up raw non-canonical port parameters
 	struct termios options = { 0 };
 	tcgetattr(port->handle, &options);
+	options.c_cc[VSTART] = (unsigned char)xonStartChar;
+	options.c_cc[VSTOP] = (unsigned char)xoffStopChar;
 	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | INPCK | IGNPAR | IGNCR | ICRNL | IXON | IXOFF);
 	options.c_oflag &= ~OPOST;
 	options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
@@ -423,6 +431,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	// TODO: START THREAD TO HANDLE ALL OF THIS IN C
 	// TODO: LISTEN FOR ERROR EVENTS IN CASE SERIAL PORT GETS UNPLUGGED? TEST IF WORKS?
 	// TODO: STORE ALL AVAILABLE PORTS IN C, RECHECK AVAILABLE PORTS UPON RESCAN SO ALREADY OPEN PORTS DON'T GET MESSED UP
+	/*
+	ioctl: TIOCMIWAIT
+	ioctl: TIOCGICOUNT
+	static final public int LISTENING_EVENT_BREAK_INTERRUPT = 0x00010000;
+	static final public int LISTENING_EVENT_CARRIER_DETECT = 0x00020000;
+	static final public int LISTENING_EVENT_CTS = 0x00040000;
+	static final public int LISTENING_EVENT_DSR = 0x00080000;
+	static final public int LISTENING_EVENT_RING_INDICATOR = 0x00100000;
+	static final public int LISTENING_EVENT_FRAMING_ERROR = 0x00200000;
+	static final public int LISTENING_EVENT_OVERRUN_ERROR = 0x00400000;
+	static final public int LISTENING_EVENT_PARITY_ERROR = 0x00800000;
+	static final public int LISTENING_EVENT_OUTPUT_EMPTY = 0x01000000;*/
 
 	// Wait for a serial port event
 	if (poll(&waitingSet, 1, 500) <= 0)

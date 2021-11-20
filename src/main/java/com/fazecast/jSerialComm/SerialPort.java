@@ -385,6 +385,7 @@ public final class SerialPort
 	static final public int TIMEOUT_SCANNER = 0x00001000;
 
 	// Serial Port Listening Events
+	static final public int LISTENING_EVENT_TIMED_OUT = 0x00000000;
 	static final public int LISTENING_EVENT_DATA_AVAILABLE = 0x00000001;
 	static final public int LISTENING_EVENT_DATA_RECEIVED = 0x00000010;
 	static final public int LISTENING_EVENT_DATA_WRITTEN = 0x00000100;
@@ -395,6 +396,7 @@ public final class SerialPort
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
 	private volatile int safetySleepTimeMS = 200, rs485DelayBefore = 0, rs485DelayAfter = 0;
+	private volatile byte xonStartChar = 17, xoffStopChar = 19;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
 	private volatile String comPort, friendlyName, portDescription;
@@ -1289,6 +1291,31 @@ public final class SerialPort
 		rs485RxDuringTx = rxDuringTx;
 		rs485DelayBefore = delayBeforeSendMicroseconds;
 		rs485DelayAfter = delayAfterSendMicroseconds;
+
+		if (portHandle > 0)
+		{
+			if (safetySleepTimeMS > 0)
+				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
+			return configPort(portHandle);
+		}
+		return true;
+	}
+
+	/**
+	 * Sets custom XON/XOFF flow control characters for the device.
+	 * <p>
+	 * Custom characters should almost never be used, as most devices expect the XON/START character to be 17 and the
+	 * XOFF/STOP character to be 13. If your device expects different flow control characters, they may be changed using
+	 * this function.
+	 *
+	 * @param xonStartCharacter The decimal-based character to use as an XON signal.
+	 * @param xoffStopCharacter The decimal-based character to use as an XOFF signal.
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
+	 */
+	public final synchronized boolean setXonXoffCharacters(byte xonStartCharacter, byte xoffStopCharacter)
+	{
+		xonStartChar = xonStartCharacter;
+		xoffStopChar = xoffStopCharacter;
 
 		if (portHandle > 0)
 		{

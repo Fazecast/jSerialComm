@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 12, 2021
+ *  Last Updated on:  Nov 19, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -59,6 +59,8 @@ jfieldID receiveDeviceQueueSizeField;
 jfieldID rs485ModeField;
 jfieldID rs485DelayBeforeField;
 jfieldID rs485DelayAfterField;
+jfieldID xonStartCharField;
+jfieldID xoffStopCharField;
 jfieldID timeoutModeField;
 jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
@@ -374,6 +376,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	rs485ModeField = env->GetFieldID(serialCommClass, "rs485Mode", "Z");
 	rs485DelayBeforeField = env->GetFieldID(serialCommClass, "rs485DelayBefore", "I");
 	rs485DelayAfterField = env->GetFieldID(serialCommClass, "rs485DelayAfter", "I");
+	xonStartCharField = env->GetFieldID(serialCommClass, "xonStartChar", "B");
+	xoffStopCharField = env->GetFieldID(serialCommClass, "xoffStopChar", "B");
 	timeoutModeField = env->GetFieldID(serialCommClass, "timeoutMode", "I");
 	readTimeoutField = env->GetFieldID(serialCommClass, "readTimeout", "I");
 	writeTimeoutField = env->GetFieldID(serialCommClass, "writeTimeout", "I");
@@ -443,6 +447,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	int readTimeout = env->GetIntField(obj, readTimeoutField);
 	int writeTimeout = env->GetIntField(obj, writeTimeoutField);
 	int eventsToMonitor = env->GetIntField(obj, eventFlagsField);
+	char xonStartChar = env->GetByteField(obj, xonStartCharField);
+	char xoffStopChar = env->GetByteField(obj, xoffStopCharField);
 	DWORD sendDeviceQueueSize = (DWORD)env->GetIntField(obj, sendDeviceQueueSizeField);
 	DWORD receiveDeviceQueueSize = (DWORD)env->GetIntField(obj, receiveDeviceQueueSizeField);
 	BYTE rs485ModeEnabled = (BYTE)env->GetBooleanField(obj, rs485ModeField);
@@ -487,8 +493,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.fNull = FALSE;
 	dcbSerialParams.XonLim = 2048;
 	dcbSerialParams.XoffLim = 512;
-	dcbSerialParams.XonChar = (char)17;
-	dcbSerialParams.XoffChar = (char)19;
+	dcbSerialParams.XonChar = xonStartChar;
+	dcbSerialParams.XoffChar = xoffStopChar;
 
 	// Apply changes
 	return (SetCommState(port->handle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj, serialPortPointer, timeoutMode, readTimeout, writeTimeout, eventsToMonitor));
