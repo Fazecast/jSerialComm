@@ -10,6 +10,7 @@ COMPILE_SOLARIS_SPARC       := sparc-sun-solaris2.10-gcc
 COMPILE_OSX_X86             := o32-clang
 COMPILE_OSX_X86_64          := o64-clang
 COMPILE_OSX_ARM64           := oa64-clang
+COMPILE_ANDROID             := ndk-build
 CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
 CFLAGS_APPLE                := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
@@ -76,13 +77,13 @@ FLAGSosx64                  := -arch x86_64 -m64
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target does nothing
 all :
-	$(PRINT) You must specify either linux, arm, solaris, osx, or powerpc!
+	$(PRINT) You must specify either linux, arm, solaris, osx, powerpc, or android!
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
@@ -172,6 +173,10 @@ osx64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86_64 $(BUILD_DIR)/osx_x86_64/$(LIBR
 osxaarch64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_aarch64 $(BUILD_DIR)/osx_aarch64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_aarch64/*.o
 	$(COPY) $(BUILD_DIR)/osx_aarch64/*.* $(RESOURCE_DIR_OSX)/aarch64/
+
+# Build Android libraries
+android :
+	$(COMPILE_ANDROID)
 
 # Rule to create build directories
 $(BUILD_DIR)/linux_x86 :
