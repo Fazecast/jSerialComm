@@ -249,7 +249,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				RegCloseKey(keyHandle5);
 
 			// Fetch the length of the "Bus-Reported Device Description"
-			if (comPortString && !SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &valueLength, 0)  && (GetLastError() == ERROR_INSUFFICIENT_BUFFER))
+			if (comPortString && !SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &valueLength, 0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER))
 			{
 				// Allocate memory
 				++valueLength;
@@ -419,13 +419,14 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			// Close the port if there was a problem setting the parameters
 			PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 			CancelIoEx(port->handle, NULL);
+			SetCommMask(port->handle, 0);
 			CloseHandle(port->handle);
 			port->handle = INVALID_HANDLE_VALUE;
 		}
 	}
 	else
 	{
-		port->errorLineNumber = __LINE__ - 14;
+		port->errorLineNumber = __LINE__ - 15;
 		port->errorNumber = GetLastError();
 	}
 
@@ -470,8 +471,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Retrieve existing port configuration
 	DCB dcbSerialParams{};
 	dcbSerialParams.DCBlength = sizeof(DCB);
-	if ((!SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(port->handle, &dcbSerialParams)))
+	if (!SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(port->handle, &dcbSerialParams))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = GetLastError();
 		return JNI_FALSE;
+	}
 
 	// Set updated port parameters
 	dcbSerialParams.BaudRate = baudRate;
@@ -497,24 +502,29 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	dcbSerialParams.XoffChar = xoffStopChar;
 
 	// Apply changes
-	return (SetCommState(port->handle, &dcbSerialParams) && Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj, serialPortPointer, timeoutMode, readTimeout, writeTimeout, eventsToMonitor));
+	if (!SetCommState(port->handle, &dcbSerialParams))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = GetLastError();
+		return JNI_FALSE;
+	}
+	return Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(env, obj, serialPortPointer, timeoutMode, readTimeout, writeTimeout, eventsToMonitor);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts(JNIEnv *env, jobject obj, jlong serialPortPointer, jint timeoutMode, jint readTimeout, jint writeTimeout, jint eventsToMonitor)
 {
-	// Get event flags from Java class
+	// Get event flags from the Java class
 	int eventFlags = EV_ERR;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	if (((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) > 0) ||
-			((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0))
+	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED))
 		eventFlags |= EV_RXCHAR;
-	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN) > 0)
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN)
 		eventFlags |= EV_TXEMPTY;
 
 	// Set updated port timeouts
 	COMMTIMEOUTS timeouts{};
 	timeouts.WriteTotalTimeoutMultiplier = 0;
-	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)
 	{
 		// Force specific read timeouts if we are monitoring data received
 		timeouts.ReadIntervalTimeout = MAXDWORD;
@@ -522,102 +532,120 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		timeouts.ReadTotalTimeoutConstant = 1000;
 		timeouts.WriteTotalTimeoutConstant = 0;
 	}
-	else
+	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_SCANNER)
 	{
-		switch (timeoutMode)
-		{
-			case com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING:		// Read Semi-blocking
-			case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read Semi-blocking/Write Blocking
-				timeouts.ReadIntervalTimeout = MAXDWORD;
-				timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
-				timeouts.ReadTotalTimeoutConstant = readTimeout ? readTimeout : 0x0FFFFFFF;
-				timeouts.WriteTotalTimeoutConstant = writeTimeout;
-				break;
-			case com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING:		// Read Blocking
-			case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read/Write Blocking
-				timeouts.ReadIntervalTimeout = 0;
-				timeouts.ReadTotalTimeoutMultiplier = 0;
-				timeouts.ReadTotalTimeoutConstant = readTimeout;
-				timeouts.WriteTotalTimeoutConstant = writeTimeout;
-				break;
-			case com_fazecast_jSerialComm_SerialPort_TIMEOUT_SCANNER:			// Scanner Mode
-				timeouts.ReadIntervalTimeout = MAXDWORD;
-				timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
-				timeouts.ReadTotalTimeoutConstant = 0x0FFFFFFF;
-				timeouts.WriteTotalTimeoutConstant = writeTimeout;
-				break;
-			case com_fazecast_jSerialComm_SerialPort_TIMEOUT_NONBLOCKING:		// Read Non-blocking
-			case (com_fazecast_jSerialComm_SerialPort_TIMEOUT_NONBLOCKING | com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING):		// Read Non-blocking/Write Blocking
-			default:
-				timeouts.ReadIntervalTimeout = MAXDWORD;
-				timeouts.ReadTotalTimeoutMultiplier = 0;
-				timeouts.ReadTotalTimeoutConstant = 0;
-				timeouts.WriteTotalTimeoutConstant = writeTimeout;
-				break;
-		}
+		timeouts.ReadIntervalTimeout = MAXDWORD;
+		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
+		timeouts.ReadTotalTimeoutConstant = 0x0FFFFFFF;
+		timeouts.WriteTotalTimeoutConstant = writeTimeout;
+	}
+	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING)
+	{
+		timeouts.ReadIntervalTimeout = MAXDWORD;
+		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
+		timeouts.ReadTotalTimeoutConstant = readTimeout ? readTimeout : 0x0FFFFFFF;
+		timeouts.WriteTotalTimeoutConstant = writeTimeout;
+	}
+	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING)
+	{
+		timeouts.ReadIntervalTimeout = 0;
+		timeouts.ReadTotalTimeoutMultiplier = 0;
+		timeouts.ReadTotalTimeoutConstant = readTimeout;
+		timeouts.WriteTotalTimeoutConstant = writeTimeout;
+	}
+	else		// Non-blocking
+	{
+		timeouts.ReadIntervalTimeout = MAXDWORD;
+		timeouts.ReadTotalTimeoutMultiplier = 0;
+		timeouts.ReadTotalTimeoutConstant = 0;
+		timeouts.WriteTotalTimeoutConstant = writeTimeout;
 	}
 
 	// Apply changes
-	return (SetCommTimeouts(port->handle, &timeouts) && SetCommMask(port->handle, eventFlags));
+	if (!SetCommTimeouts(port->handle, &timeouts) || !SetCommMask(port->handle, eventFlags))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = GetLastError();
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
+	// Create an asynchronous event structure
 	OVERLAPPED overlappedStruct{};
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (overlappedStruct.hEvent == NULL)
+	jint event = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_TIMED_OUT;
+	if (!overlappedStruct.hEvent)
 	{
-    	port->errorNumber = GetLastError();
-    	port->errorLineNumber = __LINE__ - 4;
-		CloseHandle(overlappedStruct.hEvent);
-		return 0;
+		port->errorNumber = GetLastError();
+		port->errorLineNumber = __LINE__ - 5;
+		return event;
 	}
 
 	// Wait for a serial port event
-	BOOL listenerRunning = TRUE;
-	DWORD eventMask = 0, numBytesRead = 0, errorsMask, readResult = WAIT_FAILED;
-	if (WaitCommEvent(port->handle, &eventMask, &overlappedStruct) == FALSE)
+	DWORD eventMask = 0, errorMask = 0, waitValue, numBytesTransferred;
+	if (!WaitCommEvent(port->handle, &eventMask, &overlappedStruct))
 	{
-		if (GetLastError() != ERROR_IO_PENDING)			// Problem occurred
+		if ((GetLastError() == ERROR_IO_PENDING) || (GetLastError() == ERROR_INVALID_PARAMETER))
 		{
-	    	port->errorLineNumber = __LINE__ - 4;
-	    	port->errorNumber = GetLastError();
-			listenerRunning = FALSE;
-		}
-		else
-		{
-			do
+			do { waitValue = WaitForSingleObject(overlappedStruct.hEvent, 500); }
+			while ((waitValue == WAIT_TIMEOUT) && port->eventListenerRunning);
+			if ((waitValue != WAIT_OBJECT_0) || !GetOverlappedResult(port->handle, &overlappedStruct, &numBytesTransferred, FALSE))
 			{
-				listenerRunning = env->GetBooleanField(obj, eventListenerRunningField);
-				if (listenerRunning)
-					readResult = WaitForSingleObject(overlappedStruct.hEvent, 500);
-				else
-				{
-					// Purge any outstanding port operations
-					PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-					CancelIoEx(port->handle, NULL);
-					FlushFileBuffers(port->handle);
-					readResult = WaitForSingleObject(overlappedStruct.hEvent, INFINITE);
-				}
-			} while ((readResult == WAIT_TIMEOUT) && listenerRunning);
-			if ((readResult != WAIT_OBJECT_0) || (GetOverlappedResult(port->handle, &overlappedStruct, &numBytesRead, FALSE) == FALSE))
-				numBytesRead = 0;
+				port->errorNumber = GetLastError();
+				port->errorLineNumber = __LINE__ - 3;
+				CloseHandle(overlappedStruct.hEvent);
+				return event;
+			}
+		}
+		else		// Problem occurred
+		{
+			port->errorNumber = GetLastError();
+			port->errorLineNumber = __LINE__ - 16;
+			CloseHandle(overlappedStruct.hEvent);
+			return event;
 		}
 	}
 
-	// Ensure that new data actually was received
-	if (listenerRunning)
+	// Retrieve and clear any serial port errors
+	COMSTAT commInfo;
+	if (ClearCommError(port->handle, &errorMask, &commInfo))
 	{
-		COMSTAT commInfo;
-		if (ClearCommError(port->handle, &errorsMask, &commInfo))
-			numBytesRead = commInfo.cbInQue;
+		if (errorMask & CE_BREAK)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT;
+		if (errorMask & CE_FRAME)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FRAMING_ERROR;
+		if (errorMask & CE_OVERRUN)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR;
+		if (errorMask & CE_RXOVER)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
+		if (errorMask & CE_RXPARITY)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR;
 	}
 
-	// Return type of event if successful
+	// Parse any received serial port events
+	DWORD modemStatus;
+	if (eventMask & EV_BREAK)
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT;
+	if (eventMask & EV_TXEMPTY)
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN;
+	if ((eventMask & EV_RXCHAR) && (commInfo.cbInQue > 0))
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+	if ((eventMask & EV_CTS) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_CTS_ON))
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS;
+	if ((eventMask & EV_DSR) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_DSR_ON))
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR;
+	if ((eventMask & EV_RING) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RING_ON))
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR;
+	if ((eventMask & EV_RLSD) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RLSD_ON))
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT;
+
+	// Return the serial event type
 	CloseHandle(overlappedStruct.hEvent);
-	return (((eventMask & EV_RXCHAR) > 0) && numBytesRead) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE :
-			(((eventMask & EV_TXEMPTY) > 0) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN : 0);
+	return event;
 }
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -636,8 +664,10 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 	CancelIoEx(port->handle, NULL);
 	FlushFileBuffers(port->handle);
+	SetCommMask(port->handle, 0);
 
 	// Close the port
+	port->eventListenerRunning = 0;
 	if (!CloseHandle(port->handle))
 	{
 		port->handle = INVALID_HANDLE_VALUE;
@@ -698,32 +728,32 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 
 	// Create an asynchronous result structure
 	OVERLAPPED overlappedStruct{};
-    overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (overlappedStruct.hEvent == NULL)
-    {
-    	port->errorNumber = GetLastError();
-    	port->errorLineNumber = __LINE__ - 4;
-    	CloseHandle(overlappedStruct.hEvent);
-    	return -1;
-    }
+	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if (overlappedStruct.hEvent == NULL)
+	{
+		port->errorNumber = GetLastError();
+		port->errorLineNumber = __LINE__ - 4;
+		CloseHandle(overlappedStruct.hEvent);
+		return -1;
+	}
 
-    // Read from the serial port
-    BOOL result;
-    DWORD numBytesRead = 0;
-    if (((result = ReadFile(port->handle, port->readBuffer, bytesToRead, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
-    {
-    	port->errorLineNumber = __LINE__ - 2;
-    	port->errorNumber = GetLastError();
-    }
+	// Read from the serial port
+	BOOL result;
+	DWORD numBytesRead = 0;
+	if (((result = ReadFile(port->handle, port->readBuffer, bytesToRead, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = GetLastError();
+	}
 	else if ((result = GetOverlappedResult(port->handle, &overlappedStruct, &numBytesRead, TRUE)) == FALSE)
 	{
 		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = GetLastError();
 	}
 
-    // Return number of bytes read
-    CloseHandle(overlappedStruct.hEvent);
-    env->SetByteArrayRegion(buffer, offset, numBytesRead, (jbyte*)port->readBuffer);
+	// Return number of bytes read
+	CloseHandle(overlappedStruct.hEvent);
+	env->SetByteArrayRegion(buffer, offset, numBytesRead, (jbyte*)port->readBuffer);
 	return (result == TRUE) ? numBytesRead : -1;
 }
 
@@ -735,8 +765,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (overlappedStruct.hEvent == NULL)
 	{
-    	port->errorNumber = GetLastError();
-    	port->errorLineNumber = __LINE__ - 4;
+		port->errorNumber = GetLastError();
+		port->errorLineNumber = __LINE__ - 4;
 		CloseHandle(overlappedStruct.hEvent);
 		return -1;
 	}
@@ -760,6 +790,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	CloseHandle(overlappedStruct.hEvent);
 	env->ReleaseByteArrayElements(buffer, writeBuffer, JNI_ABORT);
 	return (result == TRUE) ? numBytesWritten : -1;
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListeningStatus(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean eventListenerRunning)
+{
+	((serialPort*)(intptr_t)serialPortPointer)->eventListenerRunning = eventListenerRunning;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)

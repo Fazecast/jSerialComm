@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 19, 2021
+ *  Last Updated on:  Nov 29, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -395,9 +395,9 @@ public final class SerialPort
 	static final public int LISTENING_EVENT_DSR = 0x00080000;
 	static final public int LISTENING_EVENT_RING_INDICATOR = 0x00100000;
 	static final public int LISTENING_EVENT_FRAMING_ERROR = 0x00200000;
-	static final public int LISTENING_EVENT_OVERRUN_ERROR = 0x00400000;
-	static final public int LISTENING_EVENT_PARITY_ERROR = 0x00800000;
-	static final public int LISTENING_EVENT_OUTPUT_EMPTY = 0x01000000;
+	static final public int LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR = 0x00400000;
+	static final public int LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR = 0x00800000;
+	static final public int LISTENING_EVENT_PARITY_ERROR = 0x01000000;
 
 	// Serial Port Parameters
 	private volatile long portHandle = -1;
@@ -434,8 +434,8 @@ public final class SerialPort
         {
 			// Set the send/receive internal buffer sizes, and return true if already opened
 			safetySleepTimeMS = safetySleepTime;
-			sendDeviceQueueSize = deviceSendQueueSize;
-			receiveDeviceQueueSize = deviceReceiveQueueSize;
+			sendDeviceQueueSize = (deviceSendQueueSize > 0) ? deviceSendQueueSize : sendDeviceQueueSize;
+			receiveDeviceQueueSize = (deviceReceiveQueueSize > 0) ? deviceReceiveQueueSize : receiveDeviceQueueSize;
 			if (portHandle > 0)
 				return configPort(portHandle);
 	
@@ -526,7 +526,7 @@ public final class SerialPort
 				serialEventListener.stopListening();
 			if (portHandle > 0)
 				portHandle = closePortNative(portHandle);
-			return (portHandle < 0);
+			return (portHandle <= 0);
         }
 	}
 
@@ -587,6 +587,7 @@ public final class SerialPort
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
 	private final native int readBytes(long portHandle, byte[] buffer, long bytesToRead, long offset, int timeoutMode, int readTimeout);	// Reads bytes from serial port
 	private final native int writeBytes(long portHandle, byte[] buffer, long bytesToWrite, long offset, int timeoutMode);	// Write bytes to serial port
+	private final native void setEventListeningStatus(long portHandle, boolean eventListenerRunning);	// Change event listener running flag in native code
 	private final native boolean setBreak(long portHandle);				// Set BREAK status on serial line
 	private final native boolean clearBreak(long portHandle);			// Clear BREAK status on serial line
 	private final native boolean setRTS(long portHandle);				// Set RTS line to 1
@@ -1491,6 +1492,7 @@ public final class SerialPort
 			eventListenerRunning = true;
 
 			dataPacketIndex = 0;
+			setEventListeningStatus(portHandle, true);
 			serialEventThread = new Thread(new Runnable()
 			{
 				@Override
@@ -1518,6 +1520,7 @@ public final class SerialPort
 			if (!eventListenerRunning)
 				return;
 			eventListenerRunning = false;
+			setEventListeningStatus(portHandle, false);
 			configTimeouts(portHandle, TIMEOUT_NONBLOCKING, 0, 0, 0);
 			
 			try

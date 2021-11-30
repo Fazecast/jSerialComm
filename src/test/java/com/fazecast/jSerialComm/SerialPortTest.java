@@ -2,7 +2,7 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Nov 16, 2021
+ *  Last Updated on:  Nov 29, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -116,7 +116,10 @@ public class SerialPortTest
 		boolean openedSuccessfully = ubxPort.openPort(0);
 		System.out.println("\nOpening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + " - " + ubxPort.getPortDescription() + ": " + openedSuccessfully);
 		if (!openedSuccessfully)
+		{
+			inputScanner.close();
 			return;
+		}
 		System.out.println("Setting read timeout mode to non-blocking");
 		ubxPort.setBaudRate(115200);
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_NONBLOCKING, 1000, 0);
@@ -220,8 +223,40 @@ public class SerialPortTest
 		openedSuccessfully = ubxPort.openPort(0);
 		System.out.println("Reopening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + ": " + openedSuccessfully);
 		if (!openedSuccessfully)
+		{
+			inputScanner.close();
 			return;
-		System.out.println("Unplug the device sometime in the next 10 seconds to ensure that it closes properly...\n");
+		}
+		System.out.println("\n\nReading for 5 seconds then closing from a separate thread...");
+		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 0, 0);
+		final SerialPort finalPort = ubxPort;
+		Thread thread = new Thread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				byte[] buffer = new byte[2048];
+				while (finalPort.isOpen())
+				{
+					System.out.println("\nStarting blocking read...");
+					int numRead = finalPort.readBytes(buffer, buffer.length);
+					System.out.println("Read " + numRead + " bytes");
+				}
+				System.out.println("\nPort was successfully closed from a separate thread");
+			}
+		});
+		thread.start();
+		try { Thread.sleep(5000); } catch (Exception e) { e.printStackTrace(); }
+		System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+		try { thread.join(); } catch (Exception e) { e.printStackTrace(); }
+		openedSuccessfully = ubxPort.openPort(0);
+		System.out.println("\nReopening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + ": " + openedSuccessfully);
+		if (!openedSuccessfully)
+		{
+			inputScanner.close();
+			return;
+		}
+		System.out.println("\n\nUnplug the device sometime in the next 10 seconds to ensure that it closes properly...\n");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 0, 0);
 		ubxPort.addDataListener(new SerialPortDataListener() {
 			@Override

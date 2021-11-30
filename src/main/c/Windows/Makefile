@@ -41,6 +41,8 @@ all :
 	$(PRINT)     C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat x64
 	$(PRINT)     nmake win64
 	$(PRINT).
+clean :
+	$(RMDIR) $(BUILD_DIR)\..
 
 # Builds 32-bit Windows libraries
 win32 : $(BUILD_DIR)\x86 $(BUILD_DIR)\x86\$(LIBRARY_NAME)
