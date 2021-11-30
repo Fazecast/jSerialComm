@@ -67,12 +67,12 @@ extern "C" {
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR 1048576L
 #undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FRAMING_ERROR
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FRAMING_ERROR 2097152L
-#undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_OVERRUN_ERROR
-#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_OVERRUN_ERROR 4194304L
+#undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR
+#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR 4194304L
+#undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
+#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR 8388608L
 #undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR
-#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR 8388608L
-#undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_OUTPUT_EMPTY
-#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_OUTPUT_EMPTY 16777216L
+#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR 16777216L
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    getCommPorts
@@ -168,6 +168,14 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
   (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong, jint);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    setEventListeningStatus
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListeningStatus
+  (JNIEnv *, jobject, jlong, jboolean);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort

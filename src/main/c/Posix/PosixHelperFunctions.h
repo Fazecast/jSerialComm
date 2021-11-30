@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 14, 2021
+ *  Last Updated on:  Nov 29, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -35,6 +35,7 @@ typedef struct serialPort
 	char *portPath, *friendlyName, *portDescription, *readBuffer;
 	int errorLineNumber, errorNumber, handle, readBufferLength;
 	volatile char enumerated, eventListenerRunning;
+	short eventsMask;
 } serialPort;
 
 // Common storage functionality

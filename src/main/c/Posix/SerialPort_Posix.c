@@ -361,6 +361,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
 	tcgetattr(port->handle, &options);
 
+	// Set up the requested event flags
+	port->eventsMask = 0;
+	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED))
+		port->eventsMask |= POLLIN;
+
 	// Set updated port timeouts
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
 	{
@@ -378,7 +383,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		options.c_cc[VMIN] = 1;
 		options.c_cc[VTIME] = 0;
 	}
-	else if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING) > 0)  && (readTimeout > 0))		// Read Blocking with timeout
+	else if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING) > 0) && (readTimeout > 0))		// Read Blocking with timeout
 	{
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = readTimeout / 100;
@@ -424,30 +429,30 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	// Initialize the waiting set
+	// Initialize the local variables
+	int pollResult;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	struct pollfd waitingSet = { port->handle, POLLIN, 0 };
+	struct pollfd waitingSet = { port->handle, port->eventsMask, 0 };
+	jint event = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_TIMED_OUT;
 
-	// TODO: START THREAD TO HANDLE ALL OF THIS IN C
 	// TODO: LISTEN FOR ERROR EVENTS IN CASE SERIAL PORT GETS UNPLUGGED? TEST IF WORKS?
-	// TODO: STORE ALL AVAILABLE PORTS IN C, RECHECK AVAILABLE PORTS UPON RESCAN SO ALREADY OPEN PORTS DON'T GET MESSED UP
 	/*
 	ioctl: TIOCMIWAIT
 	ioctl: TIOCGICOUNT
-	static final public int LISTENING_EVENT_BREAK_INTERRUPT = 0x00010000;
-	static final public int LISTENING_EVENT_CARRIER_DETECT = 0x00020000;
-	static final public int LISTENING_EVENT_CTS = 0x00040000;
-	static final public int LISTENING_EVENT_DSR = 0x00080000;
-	static final public int LISTENING_EVENT_RING_INDICATOR = 0x00100000;
-	static final public int LISTENING_EVENT_FRAMING_ERROR = 0x00200000;
-	static final public int LISTENING_EVENT_OVERRUN_ERROR = 0x00400000;
-	static final public int LISTENING_EVENT_PARITY_ERROR = 0x00800000;
-	static final public int LISTENING_EVENT_OUTPUT_EMPTY = 0x01000000;*/
+	*/
 
 	// Wait for a serial port event
-	if (poll(&waitingSet, 1, 500) <= 0)
-		return 0;
-	return (waitingSet.revents & POLLIN) ? com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE : 0;
+	do
+	{
+		waitingSet.revents = 0;
+		pollResult = poll(&waitingSet, 1, 500);
+	}
+	while ((pollResult == 0) && port->eventListenerRunning);
+
+	// Return the detected port events
+	if (waitingSet.revents & POLLIN)
+		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+	return event;
 }
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -586,6 +591,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	// Return the number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 	return numBytesWritten;
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListeningStatus(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean eventListenerRunning)
+{
+	((serialPort*)(intptr_t)serialPortPointer)->eventListenerRunning = eventListenerRunning;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
