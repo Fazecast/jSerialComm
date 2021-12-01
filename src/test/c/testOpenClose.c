@@ -232,16 +232,24 @@ long openPortNative(void)
 
 long closePortNative(long serialPortFD)
 {
-   // Unblock, unlock, and close the port
-   fsync(serialPortFD);
-   tcdrain(serialPortFD);
-   tcflush(serialPortFD, TCIOFLUSH);
-   fcntl(serialPortFD, F_SETFL, O_NONBLOCK);
-   flock(serialPortFD, LOCK_UN | LOCK_NB);
-   while (close(serialPortFD) && (errno == EINTR))
-      errno = 0;
-   serialPortFD = -1;
-   return -1;
+	// Force the port to enter non-blocking mode to ensure that any current reads return
+	struct termios options = { 0 };
+	tcgetattr(serialPortFD, &options);
+	options.c_cc[VMIN] = 0;
+	options.c_cc[VTIME] = 0;
+	fcntl(serialPortFD, F_SETFL, O_NONBLOCK);
+	tcsetattr(serialPortFD, TCSANOW, &options);
+	tcsetattr(serialPortFD, TCSANOW, &options);
+
+	// Unblock, unlock, and close the port
+	fsync(serialPortFD);
+	tcdrain(serialPortFD);
+	tcflush(serialPortFD, TCIOFLUSH);
+	flock(serialPortFD, LOCK_UN | LOCK_NB);
+	while (close(serialPortFD) && (errno == EINTR))
+		errno = 0;
+	   serialPortFD = -1;
+	return -1;
 }
 
 int readBytes(long serialPortFD, char* buffer, long bytesToRead, long offset, int timeoutMode, int readTimeout)

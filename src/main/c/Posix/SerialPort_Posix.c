@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 19, 2021
+ *  Last Updated on:  Dec 01, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -89,6 +89,10 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/serial", "/dev/ttyS");
 	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
 	lastDitchSearchForComPorts(&serialPorts);
+
+#elif defined(__FreeBSD__)
+
+	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
 
 #elif defined(__sun__) || defined(__APPLE__)
 
@@ -457,12 +461,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	// Unblock, unlock, and close the port
+	// Force the port to enter non-blocking mode to ensure that any current reads return
+	struct termios options = { 0 };
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	tcgetattr(port->handle, &options);
+	options.c_cc[VMIN] = 0;
+	options.c_cc[VTIME] = 0;
+	fcntl(port->handle, F_SETFL, O_NONBLOCK);
+	tcsetattr(port->handle, TCSANOW, &options);
+	tcsetattr(port->handle, TCSANOW, &options);
+
+	// Unblock, unlock, and close the port
 	fsync(port->handle);
 	tcdrain(port->handle);
 	tcflush(port->handle, TCIOFLUSH);
-	fcntl(port->handle, F_SETFL, O_NONBLOCK);
 	flock(port->handle, LOCK_UN | LOCK_NB);
 	while (close(port->handle) && (errno == EINTR))
 		errno = 0;
