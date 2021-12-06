@@ -101,7 +101,11 @@ public final class SerialPort
 		}
 		else if (OS.indexOf("win") >= 0)
 		{
-			if (System.getProperty("os.arch").indexOf("64") >= 0)
+			if (System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("arm64"))
+				libraryPath = "Windows/aarch64";
+			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
+				libraryPath = "Windows/armv7";
+			else if (System.getProperty("os.arch").indexOf("64") >= 0)
 				libraryPath = "Windows/x86_64";
 			else
 				libraryPath = "Windows/x86";
