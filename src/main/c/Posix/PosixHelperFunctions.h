@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 29, 2021
+ *  Last Updated on:  Nov 30, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -27,7 +27,7 @@
 #define __POSIX_HELPER_FUNCTIONS_HEADER_H__
 
 // Serial port JNI header file
-#include "../com_fazecast_jSerialComm_SerialPort.h"
+#include "com_fazecast_jSerialComm_SerialPort.h"
 
 // Serial port data structure
 typedef struct serialPort
@@ -82,6 +82,12 @@ void lastDitchSearchForComPorts(serialPortVector* comPorts);
 typedef int baud_rate;
 extern int ioctl(int __fd, int __request, ...);
 int flock(int fd, int op);
+void searchForComPorts(serialPortVector* comPorts);
+
+// FreeBSD-specific functionality
+#elif defined(__FreeBSD__)
+
+typedef int baud_rate;
 void searchForComPorts(serialPortVector* comPorts);
 
 // Apple-specific functionality

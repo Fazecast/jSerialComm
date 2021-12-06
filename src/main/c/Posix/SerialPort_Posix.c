@@ -90,11 +90,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
 	lastDitchSearchForComPorts(&serialPorts);
 
-#elif defined(__FreeBSD__)
-
-	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
-
-#elif defined(__sun__) || defined(__APPLE__)
+#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__)
 
 	searchForComPorts(&serialPorts);
 

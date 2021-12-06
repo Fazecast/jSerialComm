@@ -53,7 +53,6 @@ public final class SerialPort
 	static private final String versionString = "2.8.0";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private volatile boolean isAndroid = false;
-	static private volatile boolean isUnixBased = false;
 	static private volatile boolean isWindows = false;
 	static
 	{
@@ -120,7 +119,6 @@ public final class SerialPort
 				libraryPath = "OSX/x86_64";
 			else
 				libraryPath = "OSX/x86";
-			isUnixBased = true;
 			fileName = "libjSerialComm.jnilib";
 		}
 		else if ((OS.indexOf("sunos") >= 0) || (OS.indexOf("solaris") >= 0))
@@ -129,7 +127,16 @@ public final class SerialPort
 				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv9_64" : "Solaris/x86_64";
 			else
 				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8plus_32" : "Solaris/x86";
-			isUnixBased = true;
+			fileName = "libjSerialComm.so";
+		}
+		else if (OS.indexOf("freebsd") >= 0)
+		{
+			if (System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("arm64"))
+				libraryPath = "FreeBSD/arm64";
+			if (System.getProperty("os.arch").indexOf("64") >= 0)
+				libraryPath = "FreeBSD/x86_64";
+			else
+				libraryPath = "FreeBSD/x86";
 			fileName = "libjSerialComm.so";
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0) || (OS.indexOf("bsd") >= 0))
@@ -211,7 +218,6 @@ public final class SerialPort
 				libraryPath = "Linux/x86_64";
 			else
 				libraryPath = "Linux/x86";
-			isUnixBased = true;
 			fileName = "libjSerialComm.so";
 		}
 		else

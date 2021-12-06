@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 14, 2021
+ *  Last Updated on:  Dec 06, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -853,6 +853,69 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 {
 	// No way to set custom baud rates on this OS
 	return -1;
+}
+
+// FreeBSD-specific functionality
+#elif defined(__FreeBSD__)
+
+void searchForComPorts(serialPortVector* comPorts)
+{
+	// Open the FreeBSD dev directory
+	DIR *directoryIterator = opendir("/dev/");
+	if (directoryIterator)
+	{
+		// Read all files in the current directory
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// See if the file names a potential serial port
+			if ((strlen(directoryEntry->d_name) >= 3) && (directoryEntry->d_name[0] != '.') &&
+					(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y')) ||
+					 ((directoryEntry->d_name[0] == 'c') && (directoryEntry->d_name[1] == 'u') && (directoryEntry->d_name[2] == 'a'))))
+			{
+				// Ensure that the file is not an init or a lock file
+				if ((strlen(directoryEntry->d_name) < 5) ||
+						(memcmp(".init", directoryEntry->d_name + strlen(directoryEntry->d_name) - 5, 5) &&
+						 memcmp(".lock", directoryEntry->d_name + strlen(directoryEntry->d_name) - 5, 5)))
+				{
+					// Determine system name of port
+					char* systemName = (char*)malloc(256);
+					strcpy(systemName, "/dev/");
+					strcat(systemName, directoryEntry->d_name);
+
+					// Check if port is already enumerated
+					serialPort *port = fetchPort(comPorts, systemName);
+					if (port)
+						port->enumerated = 1;
+					else
+					{
+						// Set static friendly name
+						char* friendlyName = (char*)malloc(256);
+						if (directoryEntry->d_name[0] == 'c')
+							strcpy(friendlyName, "Serial Port");
+						else
+							strcpy(friendlyName, "Serial Port (Dial-In)");
+
+						// Add the port to the list if it is not a directory
+						struct stat fileStats;
+						stat(systemName, &fileStats);
+						if (!S_ISDIR(fileStats.st_mode))
+							pushBack(comPorts, systemName, friendlyName, friendlyName);
+
+						// Clean up memory
+						free(friendlyName);
+					}
+
+					// Clean up memory
+					free(systemName);
+				}
+			}
+			directoryEntry = readdir(directoryIterator);
+		}
+
+		// Close the directory
+		closedir(directoryIterator);
+	}
 }
 
 // Apple-specific functionality
