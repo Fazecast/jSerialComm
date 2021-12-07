@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 01, 2021
+ *  Last Updated on:  Dec 07, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -33,6 +33,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #if defined(__linux__)
 #include <linux/serial.h>
@@ -52,6 +53,7 @@ jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
+jfieldID autoFlushIOBuffersField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
 jfieldID stopBitsField;
@@ -135,6 +137,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
+	autoFlushIOBuffersField = (*env)->GetFieldID(env, serialCommClass, "autoFlushIOBuffers", "Z");
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
@@ -185,6 +188,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	unsigned char disableExclusiveLock = (*env)->GetBooleanField(env, obj, disableExclusiveLockField);
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
+	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 
 	// Ensure that the serial port still exists and is not already open
 	serialPort *port = fetchPort(&serialPorts, portName);
@@ -219,6 +223,13 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			while (close(port->handle) && (errno == EINTR))
 				errno = 0;
 			port->handle = -1;
+		}
+		else if (autoFlushIOBuffers)
+		{
+			// Sleep to workaround kernel bug about flushing immediately after opening
+			const struct timespec sleep_time = { 0, 10000000 };
+			nanosleep(&sleep_time, NULL);
+			Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(env, obj, (jlong)(intptr_t)port);
 		}
 	}
 	else
@@ -419,6 +430,18 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		return JNI_FALSE;
 	}
 	if (!getBaudRateCode(baudRate) && setBaudRateCustom(port->handle, baudRate))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = errno;
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(JNIEnv *env, jobject obj, jlong serialPortPointer)
+{
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (tcflush(port->handle, TCIOFLUSH))
 	{
 		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;

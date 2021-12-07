@@ -421,7 +421,7 @@ public final class SerialPort
 	private volatile String comPort, friendlyName, portDescription;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
-	private volatile boolean isRtsEnabled = true, isDtrEnabled = true;
+	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false;
 	private SerialPortInputStream inputStream = null;
 	private SerialPortOutputStream outputStream = null;
 
@@ -592,6 +592,7 @@ public final class SerialPort
 	private final native long closePortNative(long portHandle);			// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class
 	private final native boolean configTimeouts(long portHandle, int timeoutMode, int readTimeout, int writeTimeout, int eventsToMonitor);	// Changes/sets serial port timeouts as defined by this class
+	private final native boolean flushRxTxBuffers(long portHandle);     // Flushes underlying RX/TX device buffers
 	private final native int waitForEvent(long portHandle);				// Waits for serial event to occur as specified in eventFlags
 	private final native int bytesAvailable(long portHandle);			// Returns number of bytes available for reading
 	private final native int bytesAwaitingWrite(long portHandle);		// Returns number of bytes still waiting to be written
@@ -964,6 +965,27 @@ public final class SerialPort
 	{
 		outputStream = new SerialPortOutputStream();
 		return outputStream;
+	}
+
+	/**
+	 * Flushes the serial port's Rx/Tx device buffers.
+	 * <p>
+	 * If this function is called before the port is open, then the buffers will be flushed immediately after opening the port.
+	 * If called on an already-open port, flushing of the buffers will happen immediately.
+	 * <p>
+	 * Note that flushing serial buffers will always work on real serial ports; however, many USB-to-serial converters
+	 * do not accurately implement this functionality, so the flushing may not always work as expected, especially immediately
+	 * after opening a new port.
+	 * 
+	 * @return Whether the IO buffers were (or will be) successfully flushed.
+	 */
+	public final synchronized boolean flushIOBuffers()
+	{
+		autoFlushIOBuffers = true;
+
+		if (portHandle > 0)
+			return flushRxTxBuffers(portHandle);
+		return true;
 	}
 
 	/**

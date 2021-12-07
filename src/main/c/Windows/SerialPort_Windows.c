@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 06, 2021
+ *  Last Updated on:  Dec 07, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -49,6 +49,7 @@ jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
+jfieldID autoFlushIOBuffersField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
 jfieldID stopBitsField;
@@ -366,6 +367,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
+	autoFlushIOBuffersField = (*env)->GetFieldID(env, serialCommClass, "autoFlushIOBuffers", "Z");
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
@@ -396,6 +398,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
+	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 
 	// Ensure that the serial port still exists and is not already open
 	serialPort *port = fetchPort(&serialPorts, portName);
@@ -423,6 +426,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			CloseHandle(port->handle);
 			port->handle = INVALID_HANDLE_VALUE;
 		}
+		else if (autoFlushIOBuffers)
+			Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(env, obj, (jlong)(intptr_t)port);
 	}
 	else
 	{
@@ -565,6 +570,18 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 	// Apply changes
 	if (!SetCommTimeouts(port->handle, &timeouts) || !SetCommMask(port->handle, eventFlags))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = GetLastError();
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(JNIEnv *env, jobject obj, jlong serialPortPointer)
+{
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR) == 0)
 	{
 		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = GetLastError();

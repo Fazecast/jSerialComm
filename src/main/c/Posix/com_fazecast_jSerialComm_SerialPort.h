@@ -131,6 +131,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    flushRxTxBuffers
+ * Signature: (J)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers
+  (JNIEnv *, jobject, jlong);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    waitForEvent
  * Signature: (J)I
  */
