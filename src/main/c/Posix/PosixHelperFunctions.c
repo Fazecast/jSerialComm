@@ -869,8 +869,8 @@ void searchForComPorts(serialPortVector* comPorts)
 		while (directoryEntry)
 		{
 			// See if the file names a potential serial port
-			if ((strlen(directoryEntry->d_name) >= 3) && (directoryEntry->d_name[0] != '.') &&
-					(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y')) ||
+			if ((strlen(directoryEntry->d_name) >= 4) && (directoryEntry->d_name[0] != '.') &&
+					(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') && (directoryEntry->d_name[3] != 'v')) ||
 					 ((directoryEntry->d_name[0] == 'c') && (directoryEntry->d_name[1] == 'u') && (directoryEntry->d_name[2] == 'a'))))
 			{
 				// Ensure that the file is not an init or a lock file
@@ -916,6 +916,17 @@ void searchForComPorts(serialPortVector* comPorts)
 		// Close the directory
 		closedir(directoryIterator);
 	}
+}
+
+baud_rate getBaudRateCode(baud_rate baudRate)
+{
+	return baudRate;
+}
+
+int setBaudRateCustom(int portFD, baud_rate baudRate)
+{
+	// All baud rates allowed by default on this OS
+	return -1;
 }
 
 // Apple-specific functionality
