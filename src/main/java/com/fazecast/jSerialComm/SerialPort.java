@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Nov 29, 2021
+ *  Last Updated on:  Dec 09, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -58,7 +58,7 @@ public final class SerialPort
 	{
 		// Determine the temporary file directory for Java and remove any previous versions of this library
 		String OS = System.getProperty("os.name").toLowerCase();
-		String libraryPath = "", fileName = "";
+		String libraryPath = "", fileName = "", backupLibraryPath = "";
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
 			tempFileDirectory += "/";
@@ -105,7 +105,10 @@ public final class SerialPort
 			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
 				libraryPath = "Windows/armv7";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			{
 				libraryPath = "Windows/x86_64";
+				backupLibraryPath = "Windows/x86";
+			}
 			else
 				libraryPath = "Windows/x86";
 			isWindows = true;
@@ -114,9 +117,15 @@ public final class SerialPort
 		else if (OS.indexOf("mac") >= 0)
 		{
 			if (System.getProperty("os.arch").equals("aarch64")) 
+			{
 				libraryPath = "OSX/aarch64";
+				backupLibraryPath = "OSX/x86_64";
+			}
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			{
 				libraryPath = "OSX/x86_64";
+				backupLibraryPath = "OSX/x86";
+			}
 			else
 				libraryPath = "OSX/x86";
 			fileName = "libjSerialComm.jnilib";
@@ -129,17 +138,20 @@ public final class SerialPort
 				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8plus_32" : "Solaris/x86";
 			fileName = "libjSerialComm.so";
 		}
-		else if (OS.indexOf("freebsd") >= 0)
+		else if (OS.indexOf("bsd") >= 0)
 		{
 			if (System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("arm64"))
 				libraryPath = "FreeBSD/arm64";
 			if (System.getProperty("os.arch").indexOf("64") >= 0)
+			{
 				libraryPath = "FreeBSD/x86_64";
+				backupLibraryPath = "FreeBSD/x86";
+			}
 			else
 				libraryPath = "FreeBSD/x86";
 			fileName = "libjSerialComm.so";
 		}
-		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0) || (OS.indexOf("bsd") >= 0))
+		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
 		{
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				libraryPath = "Linux/" + System.getProperty("os.arch_full").toLowerCase();
@@ -164,7 +176,8 @@ public final class SerialPort
 						}
 						else if (line.contains("aarch"))
 						{
-							libraryPath = "Linux/armv8";
+							libraryPath = "Linux/armv8_";
+							backupLibraryPath = "Linux/armv8_";
 							break;
 						}
 					}
@@ -176,15 +189,28 @@ public final class SerialPort
 				if (libraryPath.isEmpty())
 					libraryPath = "Linux/armv6";
 				else if (libraryPath.contains("Linux/armv8"))
-					libraryPath += ((System.getProperty("sun.arch.data.model") != null) ? ("_" + System.getProperty("sun.arch.data.model")) :
-						((System.getProperty("os.arch").indexOf("64") >= 0) ? "_64" : "_32"));
+				{
+					if (System.getProperty("sun.arch.data.model") != null)
+					{
+						libraryPath += (System.getProperty("sun.arch.data.model").indexOf("64") >= 0) ? "64" : "32";
+						backupLibraryPath += (System.getProperty("sun.arch.data.model").indexOf("64") >= 0) ? "32" : "64";
+					}
+					else
+					{
+						libraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "64" : "32";
+						backupLibraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "32" : "64";
+					}
+				}
 				else
 				{
 					try
 					{
 						File linkerFile = new File("/lib/ld-linux-armhf.so.3");
 						if (linkerFile.exists())
+						{
+							backupLibraryPath = libraryPath;
 							libraryPath += "hf";
+						}
 						else
 						{
 							String line;
@@ -193,7 +219,10 @@ public final class SerialPort
 							p.waitFor();
 							BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 							if (((line = br.readLine()) != null) && line.contains("armhf"))
+							{
+								backupLibraryPath = libraryPath;
 								libraryPath += "hf";
+							}
 							else
 							{
 								pb = new ProcessBuilder("/bin/sh", "-c", "ldd /usr/bin/ld | grep ld-");
@@ -201,7 +230,10 @@ public final class SerialPort
 								p.waitFor();
 								br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 								if (((line = br.readLine()) != null) && line.contains("armhf"))
+								{
+									backupLibraryPath = libraryPath;
 									libraryPath += "hf";
+								}
 							}
 						}
 					}
@@ -211,11 +243,17 @@ public final class SerialPort
 			else if (System.getProperty("os.arch").indexOf("aarch32") >= 0)
 				libraryPath = "Linux/armv8_32";
 			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
+			{
 				libraryPath = "Linux/armv8_64";
+				backupLibraryPath = "Linux/armv8_32";
+			}
 			else if (System.getProperty("os.arch").indexOf("ppc64le") >= 0)
 				libraryPath = "Linux/ppc64le";
 			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			{
 				libraryPath = "Linux/x86_64";
+				backupLibraryPath = "Linux/x86";
+			}
 			else
 				libraryPath = "Linux/x86";
 			fileName = "libjSerialComm.so";
@@ -231,14 +269,17 @@ public final class SerialPort
 		{
 			// Get path of native library and copy file to working directory with open permissions
 			File tempNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-" + fileName);
+			File tempBackupNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-backup-" + fileName);
 			tempNativeLibrary.getParentFile().mkdirs();
 			tempNativeLibrary.getParentFile().setReadable(true, false);
 			tempNativeLibrary.getParentFile().setWritable(true, false);
 			tempNativeLibrary.getParentFile().setExecutable(true, false);
+			tempBackupNativeLibrary.deleteOnExit();
 			tempNativeLibrary.deleteOnExit();
 
 			// Load the native jSerialComm library
 			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
+			InputStream backupFileContents = backupLibraryPath.isEmpty() ? null : SerialPort.class.getResourceAsStream("/" + backupLibraryPath + "/" + fileName);
 			if ((fileContents == null) && isAndroid)
 			{
 				libraryPath = libraryPath.replace("Android/", "lib/");
@@ -263,9 +304,42 @@ public final class SerialPort
 				tempNativeLibrary.setWritable(true, false);
 				tempNativeLibrary.setExecutable(true, false);
 
-				// Load and initialize native library
-				System.load(tempNativeLibrary.getAbsolutePath());
-				initializeLibrary();
+				// Load primary native library
+				boolean libraryLoaded = true;
+				try { System.load(tempNativeLibrary.getAbsolutePath()); }
+				catch (UnsatisfiedLinkError e)
+				{
+					libraryLoaded = false;
+					if (backupFileContents == null)
+						throw new UnsatisfiedLinkError("Cannot load native library " + tempNativeLibrary.getAbsolutePath() + " with expected architecture: " + libraryPath);
+				}
+				
+				// Load backup native library upon error if available
+				if (backupFileContents != null)
+				{
+					if (!libraryLoaded)
+					{
+						// Copy the native library to the system temp directory
+						destinationFileContents = new FileOutputStream(tempBackupNativeLibrary);
+						while ((numBytesRead = backupFileContents.read(transferBuffer)) > 0)
+							destinationFileContents.write(transferBuffer, 0, numBytesRead);
+						destinationFileContents.close();
+						backupFileContents.close();
+						tempBackupNativeLibrary.setReadable(true, false);
+						tempBackupNativeLibrary.setWritable(true, false);
+						tempBackupNativeLibrary.setExecutable(true, false);
+						
+						// Load backup native library
+						try { System.load(tempBackupNativeLibrary.getAbsolutePath()); }
+						catch (UnsatisfiedLinkError e) { throw new UnsatisfiedLinkError("Cannot load native libraries " + tempNativeLibrary.getAbsolutePath() + " or " + tempBackupNativeLibrary.getAbsolutePath() + " with expected architectures: " + libraryPath + " or " + backupLibraryPath); }
+					}
+					else
+						backupFileContents.close();
+				}
+				
+				// Initialize native library
+				if (libraryLoaded)
+					initializeLibrary();
 			}
 		}
 		catch (Exception e) { e.printStackTrace(); }
