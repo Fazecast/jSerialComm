@@ -97,7 +97,19 @@ Additionally, some systems may block execution of libraries from the system
 temp folder. If you are experiencing this problem, you can specify a different,
 less restrictive temp folder by adding
 ```System.setProperty("java.io.tmpdir", "/folder/where/execution/is/allowed")```
-to your program before the first use of this library.
+to your program before the first use of this library. When doing this, make sure
+that the folder you specify already exists and has the correct permissions set
+to allow execution of a shared library.
+
+Optionally, the same result can be achieved by running your Java application
+from the command line and specifying the `java.io.tmpdir` directory as an
+additional parameter,
+e.g.: ```java -Djava.io.tmpdir=/folder/of/your/choice -jar yourApplication.jar```
+
+On Windows, you may be able to achieve the same result by setting the TMP
+environment variable (either through the Settings->System Properties->Environment
+Variables GUI or via ```SET TMP=C:\Desired\Tmp\Folder``` in a command terminal),
+although setting this variable through Java is preferable when possible.
 
 An additional note for Linux users:  If you are operating this library in
 event-based mode, the ```LISTENING_EVENT_DATA_WRITTEN``` event will never occur.
