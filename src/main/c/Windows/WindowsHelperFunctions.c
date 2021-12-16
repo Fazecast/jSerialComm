@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Nov 14, 2021
+ *  Last Updated on:  Dec 16, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -29,7 +29,7 @@
 #include "WindowsHelperFunctions.h"
 
 // Common storage functionality
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description)
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location)
 {
 	// Allocate memory for the new SerialPort storage structure
 	if (vector->capacity == vector->length)
@@ -54,11 +54,13 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	port->handle = (void*)-1;
 	port->enumerated = 1;
 	port->portPath = (wchar_t*)malloc((wcslen(key)+1)*sizeof(wchar_t));
+	port->portLocation = (wchar_t*)malloc((wcslen(location)+1)*sizeof(wchar_t));
 	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
 
 	// Store port strings
 	wcscpy(port->portPath, key);
+	wcscpy(port->portLocation, location);
 	wcscpy(port->friendlyName, friendlyName);
 	wcscpy(port->portDescription, description);
 
@@ -78,6 +80,7 @@ void removePort(serialPortVector* vector, serialPort* port)
 {
 	// Clean up memory associated with the port
 	free(port->portPath);
+	free(port->portLocation);
 	free(port->friendlyName);
 	free(port->portDescription);
 	if (port->readBuffer)

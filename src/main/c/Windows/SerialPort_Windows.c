@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 07, 2021
+ *  Last Updated on:  Dec 16, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -50,6 +50,7 @@ jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
 jfieldID autoFlushIOBuffersField;
+jfieldID portLocationField;
 jfieldID baudRateField;
 jfieldID dataBitsField;
 jfieldID stopBitsField;
@@ -76,7 +77,7 @@ typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
 typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
 // List of available serial ports
-serialPortVector serialPorts = { NULL, 0 };
+serialPortVector serialPorts = { NULL, 0, 0 };
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
@@ -85,6 +86,10 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	DWORD maxSubKeyLength1, maxSubKeyLength2, maxSubKeyLength3;
 	DWORD maxValueLength, maxComPortLength, valueLength, comPortLength, keyType;
 	DWORD subKeyLength1, subKeyLength2, subKeyLength3, friendlyNameLength;
+
+	// Reset the enumerated flag on all non-open serial ports
+	for (int i = 0; i < serialPorts.length; ++i)
+		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE);
 
 	// Enumerate serial ports on machine
 	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
@@ -115,7 +120,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, descriptionString, descriptionString);
+					pushBack(&serialPorts, comPortString, descriptionString, descriptionString, L"0-0");
 			}
 		}
 
@@ -168,6 +173,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 								// Allocate memory
 								friendlyNameLength = valueLength + 1;
 								WCHAR *friendlyName = (WCHAR*)malloc(friendlyNameLength*sizeof(WCHAR));
+								WCHAR *locationInfo = (WCHAR*)malloc(friendlyNameLength*sizeof(WCHAR));
 
 								if ((RegOpenKeyExW(keyHandle4, L"Device Parameters", 0, KEY_QUERY_VALUE, &keyHandle5) == ERROR_SUCCESS) &&
 									(RegQueryInfoKeyW(keyHandle5, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
@@ -178,11 +184,32 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 									// Attempt to get COM value and friendly port name
 									if ((RegQueryValueExW(keyHandle5, L"PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
-											(RegQueryValueExW(keyHandle4, L"FriendlyName", NULL, &keyType, (BYTE*)friendlyName, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+											(RegQueryValueExW(keyHandle4, L"FriendlyName", NULL, &keyType, (BYTE*)friendlyName, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
+											(RegQueryValueExW(keyHandle4, L"LocationInformation", NULL, &keyType, (BYTE*)locationInfo, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
 									{
 										// Set port name and description
 										wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
 										wchar_t* descriptionString = friendlyName;
+
+										// Parse the port location
+										int hub = 0, port = 0, bufferLength = 128;
+										wchar_t *portLocation = (wchar_t*)malloc(bufferLength*sizeof(wchar_t));
+										if (wcsstr(locationInfo, L"Port_#") && wcsstr(locationInfo, L"Hub_#"))
+										{
+											wchar_t *hubString = wcsrchr(locationInfo, L'#') + 1;
+											hub = _wtoi(hubString);
+											wchar_t *portString = wcschr(locationInfo, L'#') + 1;
+											if (portString)
+											{
+												hubString = wcschr(portString, L'.');
+												if (hubString)
+													*hubString = L'\0';
+											}
+											port = _wtoi(portString);
+											_snwprintf(portLocation, bufferLength, L"1-%d.%d", hub, port);
+										}
+										else
+											wcscpy(portLocation, L"0-0");
 
 										// Update friendly name if COM port is actually connected and present in the port list
 										for (int i = 0; i < serialPorts.length; ++i)
@@ -194,8 +221,17 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 													serialPorts.ports[i]->friendlyName = newMemory;
 													wcscpy(serialPorts.ports[i]->friendlyName, descriptionString);
 												}
+												newMemory = (wchar_t*)realloc(serialPorts.ports[i]->portLocation, (wcslen(portLocation)+1)*sizeof(wchar_t));
+												if (newMemory)
+												{
+													serialPorts.ports[i]->portLocation = newMemory;
+													wcscpy(serialPorts.ports[i]->portLocation, portLocation);
+												}
 												break;
 											}
+
+										// Clean up memory
+										free(portLocation);
 									}
 
 									// Clean up memory
@@ -204,6 +240,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 								// Clean up memory and close registry key
 								RegCloseKey(keyHandle5);
+								free(locationInfo);
 								free(friendlyName);
 							}
 
@@ -290,7 +327,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
 		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
 		FT_SetLatencyTimerFunction FT_SetLatencyTimer = (FT_SetLatencyTimerFunction)GetProcAddress(ftdiLibInstance, "FT_SetLatencyTimer");
-		if ((FT_CreateDeviceInfoList != NULL) && (FT_GetDeviceInfoList != NULL) && (FT_GetComPortNumber != NULL) && (FT_Open != NULL) && (FT_Close != NULL))
+		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_GetComPortNumber && FT_Open && FT_Close && FT_SetLatencyTimer)
 		{
 			DWORD numDevs;
 			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
@@ -301,29 +338,44 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 					wchar_t comPortString[128];
 					for (int i = 0; i < numDevs; ++i)
 					{
-						LONG comPortNumber = 0;
-						if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
-						{
-							if (FT_SetLatencyTimer != NULL)
-							{
-								// Reduce latency timer
-								FT_SetLatencyTimer(devInfo[i].ftHandle, 2); // Minimum value is 2. Ignore errors
-							}
-							// Update port description if COM port is actually connected and present in the port list
-							FT_Close(devInfo[i].ftHandle);
-							swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
+						// Determine if the port is currently enumerated and already open
+						char isOpen = (devInfo[i].Flags & FT_FLAGS_OPENED) ? 1 : 0;
+						if (!isOpen)
 							for (int j = 0; j < serialPorts.length; ++j)
-								if (wcscmp(serialPorts.ports[j]->portPath, comPortString) == 0)
+								if ((memcmp(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
 								{
-									size_t descLength = 8+strlen(devInfo[i].Description);
-									wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
-									if (newMemory)
-									{
-										serialPorts.ports[j]->portDescription = newMemory;
-										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
-									}
+									serialPorts.ports[j]->enumerated = 1;
+									isOpen = 1;
 									break;
 								}
+
+						// Update the port description and latency if not already open
+						if (!isOpen)
+						{
+							LONG comPortNumber = 0;
+							if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
+							{
+								// Reduce latency timer to minimum value of 2
+								FT_SetLatencyTimer(devInfo[i].ftHandle, 2);
+
+								// Update port description if COM port is actually connected and present in the port list
+								FT_Close(devInfo[i].ftHandle);
+								swprintf(comPortString, sizeof(comPortString) / sizeof(wchar_t), L"COM%ld", comPortNumber);
+								for (int j = 0; j < serialPorts.length; ++j)
+									if (wcscmp(serialPorts.ports[j]->portPath, comPortString) == 0)
+									{
+										serialPorts.ports[j]->enumerated = 1;
+										size_t descLength = 8+strlen(devInfo[i].Description);
+										wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
+										if (newMemory)
+										{
+											serialPorts.ports[j]->portDescription = newMemory;
+											MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
+										}
+										memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
+										break;
+									}
+							}
 						}
 					}
 				}
@@ -332,6 +384,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		}
 		FreeLibrary(ftdiLibInstance);
 	}
+
+	// Remove all non-enumerated ports from the serial port listing
+	for (int i = 0; i < serialPorts.length; ++i)
+		if (!serialPorts.ports[i]->enumerated)
+		{
+			removePort(&serialPorts, serialPorts.ports[i]);
+			i--;
+		}
 
 	// Get relevant SerialComm methods and fill in com port array
 	wchar_t systemPortName[128];
@@ -345,6 +405,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewString(env, (jchar*)systemPortName, wcslen(systemPortName)));
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->friendlyName, wcslen(serialPorts.ports[i]->friendlyName)));
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portDescription, wcslen(serialPorts.ports[i]->portDescription)));
+		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portLocation, wcslen(serialPorts.ports[i]->portLocation)));
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
@@ -363,6 +424,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
+	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
@@ -405,7 +467,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port");
+		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0");
 	}
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))
 	{
