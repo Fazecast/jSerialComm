@@ -450,7 +450,12 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
 {
-	// Delete the cache global reference
+	// Close all open ports
+	for (int i = 0; i < serialPorts.length; ++i)
+		if (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE)
+			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, serialComm, (jlong)(intptr_t)serialPorts.ports[i]);
+
+	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
 }
 

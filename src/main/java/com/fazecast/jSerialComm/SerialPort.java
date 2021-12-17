@@ -343,6 +343,9 @@ public final class SerialPort
 			}
 		}
 		catch (Exception e) { e.printStackTrace(); }
+
+		// Add a shutdown hook to ensure all ports get closed
+		Runtime.getRuntime().addShutdownHook(new Thread() { public void run() { uninitializeLibrary(); } });
 	}
 
 	// Static symbolic link testing function
