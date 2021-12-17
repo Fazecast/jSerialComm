@@ -9,247 +9,235 @@
 #include <string.h>
 #include <setupapi.h>
 #include <devpkey.h>
+#include <devguid.h>
+#include "../../main/c/Windows/ftdi/ftd2xx.h"
 #include "WindowsHelperFunctions.h"
+
+// Runtime-loadable DLL functions
+typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
+typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
+typedef int (__stdcall *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
+typedef int (__stdcall *FT_SetLatencyTimerFunction)(FT_HANDLE, UCHAR);
+typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
+typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
 static serialPortVector serialPorts = { NULL, 0, 0 };
 
 void getPortsWindows(void)
 {
-	HKEY keyHandle1, keyHandle2, keyHandle3, keyHandle4, keyHandle5;
-	DWORD numSubKeys1, numSubKeys2, numSubKeys3, numValues;
-	DWORD maxSubKeyLength1, maxSubKeyLength2, maxSubKeyLength3;
-	DWORD maxValueLength, maxComPortLength, valueLength, comPortLength, keyType;
-	DWORD subKeyLength1, subKeyLength2, subKeyLength3, friendlyNameLength;
-
 	// Reset the enumerated flag on all non-open serial ports
 	for (int i = 0; i < serialPorts.length; ++i)
 		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE);
 
-	// Enumerate serial ports on machine
-	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
-			(RegQueryInfoKeyW(keyHandle1, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, &maxValueLength, &maxComPortLength, NULL, NULL) == ERROR_SUCCESS))
-	{
-		// Allocate memory
-		++maxValueLength;
-		++maxComPortLength;
-		WCHAR *valueName = (WCHAR*)malloc(maxValueLength*sizeof(WCHAR));
-		WCHAR *comPort = (WCHAR*)malloc(maxComPortLength*sizeof(WCHAR));
-
-		// Iterate through all COM ports
-		for (DWORD i = 0; i < numValues; ++i)
-		{
-			// Get serial port name and COM value
-			valueLength = maxValueLength;
-			comPortLength = maxComPortLength;
-			memset(valueName, 0, valueLength*sizeof(WCHAR));
-			memset(comPort, 0, comPortLength*sizeof(WCHAR));
-			if ((RegEnumValueW(keyHandle1, i, valueName, &valueLength, NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
-			{
-				// Set port name and description
-				wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
-				wchar_t* descriptionString = wcsrchr(valueName, L'\\') ? (wcsrchr(valueName, L'\\') + 1) : valueName;
-
-				// Check if port is already enumerated
-				serialPort *port = fetchPort(&serialPorts, comPortString);
-				if (port)
-					port->enumerated = 1;
-				else
-					pushBack(&serialPorts, comPortString, descriptionString, descriptionString, L"0-0");
-			}
-		}
-
-		// Clean up memory
-		free(valueName);
-		free(comPort);
-	}
-	RegCloseKey(keyHandle1);
-
-	// Enumerate all devices on machine
-	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum", 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle1) == ERROR_SUCCESS) &&
-			(RegQueryInfoKeyW(keyHandle1, NULL, NULL, NULL, &numSubKeys1, &maxSubKeyLength1, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
-	{
-		// Allocate memory
-		++maxSubKeyLength1;
-		WCHAR *subKeyName1 = (WCHAR*)malloc(maxSubKeyLength1*sizeof(WCHAR));
-
-		// Enumerate sub-keys
-		for (DWORD i1 = 0; i1 < numSubKeys1; ++i1)
-		{
-			subKeyLength1 = maxSubKeyLength1;
-			if ((RegEnumKeyExW(keyHandle1, i1, subKeyName1, &subKeyLength1, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-					(RegOpenKeyExW(keyHandle1, subKeyName1, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle2) == ERROR_SUCCESS) &&
-					(RegQueryInfoKeyW(keyHandle2, NULL, NULL, NULL, &numSubKeys2, &maxSubKeyLength2, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
-			{
-				// Allocate memory
-				++maxSubKeyLength2;
-				WCHAR *subKeyName2 = (WCHAR*)malloc(maxSubKeyLength2*sizeof(WCHAR));
-
-				// Enumerate sub-keys
-				for (DWORD i2 = 0; i2 < numSubKeys2; ++i2)
-				{
-					subKeyLength2 = maxSubKeyLength2;
-					if ((RegEnumKeyExW(keyHandle2, i2, subKeyName2, &subKeyLength2, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-							(RegOpenKeyExW(keyHandle2, subKeyName2, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle3) == ERROR_SUCCESS) &&
-							(RegQueryInfoKeyW(keyHandle3, NULL, NULL, NULL, &numSubKeys3, &maxSubKeyLength3, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
-					{
-						// Allocate memory
-						++maxSubKeyLength3;
-						WCHAR *subKeyName3 = (WCHAR*)malloc(maxSubKeyLength3*sizeof(WCHAR));
-
-						// Enumerate sub-keys
-						for (DWORD i3 = 0; i3 < numSubKeys3; ++i3)
-						{
-							subKeyLength3 = maxSubKeyLength3;
-							if ((RegEnumKeyExW(keyHandle3, i3, subKeyName3, &subKeyLength3, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) &&
-									(RegOpenKeyExW(keyHandle3, subKeyName3, 0, KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE, &keyHandle4) == ERROR_SUCCESS) &&
-									(RegQueryInfoKeyW(keyHandle4, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
-							{
-								// Allocate memory
-								friendlyNameLength = valueLength + 1;
-								WCHAR *friendlyName = (WCHAR*)malloc(friendlyNameLength*sizeof(WCHAR));
-								WCHAR *locationInfo = (WCHAR*)malloc(friendlyNameLength*sizeof(WCHAR));
-
-								if ((RegOpenKeyExW(keyHandle4, L"Device Parameters", 0, KEY_QUERY_VALUE, &keyHandle5) == ERROR_SUCCESS) &&
-									(RegQueryInfoKeyW(keyHandle5, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, NULL, &valueLength, NULL, NULL) == ERROR_SUCCESS))
-								{
-									// Allocate memory
-									comPortLength = valueLength + 1;
-									WCHAR *comPort = (WCHAR*)malloc(comPortLength*sizeof(WCHAR));
-
-									// Attempt to get COM value and friendly port name
-									if ((RegQueryValueExW(keyHandle5, L"PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
-											(RegQueryValueExW(keyHandle4, L"FriendlyName", NULL, &keyType, (BYTE*)friendlyName, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ) &&
-											(RegQueryValueExW(keyHandle4, L"LocationInformation", NULL, &keyType, (BYTE*)locationInfo, &friendlyNameLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
-									{
-										// Set port name and description
-										wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
-										wchar_t* descriptionString = friendlyName;
-
-										// Parse the port location
-										int hub = 0, port = 0, bufferLength = 128;
-										wchar_t *portLocation = (wchar_t*)malloc(bufferLength*sizeof(wchar_t));
-										if (wcsstr(locationInfo, L"Port_#") && wcsstr(locationInfo, L"Hub_#"))
-										{
-											wchar_t *hubString = wcsrchr(locationInfo, L'#') + 1;
-											hub = _wtoi(hubString);
-											wchar_t *portString = wcschr(locationInfo, L'#') + 1;
-											if (portString)
-											{
-												hubString = wcschr(portString, L'.');
-												if (hubString)
-													*hubString = L'\0';
-											}
-											port = _wtoi(portString);
-											_snwprintf(portLocation, comPortLength, L"1-%d.%d", hub, port);
-										}
-										else
-											wcscpy(portLocation, L"0-0");
-
-										// Update friendly name if COM port is actually connected and present in the port list
-										for (int i = 0; i < serialPorts.length; ++i)
-											if (wcscmp(serialPorts.ports[i]->portPath, comPortString) == 0)
-											{
-												wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[i]->friendlyName, (wcslen(descriptionString)+1)*sizeof(wchar_t));
-												if (newMemory)
-												{
-													serialPorts.ports[i]->friendlyName = newMemory;
-													wcscpy(serialPorts.ports[i]->friendlyName, descriptionString);
-												}
-												newMemory = (wchar_t*)realloc(serialPorts.ports[i]->portLocation, (wcslen(portLocation)+1)*sizeof(wchar_t));
-												if (newMemory)
-												{
-													serialPorts.ports[i]->portLocation = newMemory;
-													wcscpy(serialPorts.ports[i]->portLocation, portLocation);
-												}
-												break;
-											}
-
-										// Clean up memory
-										free(portLocation);
-									}
-
-									// Clean up memory
-									free(comPort);
-								}
-
-								// Clean up memory and close registry key
-								RegCloseKey(keyHandle5);
-								free(locationInfo);
-								free(friendlyName);
-							}
-
-							// Close registry key
-							RegCloseKey(keyHandle4);
-						}
-
-						// Clean up memory and close registry key
-						RegCloseKey(keyHandle3);
-						free(subKeyName3);
-					}
-				}
-
-				// Clean up memory and close registry key
-				RegCloseKey(keyHandle2);
-				free(subKeyName2);
-			}
-		}
-
-		// Clean up memory and close registry key
-		RegCloseKey(keyHandle1);
-		free(subKeyName1);
-	}
-
-	// Attempt to locate any device-specified port descriptions
-	HDEVINFO devList = SetupDiGetClassDevsW(NULL, L"USB", NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+	// Enumerate all serial ports present on the current system
+	wchar_t comPort[128];
+	HDEVINFO devList = SetupDiGetClassDevsW(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
 	if (devList != INVALID_HANDLE_VALUE)
 	{
-		// Iterate through all USB-connected devices
+		// Iterate through all devices
 		DWORD devInterfaceIndex = 0;
 		DEVPROPTYPE devInfoPropType;
 		SP_DEVINFO_DATA devInfoData;
 		devInfoData.cbSize = sizeof(devInfoData);
-		WCHAR comPort[128];
 		while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
 		{
 			// Fetch the corresponding COM port for this device
-			wchar_t* comPortString = NULL;
-			comPortLength = sizeof(comPort) / sizeof(WCHAR);
-			keyHandle5 = SetupDiOpenDevRegKey(devList, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_QUERY_VALUE);
-			if ((keyHandle5 != INVALID_HANDLE_VALUE) && (RegQueryValueExW(keyHandle5, L"PortName", NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+			wchar_t *comPortString = NULL;
+			DWORD comPortLength = sizeof(comPort) / sizeof(wchar_t);
+			HKEY key = SetupDiOpenDevRegKey(devList, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_QUERY_VALUE);
+			if ((key != INVALID_HANDLE_VALUE) && (RegQueryValueExW(key, L"PortName", NULL, NULL, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS))
 				comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
-			if (keyHandle5 != INVALID_HANDLE_VALUE)
-				RegCloseKey(keyHandle5);
+			if (key != INVALID_HANDLE_VALUE)
+				RegCloseKey(key);
+			if (!comPortString)
+				continue;
 
-			// Fetch the length of the "Bus-Reported Device Description"
-			if (comPortString && !SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &valueLength, 0) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER))
+			// Fetch the friendly name for this device
+			DWORD friendlyNameLength = 0;
+			wchar_t *friendlyNameString = NULL;
+			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, NULL, 0, &friendlyNameLength, 0);
+			if (!friendlyNameLength)
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
+			if (friendlyNameLength)
 			{
-				// Allocate memory
-				++valueLength;
-				WCHAR *portDescription = (WCHAR*)malloc(valueLength);
-
-				// Retrieve the "Bus-Reported Device Description"
-				if (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescription, valueLength, NULL, 0))
+				friendlyNameString = (wchar_t*)malloc(friendlyNameLength);
+				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
+						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
 				{
-					// Update port description if COM port is actually connected and present in the port list
-					for (int i = 0; i < serialPorts.length; ++i)
-						if (wcscmp(serialPorts.ports[i]->portPath, comPortString) == 0)
-						{
-							wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[i]->portDescription, (wcslen(portDescription)+1)*sizeof(wchar_t));
-							if (newMemory)
-							{
-								serialPorts.ports[i]->portDescription = newMemory;
-								wcscpy(serialPorts.ports[i]->portDescription, portDescription);
-							}
-						}
+					friendlyNameString = (wchar_t*)realloc(friendlyNameString, comPortLength);
+					wcscpy(friendlyNameString, comPortString);
 				}
-
-				// Clean up memory
-				free(portDescription);
 			}
+			else
+			{
+				friendlyNameString = (wchar_t*)malloc(comPortLength);
+				wcscpy(friendlyNameString, comPortString);
+			}
+
+			// Fetch the bus-reported device description
+			DWORD portDescriptionLength = 0;
+			wchar_t *portDescriptionString = NULL;
+			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0);
+			if (portDescriptionLength)
+			{
+				portDescriptionString = (wchar_t*)malloc(portDescriptionLength);
+				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescriptionString, portDescriptionLength, NULL, 0))
+				{
+					portDescriptionString = (wchar_t*)realloc(portDescriptionString, friendlyNameLength);
+					wcscpy(portDescriptionString, friendlyNameString);
+				}
+			}
+			else
+			{
+				portDescriptionString = (wchar_t*)malloc(friendlyNameLength);
+				wcscpy(portDescriptionString, friendlyNameString);
+			}
+
+			// Fetch the physical location for this device
+			wchar_t *locationString = NULL;
+			DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
+			if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusNumber, &devInfoPropType, (BYTE*)&busNumber, sizeof(busNumber), NULL, 0) &&
+					!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
+				busNumber = -1;
+			if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_Address, &devInfoPropType, (BYTE*)&portNumber, sizeof(portNumber), NULL, 0) &&
+					!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
+				portNumber = -1;
+			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, NULL, 0, &locationLength, 0);
+			if (!locationLength)
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
+			if (locationLength)
+			{
+				locationString = (wchar_t*)malloc(locationLength);
+				if (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, (BYTE*)locationString, locationLength, NULL, 0) ||
+						SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
+				{
+					if (wcsstr(locationString, L"Hub"))
+						hubNumber = _wtoi(wcschr(wcsstr(locationString, L"Hub"), L'#') + 1);
+					if ((portNumber < 0) && wcsstr(locationString, L"Port"))
+					{
+						wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
+						if (portString)
+						{
+							wchar_t *end = wcschr(portString, L'.');
+							if (end)
+								*end = L'\0';
+						}
+						portNumber = _wtoi(portString);
+					}
+				}
+				free(locationString);
+			}
+			if (busNumber < 0)
+				busNumber = 0;
+			if (hubNumber < 0)
+				hubNumber = 0;
+			if (portNumber < 0)
+				portNumber = 0;
+			locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
+			_snwprintf(locationString, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
+
+			// Check if port is already enumerated
+			serialPort *port = fetchPort(&serialPorts, comPortString);
+			if (port)
+			{
+				// See if device has changed locations
+				port->enumerated = 1;
+				int oldLength = wcslen(port->portLocation);
+				int newLength = wcslen(locationString);
+				if (oldLength != newLength)
+				{
+					port->portLocation = (wchar_t*)realloc(port->portLocation, (1 + newLength) * sizeof(wchar_t));
+					wcscpy(port->portLocation, locationString);
+				}
+				else if (wcscmp(port->portLocation, locationString))
+					wcscpy(port->portLocation, locationString);
+			}
+			else
+				pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
+
+			// Clean up memory and reset device info structure
+			free(locationString);
+			free(portDescriptionString);
+			free(friendlyNameString);
 			devInfoData.cbSize = sizeof(devInfoData);
 		}
 		SetupDiDestroyDeviceInfoList(devList);
 	}
+
+	// Attempt to locate any FTDI-specified port descriptions
+	HINSTANCE ftdiLibInstance = LoadLibrary(TEXT("ftd2xx.dll"));
+	if (ftdiLibInstance != NULL)
+	{
+		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
+		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
+		FT_GetComPortNumberFunction FT_GetComPortNumber = (FT_GetComPortNumberFunction)GetProcAddress(ftdiLibInstance, "FT_GetComPortNumber");
+		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
+		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
+		FT_SetLatencyTimerFunction FT_SetLatencyTimer = (FT_SetLatencyTimerFunction)GetProcAddress(ftdiLibInstance, "FT_SetLatencyTimer");
+		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_GetComPortNumber && FT_Open && FT_Close && FT_SetLatencyTimer)
+		{
+			DWORD numDevs;
+			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
+			{
+				FT_DEVICE_LIST_INFO_NODE *devInfo = (FT_DEVICE_LIST_INFO_NODE*)malloc(sizeof(FT_DEVICE_LIST_INFO_NODE)*numDevs);
+				if (FT_GetDeviceInfoList(devInfo, &numDevs) == FT_OK)
+				{
+					for (int i = 0; i < numDevs; ++i)
+					{
+						// Determine if the port is currently enumerated and already open
+						char isOpen = (devInfo[i].Flags & FT_FLAGS_OPENED) ? 1 : 0;
+						if (!isOpen)
+							for (int j = 0; j < serialPorts.length; ++j)
+								if ((memcmp(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
+								{
+									serialPorts.ports[j]->enumerated = 1;
+									isOpen = 1;
+									break;
+								}
+
+						// Update the port description and latency if not already open
+						if (!isOpen)
+						{
+							LONG comPortNumber = 0;
+							if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
+							{
+								// Reduce latency timer to minimum value of 2
+								FT_SetLatencyTimer(devInfo[i].ftHandle, 2);
+
+								// Update port description if COM port is actually connected and present in the port list
+								FT_Close(devInfo[i].ftHandle);
+								swprintf(comPort, sizeof(comPort) / sizeof(wchar_t), L"COM%ld", comPortNumber);
+								for (int j = 0; j < serialPorts.length; ++j)
+									if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
+									{
+										serialPorts.ports[j]->enumerated = 1;
+										size_t descLength = 8+strlen(devInfo[i].Description);
+										wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
+										if (newMemory)
+										{
+											serialPorts.ports[j]->portDescription = newMemory;
+											MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
+										}
+										memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
+										break;
+									}
+							}
+						}
+					}
+				}
+				free(devInfo);
+			}
+		}
+		FreeLibrary(ftdiLibInstance);
+	}
+
+	// Remove all non-enumerated ports from the serial port listing
+	for (int i = 0; i < serialPorts.length; ++i)
+		if (!serialPorts.ports[i]->enumerated)
+		{
+			removePort(&serialPorts, serialPorts.ports[i]);
+			i--;
+		}
 }
 
 int main(void)
@@ -261,7 +249,7 @@ int main(void)
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		serialPort *port = serialPorts.ports[i];
-		printf("%ls: Description = %ls, Location = %ls\n", port->portPath, port->friendlyName, port->portLocation);
+		printf("%ls: Friendly Name = %ls, Bus Description = %ls, Location = %ls\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation);
 	}
 
 	return 0;

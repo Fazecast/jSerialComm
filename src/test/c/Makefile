@@ -43,10 +43,14 @@ testEnumerateWindows : $(BUILD_DIR)/testEnumerateWindows.o $(BUILD_DIR)/WindowsH
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/testEnumerateWindows.o : testEnumerateWindows.c
 	$(MKDIR) $(BUILD_DIR)
+	$(COPY) ../../main/c/Posix/*.h ../../main/c/
 	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -o $@
+	$(DELETE) ../../main/c/*.h
 $(BUILD_DIR)/WindowsHelperFunctions.o : WindowsHelperFunctions.c
 	$(MKDIR) $(BUILD_DIR)
+	$(COPY) ../../main/c/Posix/*.h ../../main/c/
 	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -o $@
+	$(DELETE) ../../main/c/*.h
 $(BUILD_DIR)/%.o : %.c
 	$(MKDIR) $(BUILD_DIR)
 	$(COMPILE) $(INCLUDES) $(CFLAGS) -c $< -o $@
