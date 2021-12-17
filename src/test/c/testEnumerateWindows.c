@@ -113,7 +113,7 @@ void getPortsWindows(void)
 				{
 					if (wcsstr(locationString, L"Hub"))
 						hubNumber = _wtoi(wcschr(wcsstr(locationString, L"Hub"), L'#') + 1);
-					if ((portNumber < 0) && wcsstr(locationString, L"Port"))
+					if ((portNumber == -1) && wcsstr(locationString, L"Port"))
 					{
 						wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
 						if (portString)
@@ -127,11 +127,11 @@ void getPortsWindows(void)
 				}
 				free(locationString);
 			}
-			if (busNumber < 0)
+			if (busNumber == -1)
 				busNumber = 0;
-			if (hubNumber < 0)
+			if (hubNumber == -1)
 				hubNumber = 0;
-			if (portNumber < 0)
+			if (portNumber == -1)
 				portNumber = 0;
 			locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
 			_snwprintf(locationString, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
