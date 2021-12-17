@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 09, 2021
+ *  Last Updated on:  Dec 15, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -492,7 +492,7 @@ public final class SerialPort
 	private volatile byte xonStartChar = 17, xoffStopChar = 19;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
-	private volatile String comPort, friendlyName, portDescription;
+	private volatile String comPort, friendlyName, portDescription, portLocation;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false;
@@ -1473,10 +1473,32 @@ public final class SerialPort
 	 * <p>
 	 * This will only be available for USB-connected devices that report a product description.
 	 * Otherwise, it will return the same value as {@link #getDescriptivePortName()}.
-	 * 
+	 *
 	 * @return The port description as reported by the device itself.
 	 */
 	public final String getPortDescription() { return portDescription.trim(); }
+
+	/**
+	 * Gets the physical location of the port as a String in the form "BUS-[HUB1.HUB2.etc]PORT_NUMBER".
+	 * <p>
+	 * "[HUB1.HUB2...]" is an optional field that refers to the hierarchy of USB hub numbers that a device
+	 * might be plugged into. For example, a USB-to-Serial Converter plugged into the third port of a USB hub
+	 * which is plugged into another USB hub which is plugged into a USB bus on a PC might have the port
+	 * location "1-1.1.3". A device plugged directly into a PC-based serial or USB port might have a port
+	 * location of "1-2". A virtual (non-physical) serial port might return a value of "0-0" since this
+	 * port has no physical location.
+	 * <p>
+	 * This method may be used to uniquely identify a device in the case where multiples of the same type
+	 * of device are present on the same system. In this case, the operating system might assign each device
+	 * to a different port number upon reboot; however, the port locations will remain the same as long
+	 * as each device remains physically plugged into the same port.
+	 * <p>
+	 * Note, if you manually specified the port location using {@link #getCommPort}, this method will
+	 * always return "0-0".
+	 *
+	 * @return The physical port location in the form "BUS-[HUB1.HUB2.etc]PORT_NUMBER".
+	 */
+	public final String getPortLocation() { return portLocation; }
 	
 	/**
 	 * Gets the current baud rate of the serial port.

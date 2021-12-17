@@ -85,13 +85,15 @@ public class SerialPortTest
 	{
 		System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
 		SerialPort[] ports = SerialPort.getCommPorts();
-		System.out.println("\nAvailable Ports (First Try):\n");
+		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
+		System.out.println("Re-enumerating ports again in 5 seconds...\n");
+		try { Thread.sleep(5000); } catch (Exception e) {}
 		ports = SerialPort.getCommPorts();
-		System.out.println("\nAvailable Ports (Second Try):\n");
+		System.out.println("Available Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription());
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
@@ -147,6 +149,10 @@ public class SerialPortTest
 		} catch (Exception e) { e.printStackTrace(); }
 		System.out.println("\nSetting read timeout mode to semi-blocking with no timeout");
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0);
+		System.out.println("\nWaiting for available bytes to read...");
+		while (ubxPort.bytesAvailable() == 0);
+		System.out.println("Available: " + ubxPort.bytesAvailable());
+		System.out.println("Flushing read buffers: " + ubxPort.flushIOBuffers());
 		try
 		{
 			for (int i = 0; i < 3; ++i)

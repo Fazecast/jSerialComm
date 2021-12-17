@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 30, 2021
+ *  Last Updated on:  Dec 16, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -32,7 +32,7 @@
 // Serial port data structure
 typedef struct serialPort
 {
-	char *portPath, *friendlyName, *portDescription, *readBuffer;
+	char *portPath, *friendlyName, *portDescription, *portLocation, *readBuffer;
 	int errorLineNumber, errorNumber, handle, readBufferLength;
 	volatile char enumerated, eventListenerRunning;
 	short eventsMask;
@@ -44,7 +44,7 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description);
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location);
 serialPort* fetchPort(serialPortVector* vector, const char* key);
 void removePort(serialPortVector* vector, serialPort* port);
 

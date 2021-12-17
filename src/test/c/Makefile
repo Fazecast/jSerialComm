@@ -1,11 +1,15 @@
 # Compiler tools, commands, and flags
 COMPILE                     := gcc
+COMPILE_WIN                 := x86_64-w64-mingw32-gcc
 BUILD_DIR                   := build
 JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
-INCLUDES                    := -I"../../main/c/Posix" -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
+INCLUDES                    := -I"../../main/c/Posix" -I"../../main/c/Windows" -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
 CFLAGS                      := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc -fuse-linker-plugin"; fi)
+CFLAGS_WIN                  := -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LDFLAGS                     := -Os -flto -fuse-linker-plugin $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc -s"; fi)
+LDFLAGS_WIN                 := -Os -flto -static-libgcc -fuse-linker-plugin -s
 LIBRARIES                   := $(shell if [ "`uname`" = "Darwin" ]; then echo "-framework Cocoa -framework IOKit"; else echo "-pthread"; fi)
+LIBRARIES_WIN               := -ladvapi32 -lsetupapi
 DELETE                      := @rm
 MKDIR                       := @mkdir -p
 COPY                        := @cp
@@ -16,7 +20,7 @@ PRINT                       := @echo
 .PHONY: all clean
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .h
-vpath %.c ../../main/c/Posix
+vpath %.c ../../main/c/Posix ../../main/c/Windows
 
 # Default build target does nothing
 all :
@@ -31,8 +35,18 @@ $(BUILD_DIR) :
 # Build rules for all tests
 testOpenClose : $(BUILD_DIR)/testOpenClose.o $(BUILD_DIR)/PosixHelperFunctions.o
 	$(COMPILE) $(LDFLAGS) $(LIBRARIES) -o $@ $^
+testEnumeratePosix : $(BUILD_DIR)/testEnumeratePosix.o $(BUILD_DIR)/PosixHelperFunctions.o
+	$(COMPILE) $(LDFLAGS) $(LIBRARIES) -o $@ $^
+testEnumerateWindows : $(BUILD_DIR)/testEnumerateWindows.o $(BUILD_DIR)/WindowsHelperFunctions.o
+	$(COMPILE_WIN) $(LDFLAGS_WIN) $(LIBRARIES_WIN) -o $@ $^
 
 # Suffix rules to get from *.c -> *.o
+$(BUILD_DIR)/testEnumerateWindows.o : testEnumerateWindows.c
+	$(MKDIR) $(BUILD_DIR)
+	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -o $@
+$(BUILD_DIR)/WindowsHelperFunctions.o : WindowsHelperFunctions.c
+	$(MKDIR) $(BUILD_DIR)
+	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -o $@
 $(BUILD_DIR)/%.o : %.c
 	$(MKDIR) $(BUILD_DIR)
 	$(COMPILE) $(INCLUDES) $(CFLAGS) -c $< -o $@
