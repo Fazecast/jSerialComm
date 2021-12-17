@@ -342,22 +342,39 @@ void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPath
 					strcpy(systemName, "/dev/");
 					strcat(systemName, directoryEntry->d_name);
 
+					// Determine location of port
+					char* portLocation = (char*)malloc(128);
+					char* productFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
+					strcpy(productFile, fullPathToSearch);
+					strcat(productFile, directoryEntry->d_name);
+					strcat(productFile, "/device/..");
+					char isUSB = getPortLocation(productFile, portLocation);
+					if (!isUSB)
+						isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
+
 					// Check if port is already enumerated
 					serialPort *port = fetchPort(comPorts, systemName);
 					if (port)
+					{
+						// See if device has changed locations
 						port->enumerated = 1;
+						if (isUSB)
+						{
+							int oldLength = strlen(port->portLocation);
+							int newLength = strlen(portLocation);
+							if (oldLength != newLength)
+							{
+								port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+								strcpy(port->portLocation, portLocation);
+							}
+							else if (memcmp(port->portLocation, portLocation, newLength))
+								strcpy(port->portLocation, portLocation);
+						}
+					}
 					else
 					{
 						// See if device has a registered friendly name
-						char* portLocation = (char*)malloc(128);
 						char* friendlyName = (char*)malloc(256);
-						char* productFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
-						strcpy(productFile, fullPathToSearch);
-						strcat(productFile, directoryEntry->d_name);
-						strcat(productFile, "/device/..");
-						char isUSB = getPortLocation(productFile, portLocation);
-						if (!isUSB)
-							isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
 						strcat(productFile, "/product");
 						getFriendlyName(productFile, friendlyName);
 						if (friendlyName[0] == '\0')		// Must be a physical (or emulated) port
@@ -442,12 +459,12 @@ void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPath
 						}
 
 						// Clean up memory
-						free(productFile);
 						free(friendlyName);
-						free(portLocation);
 					}
 
 					// Clean up memory
+					free(portLocation);
+					free(productFile);
 					free(systemName);
 				}
 				else
@@ -538,27 +555,44 @@ void lastDitchSearchForComPorts(serialPortVector* comPorts)
 			strcpy(systemName, "/dev/");
 			strcat(systemName, directoryEntry->d_name);
 
+			// Determine location of port
+			char* portLocation = (char*)malloc(128);
+			char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
+
 			// Check if port is already enumerated
 			serialPort *port = fetchPort(comPorts, systemName);
 			if (port)
+			{
+				// See if device has changed locations
 				port->enumerated = 1;
+				if (isUSB)
+				{
+					int oldLength = strlen(port->portLocation);
+					int newLength = strlen(portLocation);
+					if (oldLength != newLength)
+					{
+						port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+						strcpy(port->portLocation, portLocation);
+					}
+					else if (memcmp(port->portLocation, portLocation, newLength))
+						strcpy(port->portLocation, portLocation);
+				}
+			}
 			else
 			{
 				// Set static friendly name
-				char* portLocation = (char*)malloc(128);
 				char* friendlyName = (char*)malloc(256);
 				strcpy(friendlyName, "USB-Based Serial Port");
 
 				// Add the port to the list
-				char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
 				pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
 
 				// Clean up memory
 				free(friendlyName);
-				free(portLocation);
 			}
 
 			// Clean up memory
+			free(portLocation);
 			free(systemName);
 		}
 		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
@@ -569,27 +603,44 @@ void lastDitchSearchForComPorts(serialPortVector* comPorts)
 			strcpy(systemName, "/dev/");
 			strcat(systemName, directoryEntry->d_name);
 
+			// Determine location of port
+			char* portLocation = (char*)malloc(128);
+			char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
+
 			// Check if port is already enumerated
 			serialPort *port = fetchPort(comPorts, systemName);
 			if (port)
+			{
+				// See if device has changed locations
 				port->enumerated = 1;
+				if (isUSB)
+				{
+					int oldLength = strlen(port->portLocation);
+					int newLength = strlen(portLocation);
+					if (oldLength != newLength)
+					{
+						port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+						strcpy(port->portLocation, portLocation);
+					}
+					else if (memcmp(port->portLocation, portLocation, newLength))
+						strcpy(port->portLocation, portLocation);
+				}
+			}
 			else
 			{
 				// Set static friendly name
-				char* portLocation = (char*)malloc(128);
 				char* friendlyName = (char*)malloc(256);
 				strcpy(friendlyName, "Advantech Extended Serial Port");
 
 				// Add the port to the list
-				char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
 				pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
 
 				// Clean up memory
 				free(friendlyName);
-				free(portLocation);
 			}
 
 			// Clean up memory
+			free(portLocation);
 			free(systemName);
 		}
 		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
@@ -1001,8 +1052,68 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 	return -1;
 }
 
-// FreeBSD-specific functionality
+// BSD-specific functionality
 #elif defined(__FreeBSD__)
+
+char getPortLocation(const char *deviceName, char* portLocation)
+{
+	// Attempt to locate the device in sysctl
+	size_t bufferSize = 1024;
+	char *stdOutResult = (char*)malloc(bufferSize), *device = NULL;
+	snprintf(stdOutResult, bufferSize, "sysctl -a | grep \"ttyname: %s\"", deviceName);
+	FILE *pipe = popen(stdOutResult, "r");
+	if (pipe)
+	{
+		while (!device && fgets(stdOutResult, bufferSize, pipe))
+		{
+			device = stdOutResult;
+			*(strstr(device, "ttyname:") - 1) = '\0';
+			strcat(device, ".%location");
+		}
+		pclose(pipe);
+	}
+
+	// Parse port location
+	if (device)
+	{
+		char *temp = (char*)malloc(64);
+		sprintf(portLocation, "sysctl -a | grep \"%s\"", device);
+		pipe = popen(portLocation, "r");
+		strcpy(portLocation, "0-0");
+		if (pipe)
+		{
+			while (fgets(stdOutResult, bufferSize, pipe))
+				if (strstr(stdOutResult, "bus") && strstr(stdOutResult, "hubaddr") && strstr(stdOutResult, "port"))
+				{
+					char *cursor = strstr(stdOutResult, "bus=") + 4;
+					size_t length = (size_t)(strchr(cursor, ' ') - cursor);
+					memcpy(portLocation, cursor, length);
+					portLocation[length] = '\0';
+					strcat(portLocation, "-");
+					cursor = strstr(stdOutResult, "hubaddr=") + 8;
+					length = (size_t)(strchr(cursor, ' ') - cursor);
+					memcpy(temp, cursor, length);
+					temp[length] = '\0';
+					strcat(portLocation, temp);
+					strcat(portLocation, ".");
+					cursor = strstr(stdOutResult, "port=") + 5;
+					length = (size_t)(strchr(cursor, ' ') - cursor);
+					memcpy(temp, cursor, length);
+					temp[length] = '\0';
+					strcat(portLocation, temp);
+					break;
+				}
+			pclose(pipe);
+		}
+		free(temp);
+	}
+	else
+		strcpy(portLocation, "0-0");
+
+	// Clean up memory and return result
+	free(stdOutResult);
+	return (device ? 1 : 0);
+}
 
 void searchForComPorts(serialPortVector* comPorts)
 {
@@ -1029,14 +1140,32 @@ void searchForComPorts(serialPortVector* comPorts)
 					strcpy(systemName, "/dev/");
 					strcat(systemName, directoryEntry->d_name);
 
+					// Determine location of port
+					char* portLocation = (char*)malloc(256);
+					char isUSB = getPortLocation(directoryEntry->d_name + 3, portLocation);
+
 					// Check if port is already enumerated
 					serialPort *port = fetchPort(comPorts, systemName);
 					if (port)
+					{
+						// See if device has changed locations
 						port->enumerated = 1;
+						if (isUSB)
+						{
+							int oldLength = strlen(port->portLocation);
+							int newLength = strlen(portLocation);
+							if (oldLength != newLength)
+							{
+								port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+								strcpy(port->portLocation, portLocation);
+							}
+							else if (memcmp(port->portLocation, portLocation, newLength))
+								strcpy(port->portLocation, portLocation);
+						}
+					}
 					else
 					{
 						// Set static friendly name
-						char *location = (char*)malloc(256);
 						char* friendlyName = (char*)malloc(256);
 						if (directoryEntry->d_name[0] == 'c')
 							strcpy(friendlyName, "Serial Port");
@@ -1048,68 +1177,16 @@ void searchForComPorts(serialPortVector* comPorts)
 						stat(systemName, &fileStats);
 						if (!S_ISDIR(fileStats.st_mode))
 						{
-							size_t bufferSize = 1024;
-							char *stdOutResult = (char*)malloc(bufferSize), *device = NULL;
-							snprintf(stdOutResult, bufferSize, "sysctl -a | grep \"ttyname: %s\"", directoryEntry->d_name + 3);
-							FILE *pipe = popen(stdOutResult, "r");
-							if (pipe)
-							{
-								while (!device && fgets(stdOutResult, bufferSize, pipe))
-								{
-									device = stdOutResult;
-									*(strstr(device, "ttyname:") - 1) = '\0';
-									strcat(device, ".%location");
-								}
-								pclose(pipe);
-							}
-
-							// Add port to the list and clean up memory
-							if (device)
-							{
-								char *location = (char*)malloc(256), *temp = (char*)malloc(64);
-								snprintf(location, bufferSize, "sysctl -a | grep \"%s\"", device);
-								pipe = popen(location, "r");
-								strcpy(location, "0-0");
-								if (pipe)
-								{
-									while (fgets(stdOutResult, bufferSize, pipe))
-										if (strstr(stdOutResult, "bus") && strstr(stdOutResult, "hubaddr") && strstr(stdOutResult, "port"))
-										{
-											char *cursor = strstr(stdOutResult, "bus=") + 4;
-											size_t length = (size_t)(strchr(cursor, ' ') - cursor);
-											memcpy(location, cursor, length);
-											location[length] = '\0';
-											strcat(location, "-");
-											cursor = strstr(stdOutResult, "hubaddr=") + 8;
-											length = (size_t)(strchr(cursor, ' ') - cursor);
-											memcpy(temp, cursor, length);
-											temp[length] = '\0';
-											strcat(location, temp);
-											strcat(location, ".");
-											cursor = strstr(stdOutResult, "port=") + 5;
-											length = (size_t)(strchr(cursor, ' ') - cursor);
-											memcpy(temp, cursor, length);
-											temp[length] = '\0';
-											strcat(location, temp);
-											break;
-										}
-									pclose(pipe);
-								}
-								pushBack(comPorts, systemName, friendlyName, friendlyName, location);
-								free(location);
-								free(temp);
-							}
-							else
-								pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0");
-							free(stdOutResult);
+							char isUSB = getPortLocation(directoryEntry->d_name + 3, portLocation);
+							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
 						}
 
 						// Clean up memory
 						free(friendlyName);
-						free(location);
 					}
 
 					// Clean up memory
+					free(portLocation);
 					free(systemName);
 				}
 			}
@@ -1218,7 +1295,22 @@ void searchForComPorts(serialPortVector* comPorts)
 		// Check if callout port is already enumerated
 		port = fetchPort(comPorts, comPortCu);
 		if (port)
+		{
+			// See if device has changed locations
 			port->enumerated = 1;
+			if (isUSB)
+			{
+				int oldLength = strlen(port->portLocation);
+				int newLength = strlen(portLocation);
+				if (oldLength != newLength)
+				{
+					port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+					strcpy(port->portLocation, portLocation);
+				}
+				else if (memcmp(port->portLocation, portLocation, newLength))
+					strcpy(port->portLocation, portLocation);
+			}
+		}
 		else
 			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation);
 
@@ -1226,7 +1318,22 @@ void searchForComPorts(serialPortVector* comPorts)
 		port = fetchPort(comPorts, comPortTty);
 		strcat(friendlyName, " (Dial-In)");
 		if (port)
+		{
+			// See if device has changed locations
 			port->enumerated = 1;
+			if (isUSB)
+			{
+				int oldLength = strlen(port->portLocation);
+				int newLength = strlen(portLocation);
+				if (oldLength != newLength)
+				{
+					port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+					strcpy(port->portLocation, portLocation);
+				}
+				else if (memcmp(port->portLocation, portLocation, newLength))
+					strcpy(port->portLocation, portLocation);
+			}
+		}
 		else
 			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation);
 		IOObjectRelease(serialPort);
