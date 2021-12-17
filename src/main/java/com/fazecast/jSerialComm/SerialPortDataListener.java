@@ -2,10 +2,10 @@
  * SerialPortDataListener.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Jan 03, 2018
+ *  Last Updated on:  Dec 17, 2021
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2021 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -44,6 +44,15 @@ public interface SerialPortDataListener extends EventListener
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DSR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_RING_INDICATOR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FRAMING_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PARITY_ERROR}<br>
 	 * <p>
 	 * Two or more events may be OR'd together to listen for multiple events; however, if {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} is OR'd with {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}, the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} flag will take precedence.
 	 * <p>
@@ -54,15 +63,24 @@ public interface SerialPortDataListener extends EventListener
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
+	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
+	 * @see SerialPort#LISTENING_EVENT_CTS
+	 * @see SerialPort#LISTENING_EVENT_DSR
+	 * @see SerialPort#LISTENING_EVENT_RING_INDICATOR
+	 * @see SerialPort#LISTENING_EVENT_FRAMING_ERROR
+	 * @see SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_PARITY_ERROR
 	 */
 	public abstract int getListeningEvents();
 	
 	/**
-	 * Called whenever one of the serial port events specified by the {@link #getListeningEvents()} method occurs.
+	 * Called whenever one or more of the serial port events specified by the {@link #getListeningEvents()} method occurs.
 	 * <p>
 	 * Note that your implementation of this function should always perform as little data processing as possible, as the speed at which this callback will fire is at the mercy of the underlying operating system. If you need to collect a large amount of data, application-level buffering should be implemented and data processing should occur on a separate thread.
 	 * 
-	 * @param event A {@link SerialPortEvent} object containing information and/or data about the serial event that occurred.
+	 * @param event A {@link SerialPortEvent} object containing information and/or data about the serial events that occurred.
 	 * @see SerialPortEvent
 	 */
 	public abstract void serialEvent(SerialPortEvent event);

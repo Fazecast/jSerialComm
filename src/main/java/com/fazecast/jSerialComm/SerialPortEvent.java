@@ -2,7 +2,7 @@
  * SerialPortEvent.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Nov 18, 2021
+ *  Last Updated on:  Dec 17, 2021
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2021 Fazecast, Inc.
@@ -50,6 +50,15 @@ public class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DSR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_RING_INDICATOR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FRAMING_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PARITY_ERROR}<br>
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
@@ -59,6 +68,15 @@ public class SerialPortEvent extends EventObject
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
+	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
+	 * @see SerialPort#LISTENING_EVENT_CTS
+	 * @see SerialPort#LISTENING_EVENT_DSR
+	 * @see SerialPort#LISTENING_EVENT_RING_INDICATOR
+	 * @see SerialPort#LISTENING_EVENT_FRAMING_ERROR
+	 * @see SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_PARITY_ERROR
 	 */
 	public SerialPortEvent(SerialPort comPort, int serialEventType)
 	{
@@ -75,6 +93,15 @@ public class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DSR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_RING_INDICATOR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FRAMING_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PARITY_ERROR}<br>
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
@@ -85,6 +112,15 @@ public class SerialPortEvent extends EventObject
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
+	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
+	 * @see SerialPort#LISTENING_EVENT_CTS
+	 * @see SerialPort#LISTENING_EVENT_DSR
+	 * @see SerialPort#LISTENING_EVENT_RING_INDICATOR
+	 * @see SerialPort#LISTENING_EVENT_FRAMING_ERROR
+	 * @see SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_PARITY_ERROR
 	 */
 	public SerialPortEvent(SerialPort comPort, int serialEventType, byte[] data)
 	{
@@ -101,13 +137,22 @@ public class SerialPortEvent extends EventObject
 	public final SerialPort getSerialPort() { return (SerialPort)source; }
 	
 	/**
-	 * Returns the type of serial port event that caused this object to be created.
+	 * Returns the type of serial port events that caused this object to be created.
 	 * <p>
-	 * Return values will be one and only one of the following:
+	 * Return value will be a bitmask containing one or more of the following items OR'd together:
 	 * <p>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DSR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_RING_INDICATOR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FRAMING_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PARITY_ERROR}<br>
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
@@ -116,6 +161,15 @@ public class SerialPortEvent extends EventObject
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
+	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
+	 * @see SerialPort#LISTENING_EVENT_CTS
+	 * @see SerialPort#LISTENING_EVENT_DSR
+	 * @see SerialPort#LISTENING_EVENT_RING_INDICATOR
+	 * @see SerialPort#LISTENING_EVENT_FRAMING_ERROR
+	 * @see SerialPort#LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
+	 * @see SerialPort#LISTENING_EVENT_PARITY_ERROR
 	 */
 	public final int getEventType() { return eventType; }
 	

@@ -495,6 +495,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		eventFlags |= EV_RXCHAR;
 	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN)
 		eventFlags |= EV_TXEMPTY;
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT)
+		eventFlags |= EV_BREAK;
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS)
+		eventFlags |= EV_CTS;
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR)
+		eventFlags |= EV_DSR;
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR)
+		eventFlags |= EV_RING;
+	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT)
+		eventFlags |= EV_RLSD;
 
 	// Set updated port timeouts
 	COMMTIMEOUTS timeouts;
