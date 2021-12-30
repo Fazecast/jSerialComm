@@ -3,8 +3,8 @@ COMPILE_X86         := i686-w64-mingw32-gcc
 COMPILE_X64         := x86_64-w64-mingw32-gcc
 COMPILE_ARM         := armv7-w64-mingw32-gcc
 COMPILE_ARM64       := aarch64-w64-mingw32-gcc
-CFLAGS              := -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-LDFLAGS             := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
+CFLAGS              := -Os -flto -static-libgcc -mdll -mconsole -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+LDFLAGS             := -Os -flto -static-libgcc -mconsole -shared -fuse-linker-plugin -s
 INCLUDES            := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/win32" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
 LIBRARIES           := -ladvapi32 -lsetupapi
 DELETE              := @rm
