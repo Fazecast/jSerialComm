@@ -2,10 +2,10 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Dec 16, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 #include "PosixHelperFunctions.h"
 
@@ -55,8 +56,16 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	else
 		return NULL;
 
-	// Initialize the storage structure
+	// Initialize the serial port mutex and condition variables
 	memset(port, 0, sizeof(serialPort));
+	pthread_mutex_init(&port->eventMutex, NULL);
+	pthread_condattr_t conditionVariableAttributes;
+	pthread_condattr_init(&conditionVariableAttributes);
+	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_MONOTONIC);
+	pthread_cond_init(&port->eventReceived, &conditionVariableAttributes);
+	pthread_condattr_destroy(&conditionVariableAttributes);
+
+	// Initialize the storage structure
 	port->handle = -1;
 	port->enumerated = 1;
 	port->portPath = (char*)malloc(strlen(key) + 1);
@@ -91,6 +100,8 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port->portDescription);
 	if (port->readBuffer)
 		free(port->readBuffer);
+	pthread_cond_destroy(&port->eventReceived);
+	pthread_mutex_destroy(&port->eventMutex);
 
 	// Move up all remaining ports in the serial port listing
 	for (int i = 0; i < vector->length; ++i)

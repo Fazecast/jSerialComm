@@ -2,10 +2,10 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Dec 16, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -27,15 +27,18 @@
 #define __POSIX_HELPER_FUNCTIONS_HEADER_H__
 
 // Serial port JNI header file
+#include <pthread.h>
 #include "com_fazecast_jSerialComm_SerialPort.h"
 
 // Serial port data structure
 typedef struct serialPort
 {
+	pthread_mutex_t eventMutex;
+	pthread_cond_t eventReceived;
+	pthread_t eventsThread1, eventsThread2;
 	char *portPath, *friendlyName, *portDescription, *portLocation, *readBuffer;
-	int errorLineNumber, errorNumber, handle, readBufferLength;
-	volatile char enumerated, eventListenerRunning;
-	short eventsMask;
+	int errorLineNumber, errorNumber, handle, readBufferLength, eventsMask, event;
+	volatile char enumerated, eventListenerRunning, eventListenerUsesThreads;
 } serialPort;
 
 // Common storage functionality

@@ -2,10 +2,10 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 16, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -78,6 +78,107 @@ jfieldID eventFlagsField;
 
 // List of available serial ports
 serialPortVector serialPorts = { NULL, 0, 0 };
+
+// Event listening threads
+void* eventReadingThread1(void *serialPortPointer)
+{
+	// Make this thread immediately and asynchronously cancellable
+	int oldValue;
+	serialPort *port = (serialPort*)serialPortPointer;
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldValue);
+
+	// Loop forever while open
+	struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
+	int mask = 1, isSupported = !ioctl(port->handle, TIOCGICOUNT, &oldSerialLineInterrupts);
+	while (isSupported && mask && port->eventListenerRunning && port->eventListenerUsesThreads)
+	{
+		// Determine which modem bit changes to listen for
+		mask = 0;
+		if (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT)
+			mask |= TIOCM_CD;
+		if (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS)
+			mask |= TIOCM_CTS;
+		if (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR)
+			mask |= TIOCM_DSR;
+		if (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR)
+			mask |= TIOCM_RNG;
+
+		// Listen forever for a change in the modem lines
+		isSupported = !ioctl(port->handle, TIOCMIWAIT, mask) && !ioctl(port->handle, TIOCGICOUNT, &newSerialLineInterrupts);
+
+		// Return the detected port events
+		if (isSupported)
+		{
+			pthread_mutex_lock(&port->eventMutex);
+			if (newSerialLineInterrupts.dcd != oldSerialLineInterrupts.dcd)
+				port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT;
+			if (newSerialLineInterrupts.cts != oldSerialLineInterrupts.cts)
+				port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS;
+			if (newSerialLineInterrupts.dsr != oldSerialLineInterrupts.dsr)
+				port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR;
+			if (newSerialLineInterrupts.rng != oldSerialLineInterrupts.rng)
+				port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR;
+			memcpy(&oldSerialLineInterrupts, &newSerialLineInterrupts, sizeof(newSerialLineInterrupts));
+			if (port->event)
+				pthread_cond_signal(&port->eventReceived);
+			pthread_mutex_unlock(&port->eventMutex);
+		}
+	}
+	return NULL;
+}
+
+void* eventReadingThread2(void *serialPortPointer)
+{
+	// Make this thread immediately and asynchronously cancellable
+	int oldValue;
+	serialPort *port = (serialPort*)serialPortPointer;
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldValue);
+	struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
+	ioctl(port->handle, TIOCGICOUNT, &oldSerialLineInterrupts);
+
+	// Loop forever while open
+	while (port->eventListenerRunning && port->eventListenerUsesThreads)
+	{
+		// Initialize the polling variables
+		int pollResult;
+		short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : POLLERR;
+		struct pollfd waitingSet = { port->handle, pollEventsMask, 0 };
+
+		// Wait for a serial port event
+		do
+		{
+			waitingSet.revents = 0;
+			pollResult = poll(&waitingSet, 1, 1000);
+		}
+		while ((pollResult == 0) && port->eventListenerRunning && port->eventListenerUsesThreads);
+
+		// Return the detected port events
+		pthread_mutex_lock(&port->eventMutex);
+		if (waitingSet.revents & POLLIN)
+			port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+		if (waitingSet.revents & POLLERR)
+			if (!ioctl(port->handle, TIOCGICOUNT, &newSerialLineInterrupts))
+			{
+				if (oldSerialLineInterrupts.frame != newSerialLineInterrupts.frame)
+					port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FRAMING_ERROR;
+				if (oldSerialLineInterrupts.brk != newSerialLineInterrupts.brk)
+					port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT;
+				if (oldSerialLineInterrupts.overrun != newSerialLineInterrupts.overrun)
+					port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR;
+				if (oldSerialLineInterrupts.parity != newSerialLineInterrupts.parity)
+					port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR;
+				if (oldSerialLineInterrupts.buf_overrun != newSerialLineInterrupts.buf_overrun)
+					port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
+				memcpy(&oldSerialLineInterrupts, &newSerialLineInterrupts, sizeof(newSerialLineInterrupts));
+			}
+		if (port->event)
+			pthread_cond_signal(&port->eventReceived);
+		pthread_mutex_unlock(&port->eventMutex);
+	}
+	return NULL;
+}
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
@@ -320,14 +421,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 #if defined(__linux__)
 
-	// Attempt to set the transmit buffer size
+	// Attempt to set the transmit buffer size, closing wait time, and latency flags
 	struct serial_struct serInfo = { 0 };
 	if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
 	{
+		serInfo.closing_wait = 250;
 		serInfo.xmit_fifo_size = sendDeviceQueueSize;
 		serInfo.flags |= ASYNC_LOW_LATENCY;
 		ioctl(port->handle, TIOCSSERIAL, &serInfo);
 	}
+
+	// Retrieve the driver-reported transmit buffer size
+	if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
+		sendDeviceQueueSize = serInfo.xmit_fifo_size;
+	receiveDeviceQueueSize = sendDeviceQueueSize;
+	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sendDeviceQueueSize);
+	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, receiveDeviceQueueSize);
 
 	// Attempt to set the requested RS-485 mode
 	struct serial_rs485 rs485Conf = { 0 };
@@ -365,6 +474,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		}
 	}
 
+#else
+
+	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+
 #endif
 
 	// Configure the serial port read and write timeouts
@@ -381,9 +495,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	tcgetattr(port->handle, &options);
 
 	// Set up the requested event flags
-	port->eventsMask = 0;
-	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED))
-		port->eventsMask |= POLLIN;
+	port->eventsMask = eventsToMonitor;
 
 	// Set updated port timeouts
 	if ((eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED) > 0)
@@ -460,29 +572,70 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuf
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	// Initialize the local variables
-	int pollResult;
+	// Initialize local variables
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	struct pollfd waitingSet = { port->handle, port->eventsMask, 0 };
 	jint event = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_TIMED_OUT;
 
-	// TODO: LISTEN FOR ERROR EVENTS IN CASE SERIAL PORT GETS UNPLUGGED? TEST IF WORKS?
-	/*
-	ioctl: TIOCMIWAIT
-	ioctl: TIOCGICOUNT
-	*/
-
-	// Wait for a serial port event
-	do
+	// Wait for events differently based on the use of threads
+	if (port->eventListenerUsesThreads)
 	{
-		waitingSet.revents = 0;
-		pollResult = poll(&waitingSet, 1, 500);
+		pthread_mutex_lock(&port->eventMutex);
+		if ((port->event & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) && !Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(env, obj, serialPortPointer))
+			port->event &= ~com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+		if (port->event)
+		{
+			event = port->event;
+			port->event = 0;
+		}
+		else
+		{
+			struct timespec timeoutTime;
+			clock_gettime(CLOCK_MONOTONIC, &timeoutTime);
+			timeoutTime.tv_sec += 1;
+			pthread_cond_timedwait(&port->eventReceived, &port->eventMutex, &timeoutTime);
+			if (port->event)
+			{
+				event = port->event;
+				port->event = 0;
+			}
+		}
+		pthread_mutex_unlock(&port->eventMutex);
 	}
-	while ((pollResult == 0) && port->eventListenerRunning);
+	else
+	{
+		// Initialize the local variables
+		int pollResult;
+		struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
+		short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : POLLERR;
+		struct pollfd waitingSet = { port->handle, pollEventsMask, 0 };
+		ioctl(port->handle, TIOCGICOUNT, &oldSerialLineInterrupts);
 
-	// Return the detected port events
-	if (waitingSet.revents & POLLIN)
-		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+		// Wait for a serial port event
+		do
+		{
+			waitingSet.revents = 0;
+			pollResult = poll(&waitingSet, 1, 500);
+		}
+		while ((pollResult == 0) && port->eventListenerRunning);
+
+		// Return the detected port events
+		if (waitingSet.revents & POLLIN)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+		if (waitingSet.revents & POLLERR)
+			if (!ioctl(port->handle, TIOCGICOUNT, &newSerialLineInterrupts))
+			{
+				if (oldSerialLineInterrupts.frame != newSerialLineInterrupts.frame)
+					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FRAMING_ERROR;
+				if (oldSerialLineInterrupts.brk != newSerialLineInterrupts.brk)
+					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT;
+				if (oldSerialLineInterrupts.overrun != newSerialLineInterrupts.overrun)
+					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR;
+				if (oldSerialLineInterrupts.parity != newSerialLineInterrupts.parity)
+					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR;
+				if (oldSerialLineInterrupts.buf_overrun != newSerialLineInterrupts.buf_overrun)
+					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
+			}
+	}
 	return event;
 }
 
@@ -634,7 +787,37 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListeningStatus(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean eventListenerRunning)
 {
-	((serialPort*)(intptr_t)serialPortPointer)->eventListenerRunning = eventListenerRunning;
+	// Create or cancel a separate event listening thread if required
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	port->eventListenerRunning = eventListenerRunning;
+	if (eventListenerRunning && ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS) ||
+			(port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR)))
+	{
+		port->event = 0;
+		if (!port->eventsThread1)
+		{
+			if (!pthread_create(&port->eventsThread1, NULL, eventReadingThread1, port))
+				pthread_detach(port->eventsThread1);
+			else
+				port->eventsThread1 = 0;
+		}
+		if (!port->eventsThread2)
+		{
+			if (!pthread_create(&port->eventsThread2, NULL, eventReadingThread2, port))
+				pthread_detach(port->eventsThread2);
+			else
+				port->eventsThread2 = 0;
+		}
+		port->eventListenerUsesThreads = 1;
+	}
+	else if (port->eventListenerUsesThreads)
+	{
+		port->eventListenerUsesThreads = 0;
+		pthread_cancel(port->eventsThread1);
+		port->eventsThread1 = 0;
+		pthread_cancel(port->eventsThread2);
+		port->eventsThread2 = 0;
+	}
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
