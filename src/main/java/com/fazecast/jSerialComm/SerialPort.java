@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 17, 2021
+ *  Last Updated on:  Jan 01, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -802,12 +802,16 @@ public final class SerialPort
 	
 	/**
 	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
+	 * <p>
+	 * Only Windows and Linux-based operating systems are potentially able to return a correct value for this method. On other operating systems, this value is undefined.
 	 * @return The underlying device transmit buffer size.
 	 */
 	public final int getDeviceWriteBufferSize() { return sendDeviceQueueSize; }
 
 	/**
 	 * Returns the underlying receive buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
+	 * <p>
+	 * Only Windows and Linux-based operating systems are potentially able to return a correct value for this method. On other operating systems, this value is undefined.
 	 * @return The underlying device receive buffer size.
 	 */
 	public final int getDeviceReadBufferSize() { return receiveDeviceQueueSize; }
@@ -1645,8 +1649,8 @@ public final class SerialPort
 			if (!eventListenerRunning)
 				return;
 			eventListenerRunning = false;
-			setEventListeningStatus(portHandle, false);
 			configTimeouts(portHandle, TIMEOUT_NONBLOCKING, 0, 0, 0);
+			setEventListeningStatus(portHandle, false);
 			
 			try
 			{
