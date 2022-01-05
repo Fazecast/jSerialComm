@@ -88,8 +88,8 @@ public class SerialPortTest
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
-		System.out.println("Re-enumerating ports again in 5 seconds...\n");
-		try { Thread.sleep(5000); } catch (Exception e) {}
+		System.out.println("Re-enumerating ports again in 2 seconds...\n");
+		try { Thread.sleep(2000); } catch (Exception e) {}
 		ports = SerialPort.getCommPorts();
 		System.out.println("Available Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
@@ -308,6 +308,29 @@ public class SerialPortTest
 		try { Thread.sleep(10000); } catch (Exception e) {}
 		ubxPort.removeDataListener();
 		System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+
+		/*System.out.println("\nPhysically unplug device within the next 10 seconds to see if the disconnect event fires...");
+		ubxPort.addDataListener(new SerialPortDataListener() {
+			@Override
+			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED | SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
+			@Override
+			public void serialEvent(SerialPortEvent event)
+			{
+				if (event.getEventType() == SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
+				{
+					System.out.println("Received event type: LISTENING_EVENT_DATA_AVAILABLE");
+					byte[] buffer = new byte[event.getSerialPort().bytesAvailable()];
+					event.getSerialPort().readBytes(buffer, buffer.length);
+					System.out.println("   Reading " + buffer.length + " bytes");
+				}
+				else
+				{
+					System.out.println("Received event type: LISTENING_EVENT_PORT_DISCONNECTED");
+				}
+			}
+		});
+		try { Thread.sleep(10000); } catch (Exception e) {}
+		ubxPort.closePort();*/
 
 		/*System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
 		System.out.println("\nAvailable Ports:\n");
