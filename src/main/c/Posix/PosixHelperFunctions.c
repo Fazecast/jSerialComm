@@ -61,7 +61,9 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	pthread_mutex_init(&port->eventMutex, NULL);
 	pthread_condattr_t conditionVariableAttributes;
 	pthread_condattr_init(&conditionVariableAttributes);
+#if !defined(__APPLE__)
 	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_MONOTONIC);
+#endif
 	pthread_cond_init(&port->eventReceived, &conditionVariableAttributes);
 	pthread_condattr_destroy(&conditionVariableAttributes);
 

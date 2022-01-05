@@ -79,6 +79,8 @@ jfieldID eventFlagsField;
 // List of available serial ports
 serialPortVector serialPorts = { NULL, 0, 0 };
 
+#if defined(__linux__) && !defined(__ANDROID__)
+
 // Event listening threads
 void* eventReadingThread1(void *serialPortPointer)
 {
@@ -179,6 +181,8 @@ void* eventReadingThread2(void *serialPortPointer)
 	}
 	return NULL;
 }
+
+#endif // #if defined(__linux__)
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
@@ -605,10 +609,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	{
 		// Initialize the local variables
 		int pollResult;
-		struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
 		short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : POLLERR;
 		struct pollfd waitingSet = { port->handle, pollEventsMask, 0 };
+#if defined(__linux__)
+		struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
 		ioctl(port->handle, TIOCGICOUNT, &oldSerialLineInterrupts);
+#endif // #if defined(__linux__)
 
 		// Wait for a serial port event
 		do
@@ -621,6 +627,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		// Return the detected port events
 		if (waitingSet.revents & POLLIN)
 			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+#if defined(__linux__)
 		if (waitingSet.revents & POLLERR)
 			if (!ioctl(port->handle, TIOCGICOUNT, &newSerialLineInterrupts))
 			{
@@ -635,6 +642,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 				if (oldSerialLineInterrupts.buf_overrun != newSerialLineInterrupts.buf_overrun)
 					event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR;
 			}
+#endif // #if defined(__linux__)
 	}
 	return event;
 }
@@ -790,6 +798,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListenin
 	// Create or cancel a separate event listening thread if required
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	port->eventListenerRunning = eventListenerRunning;
+#if defined(__linux__) && !defined(__ANDROID__)
 	if (eventListenerRunning && ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS) ||
 			(port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR)))
 	{
@@ -818,6 +827,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListenin
 		pthread_cancel(port->eventsThread2);
 		port->eventsThread2 = 0;
 	}
+#endif // #if defined(__linux__)
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
