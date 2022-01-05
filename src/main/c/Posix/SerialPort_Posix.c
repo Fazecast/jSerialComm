@@ -158,7 +158,9 @@ void* eventReadingThread2(void *serialPortPointer)
 
 		// Return the detected port events
 		pthread_mutex_lock(&port->eventMutex);
-		if (waitingSet.revents & POLLIN)
+		if (waitingSet.revents & POLLHUP)
+			port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
+		else if (waitingSet.revents & POLLIN)
 			port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
 		if (waitingSet.revents & POLLERR)
 			if (!ioctl(port->handle, TIOCGICOUNT, &newSerialLineInterrupts))
@@ -625,7 +627,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		while ((pollResult == 0) && port->eventListenerRunning);
 
 		// Return the detected port events
-		if (waitingSet.revents & POLLIN)
+		if (waitingSet.revents & POLLHUP)
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
+		else if (waitingSet.revents & POLLIN)
 			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
 #if defined(__linux__)
 		if (waitingSet.revents & POLLERR)

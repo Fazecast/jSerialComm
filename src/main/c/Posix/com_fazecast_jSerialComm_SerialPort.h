@@ -73,6 +73,8 @@ extern "C" {
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR 8388608L
 #undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PARITY_ERROR 16777216L
+#undef com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED
+#define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED 268435456L
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    getCommPorts

@@ -821,7 +821,7 @@ public final class SerialPort
 	 * Sets the BREAK signal on the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setBreak()   { return (portHandle > 0) && setBreak(portHandle); }
+	public final boolean setBreak() { return (portHandle > 0) && setBreak(portHandle); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
@@ -1187,6 +1187,9 @@ public final class SerialPort
 	 * It is important to note that non-Windows operating systems only allow decisecond (1/10th of a second) granularity for serial port timeouts. As such, your
 	 * millisecond timeout value will be rounded to the nearest decisecond under Linux or Mac OS. To ensure consistent performance across multiple platforms, it is
 	 * advisable that you set your timeout values to be multiples of 100, although this is not strictly enforced.
+	 * <p>
+	 * Also note that if the serial port has an event-based data listener actively registered for the event type {@link #LISTENING_EVENT_DATA_RECEIVED}, all serial port
+	 * timeout settings are ignored.
 	 *
 	 * @param newTimeoutMode The new timeout mode as specified above.
 	 * @param newReadTimeout The number of milliseconds of inactivity to tolerate before returning from a {@link #readBytes(byte[],long)} call.

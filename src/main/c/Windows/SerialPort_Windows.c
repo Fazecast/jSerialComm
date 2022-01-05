@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 17, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -602,8 +602,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		}
 		else		// Problem occurred
 		{
+			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
 			port->errorNumber = GetLastError();
-			port->errorLineNumber = __LINE__ - 16;
+			port->errorLineNumber = __LINE__ - 18;
 			CloseHandle(overlappedStruct.hEvent);
 			return event;
 		}
