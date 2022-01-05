@@ -2,10 +2,10 @@
  * SerialPortEvent.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Dec 17, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -50,6 +50,7 @@ public class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
@@ -62,12 +63,16 @@ public class SerialPortEvent extends EventObject
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
+	 * <p>
+	 * Also, most control line status and error events from {@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT} to {@link SerialPort#LISTENING_EVENT_PARITY_ERROR}
+	 * are unlikely to function the same across different operating systems or serial devices on the same operating system, if they work properly at all.
 	 * 
 	 * @param comPort The {@link SerialPort} about which this object is being created.
 	 * @param serialEventType The type of serial port event that this object describes.
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_PORT_DISCONNECTED
 	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
 	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
 	 * @see SerialPort#LISTENING_EVENT_CTS
@@ -93,6 +98,7 @@ public class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
@@ -105,6 +111,9 @@ public class SerialPortEvent extends EventObject
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
+	 * <p>
+	 * Also, most control line status and error events from {@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT} to {@link SerialPort#LISTENING_EVENT_PARITY_ERROR}
+	 * are unlikely to function the same across different operating systems or serial devices on the same operating system, if they work properly at all.
 	 * 
 	 * @param comPort The {@link SerialPort} about which this object is being created.
 	 * @param serialEventType The type of serial port event that this object describes.
@@ -112,6 +121,7 @@ public class SerialPortEvent extends EventObject
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_PORT_DISCONNECTED
 	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
 	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
 	 * @see SerialPort#LISTENING_EVENT_CTS
@@ -144,6 +154,7 @@ public class SerialPortEvent extends EventObject
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
@@ -156,11 +167,15 @@ public class SerialPortEvent extends EventObject
 	 * <p>
 	 * Note that event-based write callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
+	 * <p>
+	 * Also, most control line status and error events from {@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT} to {@link SerialPort#LISTENING_EVENT_PARITY_ERROR}
+	 * are unlikely to function the same across different operating systems or serial devices on the same operating system, if they work properly at all.
 	 * 
 	 * @return The serial port event that this object describes.
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_PORT_DISCONNECTED
 	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
 	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
 	 * @see SerialPort#LISTENING_EVENT_CTS

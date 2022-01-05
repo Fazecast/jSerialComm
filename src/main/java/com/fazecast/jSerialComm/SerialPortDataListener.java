@@ -2,10 +2,10 @@
  * SerialPortDataListener.java
  *
  *       Created on:  Feb 25, 2015
- *  Last Updated on:  Dec 17, 2021
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -44,6 +44,7 @@ public interface SerialPortDataListener extends EventListener
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}<br>
+	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_BREAK_INTERRUPT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CARRIER_DETECT}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_CTS}<br>
@@ -58,11 +59,17 @@ public interface SerialPortDataListener extends EventListener
 	 * <p>
 	 * Note that event-based <i>write</i> callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
+	 * <p>
+	 * It is recommended to <b>only</b> use the {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE}, {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED},
+	 * {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}, and/or {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED} listening events in production or cross-platform code
+	 * since underlying differences and lack of support for the control line status and error events among the various operating systems and device drivers make it
+	 * unlikely that code listening for these events will behave similarly across different serial devices or OS's, if it works at all.
 	 * 
 	 * @return The event constants that should trigger the {@link #serialEvent(SerialPortEvent)} callback.
 	 * @see SerialPort#LISTENING_EVENT_DATA_AVAILABLE
 	 * @see SerialPort#LISTENING_EVENT_DATA_RECEIVED
 	 * @see SerialPort#LISTENING_EVENT_DATA_WRITTEN
+	 * @see SerialPort#LISTENING_EVENT_PORT_DISCONNECTED
 	 * @see SerialPort#LISTENING_EVENT_BREAK_INTERRUPT
 	 * @see SerialPort#LISTENING_EVENT_CARRIER_DETECT
 	 * @see SerialPort#LISTENING_EVENT_CTS

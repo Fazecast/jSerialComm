@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 01, 2022
+ *  Last Updated on:  Jan 04, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -485,6 +485,7 @@ public final class SerialPort
 	static final public int LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR = 0x00400000;
 	static final public int LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR = 0x00800000;
 	static final public int LISTENING_EVENT_PARITY_ERROR = 0x01000000;
+	static final public int LISTENING_EVENT_PORT_DISCONNECTED = 0x10000000;
 
 	// Serial Port Parameters
 	private volatile long portHandle = -1;
@@ -914,7 +915,7 @@ public final class SerialPort
 	/**
 	 * Adds a {@link SerialPortDataListener} to the serial port interface.
 	 * <p>
-	 * Calling this function enables event-based serial port callbacks to be used instead of, or in addition to, direct serial port read/write calls or the {@link java.io.InputStream}/{@link java.io.OutputStream} interface.
+	 * Calling this function enables event-based serial port callbacks to be used instead of direct serial port read/write calls or the {@link java.io.InputStream}/{@link java.io.OutputStream} interface.
 	 * <p>
 	 * The parameter passed into this method must be an implementation of either {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions},
 	 * {@link SerialPortPacketListener}, {@link SerialPortMessageListener} or {@link SerialPortMessageListenerWithExceptions}.
