@@ -6,11 +6,11 @@
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <meta name="description" content="jSerialComm : Platform-independent serial port access for Java">
 
-	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
-	<script src="http://code.jquery.com/jquery-1.10.2.js"></script>
-	<script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
-	<script>$(function() { $( ".tabs" ).tabs(); });</script>
-	<link rel="shortcut icon" href="favicon.ico">
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script>$(function() { $( ".tabs" ).tabs(); });</script>
+    <link rel="shortcut icon" href="favicon.ico">
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
     <title>jSerialComm</title>
@@ -20,18 +20,18 @@
 
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/Fazecast/jSerialComm">View on GitHub</a>
+      <header class="inner">
+        <a id="forkme_banner" href="https://github.com/Fazecast/jSerialComm">View on GitHub</a>
 
-		  <img src="images/logo-with-title-white.png" width=319 height=55 style="border-style:none;box-shadow:none;margin:0;padding:0;" alt="jSerialComm"/>
-          <h2 id="project_tagline" style="margin-top:0;padding-top:0;">Platform-independent serial port access for Java</h2>
+        <img src="images/logo-with-title-white.png" width=319 height=55 style="border-style:none;box-shadow:none;margin:0;padding:0;" alt="jSerialComm"/>
+        <h2 id="project_tagline" style="margin-top:0;padding-top:0;">Platform-independent serial port access for Java</h2>
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/Fazecast/jSerialComm/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/Fazecast/jSerialComm/tarball/master">Download this project as a tar.gz file</a>
-			  <a class="jar_download_link" href="binaries/jSerialComm-2.8.0.jar">Download this library as a .jar file</a>
-            </section>
-        </header>
+        <section id="downloads">
+          <a class="zip_download_link" href="https://github.com/Fazecast/jSerialComm/zipball/master">Download this project as a .zip file</a>
+          <a class="tar_download_link" href="https://github.com/Fazecast/jSerialComm/tarball/master">Download this project as a tar.gz file</a>
+          <a class="jar_download_link" href="binaries/jSerialComm-2.8.0.jar">Download this library as a .jar file</a>
+        </section>
+      </header>
     </div>
 
     <!-- MAIN CONTENT -->
@@ -39,112 +39,112 @@
       <section id="main_content" class="inner">
         <h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>What is jSerialComm?</h3>
 
-		<p>jSerialComm is a Java library designed to provide a platform-independent way to access standard serial ports without requiring external libraries, native code, or any other tools. It is meant as an alternative to RxTx and the (deprecated) Java Communications API, with increased ease-of-use, an enhanced support for timeouts, and the ability to open multiple ports simultaneously.</p>
+        <p>jSerialComm is a Java library designed to provide a platform-independent way to access standard serial ports without requiring external libraries, native code, or any other tools. It is meant as an alternative to RxTx and the (deprecated) Java Communications API, with increased ease-of-use, an enhanced support for timeouts, and the ability to open multiple ports simultaneously.</p>
 
-		<p>Some of the features of this library include:</p>
+        <p>Some of the features of this library include:</p>
 
-		<ul>
-		  <li>Platform-independent library deployment (automatically uses correct native library based on current architecture)</li>
-		  <li>Very lightweight and efficient implementation</li>
-		  <li>Enumerates all available serial ports on a machine</li>
-		  <li>Returns both a system port description and a friendly device description</li>
-		  <li>User-specifiable port descriptors including symbolic links</li>
-		  <li>Configurable ports according to baud rate, data bits, stop bits, and parity</li>
-		  <li>Configurable port timeouts (blocking and non-blocking) for both reading and writing</li>
-		  <li>Configurable flow control parameters for the serial port (CTS, RTS/CTS, DSR, DTR/DSR, XOn/XOff)</li>
-		  <li>Ability to read and write raw data bytes directly to the serial port</li>
-		  <li>Ability to read and write byte streams via Java's <a href="http://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html" target="_blank">InputStream</a> and <a href="http://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html" target="_blank">OutputStream</a> interfaces</li>
-		  <li>Event-based reading and writing via callbacks</li>
-		  <li>Callback notification when:</li>
-		  <ul>
-		  	<li>New data is available for reading</li>
-		  	<li>All data has been successfully written</li>
-		  	<li>A complete fixed-length data packet has arrived</li>
-		  	<li>A delimited string-based message has been received</li>
-		  	<li>Modem control lines have changed state</li>
-		  	<li>Communication errors have been encountered</li>
-		  </ul>
-		</ul>
+        <ul>
+          <li>Platform-independent library deployment (automatically uses correct native library based on current architecture)</li>
+          <li>Very lightweight and efficient implementation</li>
+          <li>Enumerates all available serial ports on a machine</li>
+          <li>Returns both a system port description and a friendly device description</li>
+          <li>User-specifiable port descriptors including symbolic links</li>
+          <li>Configurable ports according to baud rate, data bits, stop bits, and parity</li>
+          <li>Configurable port timeouts (blocking and non-blocking) for both reading and writing</li>
+          <li>Configurable flow control parameters for the serial port (CTS, RTS/CTS, DSR, DTR/DSR, XOn/XOff)</li>
+          <li>Ability to read and write raw data bytes directly to the serial port</li>
+          <li>Ability to read and write byte streams via Java's <a href="//docs.oracle.com/javase/9/docs/api/java/io/InputStream.html" target="_blank">InputStream</a> and <a href="//docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html" target="_blank">OutputStream</a> interfaces</li>
+          <li>Event-based reading and writing via callbacks</li>
+          <li>Callback notification when:</li>
+          <ul>
+          	<li>New data is available for reading</li>
+          	<li>All data has been successfully written</li>
+          	<li>A complete fixed-length data packet has arrived</li>
+          	<li>A delimited string-based message has been received</li>
+          	<li>Modem control lines have changed state</li>
+          	<li>Communication errors have been encountered</li>
+          </ul>
+        </ul>
 
-		<p>Additionally, this library can be used in any Java project intended for use on the following platforms:</p>
+        <p>Additionally, this library can be used in any Java project intended for use on the following platforms:</p>
 
-		<ul>
-		  <li>Windows 7 and later (32-bit, 64-bit, and ARM)</li>
-		  <li>Mac OS X Tiger (10.4) and later (32/64-bit Intel and Apple Silicon)</li>
-		  <li>All Linux distributions (32/64-bit x86, ARM, and PowerPC)</li>
-		  <li>Solaris 10 and later (32/64-bit x86 and SPARC)</li>
-		  <li>FreeBSD (32/64-bit x86 and ARM64)</li>
-		  <li>ARM/Intel/AMD Mobile Linux derivatives (e.g. RaspberryPi, Beaglebone, etc.)</li>
-		</ul>
+        <ul>
+          <li>Windows 7 and later (32-bit, 64-bit, and ARM)</li>
+          <li>Mac OS X Tiger (10.4) and later (32/64-bit Intel and Apple Silicon)</li>
+          <li>All Linux distributions (32/64-bit x86, ARM, and PowerPC)</li>
+          <li>Solaris 10 and later (32/64-bit x86 and SPARC)</li>
+          <li>FreeBSD (32/64-bit x86 and ARM64)</li>
+          <li>ARM/Intel/AMD Mobile Linux derivatives (e.g. RaspberryPi, Beaglebone, etc.)</li>
+        </ul>
 
-		<h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>How can use this library in my own project?</h3>
+        <h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>How can use this library in my own project?</h3>
 
-		<p>One of the most convenient features of this library is that it allows you to simply include the <a href="binaries/jSerialComm-2.8.0.jar">JAR file</a> in your custom project, and it will automatically select and load the correct native library for your platform and architecture. As such, you can make use of this library by simply copying the jSerialComm.jar file into your project directory and linking to it as you would any other JAR file.</p>
+        <p>One of the most convenient features of this library is that it allows you to simply include the <a href="binaries/jSerialComm-2.8.0.jar">JAR file</a> in your custom project, and it will automatically select and load the correct native library for your platform and architecture. As such, you can make use of this library by simply copying the jSerialComm.jar file into your project directory and linking to it as you would any other JAR file.</p>
 
-		<p>To access the contents of the library in your project, make sure to <code>import com.fazecast.jSerialComm.*</code> into your java files. You can then generate a list of all available serial ports on your system (real or virtual), by calling the following static method:</p>
+        <p>To access the contents of the library in your project, make sure to <code>import com.fazecast.jSerialComm.*</code> into your java files. You can then generate a list of all available serial ports on your system (real or virtual), by calling the following static method:</p>
 
-		<pre><code>SerialPort.getCommPorts()</code></pre>
+        <pre><code>SerialPort.getCommPorts()</code></pre>
 
-		<p>This will return an array of SerialPort objects through which you can iterate. See the <a href="javadoc/index.html" target="_blank">Javadoc Library Reference</a> for a complete overview of this library and its methods. Alternately, if you already know the port descriptor of the port you wish to use (e.g., "/dev/ttyS0" or "COM3"), or if you are using this library with pseudo-terminals (e.g., "/dev/pts/14"), you can create a SerialPort object using the following static method:</p>
+        <p>This will return an array of SerialPort objects through which you can iterate. See the <a href="javadoc/index.html" target="_blank">Javadoc Library Reference</a> for a complete overview of this library and its methods. Alternately, if you already know the port descriptor of the port you wish to use (e.g., "/dev/ttyS0" or "COM3"), or if you are using this library with pseudo-terminals (e.g., "/dev/pts/14"), you can create a SerialPort object using the following static method:</p>
 
-		<pre><code>SerialPort.getCommPort(String portDescriptor)</code></pre>
+        <pre><code>SerialPort.getCommPort(String portDescriptor)</code></pre>
 
-		<p><i>Note for Linux users</i>: Serial port access is limited to certain users and groups in Linux. To enable user access, you must open a terminal and enter the following commands before jSerialComm will be able to access the ports on your system. Don't worry if some of the commands fail. All of these groups may not exist on every Linux distro. (Note, this process must only be done once for each user):</p>
+        <p><i>Note for Linux users</i>: Serial port access is limited to certain users and groups in Linux. To enable user access, you must open a terminal and enter the following commands before jSerialComm will be able to access the ports on your system. Don't worry if some of the commands fail. All of these groups may not exist on every Linux distro. (Note, this process must only be done once for each user):</p>
 
-		<pre><code>sudo usermod -a -G uucp username<br />sudo usermod -a -G dialout username<br />sudo usermod -a -G lock username<br />sudo usermod -a -G tty username</code></pre>
+        <pre><code>sudo usermod -a -G uucp username<br />sudo usermod -a -G dialout username<br />sudo usermod -a -G lock username<br />sudo usermod -a -G tty username</code></pre>
 
-		<p>Replace the username parameter with your current username. (If you are not sure what your username is, type <code>whoami</code> and it will tell you.) If you are using SUSE 11.3 or higher, replace the '-a -G' flags with a single '-A' flag. Log out and you should have access to the serial port after logging back in.</p>
+        <p>Replace the username parameter with your current username. (If you are not sure what your username is, type <code>whoami</code> and it will tell you.) If you are using SUSE 11.3 or higher, replace the '-a -G' flags with a single '-A' flag. Log out and you should have access to the serial port after logging back in.</p>
 
-		<p>Additionally, if you are using an automated build system (such as Maven), you can import this library directly into your project as a dependency from the Maven Central Repository instead of copying the .jar file manually. Use one of the following dependency declarations depending on the build system you are using:</p>
+        <p>Additionally, if you are using an automated build system (such as Maven), you can import this library directly into your project as a dependency from the Maven Central Repository instead of copying the .jar file manually. Use one of the following dependency declarations depending on the build system you are using:</p>
 
-		<div id="tabs-nohdr" class="tabs">
-		  <ul>
-		    <li><a href="#tabs-1">Maven</a></li>
-			<li><a href="#tabs-2">Ivy</a></li>
-			<li><a href="#tabs-3">Groovy</a></li>
-			<li><a href="#tabs-4">Gradle</a></li>
-			<li><a href="#tabs-5">Buildr</a></li>
-			<li><a href="#tabs-6">Scala/SBT</a></li>
-			<li><a href="#tabs-7">Leiningen</a></li>
-		  </ul>
-		  <div id="tabs-1">
-		    <pre><code>&lt;dependency&gt;<br />&nbsp;&nbsp;&nbsp;&lt;groupId&gt;com.fazecast&lt;/groupId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;artifactId&gt;jSerialComm&lt;/artifactId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;version&gt;[2.0.0,3.0.0)&lt;/version&gt;<br />&lt;/dependency&gt;</code></pre>
-		  </div>
-		  <div id="tabs-2">
-		    <pre><code>&lt;dependency org="com.fazecast" name="jSerialComm" rev="[2.0.0,3.0.0)"/&gt;</code></pre>
-		  </div>
-		  <div id="tabs-3">
-		    <pre><code>@Grab(group='com.fazecast', module='jSerialComm', version='[2.0.0,3.0.0)')</code></pre>
-		  </div>
-		  <div id="tabs-4">
-		    <pre><code>compile 'com.fazecast:jSerialComm:[2.0.0,3.0.0)'</code></pre>
-		  </div>
-		  <div id="tabs-5">
-		    <pre><code>compile.with 'com.fazecast:jSerialComm:jar:[2.0.0,3.0.0)'</code></pre>
-		  </div>
-		  <div id="tabs-6">
-		    <pre><code>libraryDependencies += "com.fazecast" % "jSerialComm" % "[2.0.0,3.0.0)"</code></pre>
-		  </div>
-		  <div id="tabs-7">
-		    <pre><code>[com.fazecast/jSerialComm "[2.0.0,3.0.0)"]</code></pre>
-		  </div>
-		</div>
+        <div id="tabs-nohdr" class="tabs">
+          <ul>
+            <li><a href="#tabs-1">Maven</a></li>
+          	<li><a href="#tabs-2">Ivy</a></li>
+          	<li><a href="#tabs-3">Groovy</a></li>
+          	<li><a href="#tabs-4">Gradle</a></li>
+          	<li><a href="#tabs-5">Buildr</a></li>
+          	<li><a href="#tabs-6">Scala/SBT</a></li>
+          	<li><a href="#tabs-7">Leiningen</a></li>
+          </ul>
+          <div id="tabs-1">
+            <pre><code>&lt;dependency&gt;<br />&nbsp;&nbsp;&nbsp;&lt;groupId&gt;com.fazecast&lt;/groupId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;artifactId&gt;jSerialComm&lt;/artifactId&gt;<br />&nbsp;&nbsp;&nbsp;&lt;version&gt;[2.0.0,3.0.0)&lt;/version&gt;<br />&lt;/dependency&gt;</code></pre>
+          </div>
+          <div id="tabs-2">
+            <pre><code>&lt;dependency org="com.fazecast" name="jSerialComm" rev="[2.0.0,3.0.0)"/&gt;</code></pre>
+          </div>
+          <div id="tabs-3">
+            <pre><code>@Grab(group='com.fazecast', module='jSerialComm', version='[2.0.0,3.0.0)')</code></pre>
+          </div>
+          <div id="tabs-4">
+            <pre><code>compile 'com.fazecast:jSerialComm:[2.0.0,3.0.0)'</code></pre>
+          </div>
+          <div id="tabs-5">
+            <pre><code>compile.with 'com.fazecast:jSerialComm:jar:[2.0.0,3.0.0)'</code></pre>
+          </div>
+          <div id="tabs-6">
+            <pre><code>libraryDependencies += "com.fazecast" % "jSerialComm" % "[2.0.0,3.0.0)"</code></pre>
+          </div>
+          <div id="tabs-7">
+            <pre><code>[com.fazecast/jSerialComm "[2.0.0,3.0.0)"]</code></pre>
+          </div>
+        </div>
 
-		<h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>Are there any usage examples?</h3>
+        <h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>Are there any usage examples?</h3>
 
-		<p>Although this library was designed to be as simple and flexible as possible, you can enable a number of different modes of operation via manipulation of the serial port timeout values and the interface through which you choose to access the serial port.</p>
+        <p>Although this library was designed to be as simple and flexible as possible, you can enable a number of different modes of operation via manipulation of the serial port timeout values and the interface through which you choose to access the serial port.</p>
 
-		<p>For a description of the various modes of operation available in this library, please refer to the <a href="https://github.com/Fazecast/jSerialComm/wiki/Modes-of-Operation" target="_blank">Modes of Operation</a> wiki article. For code-based examples of how to use this library in your own project, we provide a <a href="https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples" target="_blank">Usage Examples</a> wiki.</p>
+        <p>For a description of the various modes of operation available in this library, please refer to the <a href="https://github.com/Fazecast/jSerialComm/wiki/Modes-of-Operation" target="_blank">Modes of Operation</a> wiki article. For code-based examples of how to use this library in your own project, we provide a <a href="https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples" target="_blank">Usage Examples</a> wiki.</p>
 
-		<p>Finally, you can view the <a href="javadoc/index.html" target="_blank">API Documentation</a> for further information on how to use this library.</p>
+        <p>Finally, you can view the <a href="javadoc/index.html" target="_blank">API Documentation</a> for further information on how to use this library.</p>
 
-		<h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
+        <h3><a class="anchor" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
 
-		<p>This library was created and developed by Will Hedgecock (<a href="https://github.com/hedgecrw" class="user-mention">@willhedgecock</a>) of Fazecast, Inc. (<a href="https://github.com/fazecast" class="user-mention">@fazecast</a>)</p>
+        <p>This library was created and developed by Will Hedgecock (<a href="https://github.com/hedgecrw" class="user-mention">@willhedgecock</a>) of Fazecast, Inc. (<a href="https://github.com/fazecast" class="user-mention">@fazecast</a>)</p>
 
-		<h3><a class="anchor" ria-hidden="true"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
+        <h3><a class="anchor" ria-hidden="true"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
 
-		<p>Having trouble with this library? Check out the <a href="javadoc/index.html" target="_blank">documentation</a> or open an <a href="https://github.com/Fazecast/jSerialComm/issues" target="_blank">issue report</a> and we’ll help you sort it out.</p>
+        <p>Having trouble with this library? Check out the <a href="javadoc/index.html" target="_blank">documentation</a> or open an <a href="https://github.com/Fazecast/jSerialComm/issues" target="_blank">issue report</a> and we’ll help you sort it out.</p>
 
       </section>
     </div>
@@ -153,7 +153,7 @@
     <div id="footer_wrap" class="outer">
       <footer class="inner">
         <p class="copyright">The jSerialComm project is maintained by <a href="https://github.com/Fazecast">Fazecast, Inc.</a></p>
-		<p>Copyright &#169; <script>document.write(new Date().getFullYear());</script> Fazecast, Inc. All rights reserved.</p>
+        <p>Copyright &#169; <script>document.write(new Date().getFullYear());</script> Fazecast, Inc. All rights reserved.</p>
       </footer>
     </div>
 
