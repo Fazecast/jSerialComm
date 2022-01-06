@@ -57,7 +57,7 @@ public final class SerialPort
 	static
 	{
 		// Determine the temporary file directory for Java and remove any previous versions of this library
-		String OS = System.getProperty("os.name").toLowerCase();
+		String OS = System.getProperty("os.name").toLowerCase(), arch = System.getProperty("os.arch").toLowerCase();
 		String libraryPath = "", fileName = "", backupLibraryPath = "";
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
@@ -100,11 +100,11 @@ public final class SerialPort
 		}
 		else if (OS.indexOf("win") >= 0)
 		{
-			if (System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("arm64"))
+			if (arch.equals("aarch64") || arch.equals("arm64"))
 				libraryPath = "Windows/aarch64";
-			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
+			else if (arch.indexOf("arm") >= 0)
 				libraryPath = "Windows/armv7";
-			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			else if (arch.indexOf("64") >= 0)
 			{
 				libraryPath = "Windows/x86_64";
 				backupLibraryPath = "Windows/x86";
@@ -116,12 +116,12 @@ public final class SerialPort
 		}
 		else if (OS.indexOf("mac") >= 0)
 		{
-			if (System.getProperty("os.arch").equals("aarch64")) 
+			if (arch.equals("aarch64") || arch.equals("arm64")) 
 			{
 				libraryPath = "OSX/aarch64";
 				backupLibraryPath = "OSX/x86_64";
 			}
-			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			else if (arch.indexOf("64") >= 0)
 			{
 				libraryPath = "OSX/x86_64";
 				backupLibraryPath = "OSX/x86";
@@ -132,17 +132,30 @@ public final class SerialPort
 		}
 		else if ((OS.indexOf("sunos") >= 0) || (OS.indexOf("solaris") >= 0))
 		{
-			if (System.getProperty("os.arch").indexOf("64") >= 0)
-				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv9_64" : "Solaris/x86_64";
+			if (arch.indexOf("sparcv9") >= 0)
+			{
+				libraryPath = "Solaris/sparcv9_64";
+				backupLibraryPath = "Solaris/sparcv8plus_32";
+			}
+			else if (arch.indexOf("sparc") >= 0)
+				libraryPath = "Solaris/sparcv8plus_32";
+			else if (arch.indexOf("64") >= 0)
+			{
+				libraryPath = "Solaris/x86_64";
+				backupLibraryPath = "Solaris/x86";
+			}
 			else
-				libraryPath = (System.getProperty("os.arch").indexOf("sparc") >= 0) ? "Solaris/sparcv8plus_32" : "Solaris/x86";
+			{
+				libraryPath = "Solaris/x86";
+				backupLibraryPath = "Solaris/x86_64";
+			}
 			fileName = "libjSerialComm.so";
 		}
 		else if (OS.indexOf("bsd") >= 0)
 		{
-			if (System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("arm64"))
+			if (arch.equals("aarch64") || arch.equals("arm64"))
 				libraryPath = "FreeBSD/arm64";
-			if (System.getProperty("os.arch").indexOf("64") >= 0)
+			if (arch.indexOf("64") >= 0)
 			{
 				libraryPath = "FreeBSD/x86_64";
 				backupLibraryPath = "FreeBSD/x86";
@@ -155,7 +168,7 @@ public final class SerialPort
 		{
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				libraryPath = "Linux/" + System.getProperty("os.arch_full").toLowerCase();
-			else if (System.getProperty("os.arch").indexOf("arm") >= 0)
+			else if (arch.indexOf("arm") >= 0)
 			{
 				// Determine the specific ARM architecture of this device
 				try
@@ -197,8 +210,8 @@ public final class SerialPort
 					}
 					else
 					{
-						libraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "64" : "32";
-						backupLibraryPath += (System.getProperty("os.arch").indexOf("64") >= 0) ? "32" : "64";
+						libraryPath += (arch.indexOf("64") >= 0) ? "64" : "32";
+						backupLibraryPath += (arch.indexOf("64") >= 0) ? "32" : "64";
 					}
 				}
 				else
@@ -240,16 +253,16 @@ public final class SerialPort
 					catch (Exception e) { e.printStackTrace(); }
 				}
 			}
-			else if (System.getProperty("os.arch").indexOf("aarch32") >= 0)
+			else if (arch.indexOf("aarch32") >= 0)
 				libraryPath = "Linux/armv8_32";
-			else if (System.getProperty("os.arch").indexOf("aarch64") >= 0)
+			else if (arch.indexOf("aarch64") >= 0)
 			{
 				libraryPath = "Linux/armv8_64";
 				backupLibraryPath = "Linux/armv8_32";
 			}
-			else if (System.getProperty("os.arch").indexOf("ppc64le") >= 0)
+			else if (arch.indexOf("ppc64le") >= 0)
 				libraryPath = "Linux/ppc64le";
-			else if (System.getProperty("os.arch").indexOf("64") >= 0)
+			else if (arch.indexOf("64") >= 0)
 			{
 				libraryPath = "Linux/x86_64";
 				backupLibraryPath = "Linux/x86";
