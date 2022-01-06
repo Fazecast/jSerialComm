@@ -439,7 +439,7 @@ Small Device Styles
 }
 #tabs-nohdr .ui-tabs-nav {
     padding-left: 0px;
-	font-size: small;
+    font-size: small;
     background: transparent;
     border-width: 0px 0px 1px 0px;
     -moz-border-radius: 0px;
@@ -455,13 +455,13 @@ Small Device Styles
    padding: 0;
    overflow: hidden;
    box-shadow: none;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
-  -o-box-shadow: none;
-  -ms-box-shadow: none;
+   -webkit-box-shadow: none;
+   -moz-box-shadow: none;
+   -o-box-shadow: none;
+   -ms-box-shadow: none;
 }
 #tabs-nohdr code {
-   background: transparent;
-   padding: 0;
-   overflow: hidden;
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
 }
