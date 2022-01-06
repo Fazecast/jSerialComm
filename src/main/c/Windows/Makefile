@@ -1,12 +1,16 @@
 # Compiler tools, commands, and flags
-COMPILE_X86         := i686-w64-mingw32-gcc
-COMPILE_X64         := x86_64-w64-mingw32-gcc
-COMPILE_ARM         := armv7-w64-mingw32-gcc
-COMPILE_ARM64       := aarch64-w64-mingw32-gcc
-CFLAGS              := -Os -flto -static-libgcc -mdll -mconsole -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-LDFLAGS             := -Os -flto -static-libgcc -mconsole -shared -fuse-linker-plugin -s
-INCLUDES            := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/win32" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
-LIBRARIES           := -ladvapi32 -lsetupapi
+COMPILE_X86         := x86-pc-windows-msvc-cl
+COMPILE_X64         := x64-pc-windows-msvc-cl
+COMPILE_ARM         := aarch-pc-windows-msvc-cl
+COMPILE_ARM64       := aarch64-pc-windows-msvc-cl
+LINK_X86            := x86-pc-windows-msvc-link
+LINK_X64            := x64-pc-windows-msvc-link
+LINK_ARM            := aarch-pc-windows-msvc-link
+LINK_ARM64          := aarch64-pc-windows-msvc-link
+CFLAGS              := /c /O2 /GF /MT /EHsc /J /nologo /TC
+LDFLAGS             := /DLL /NOLOGO
+INCLUDES            := /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32" /I"$(JDK_HOME)/include/linux" /I"$(JDK_HOME)/include/darwin" /I"$(JDK_HOME)/include/solaris"
+LIBRARIES           := advapi32.lib setupapi.lib
 DELETE              := @rm
 MKDIR               := @mkdir
 COPY                := @cp
@@ -35,7 +39,7 @@ OBJECTSarm64        := $(BUILD_DIR)/aarch64/SerialPort_Windows.o $(BUILD_DIR)/aa
 # Define phony and suffix rules
 .PHONY: all win32 win64 winarm winarm64 checkdirs clean
 .SUFFIXES:
-.SUFFIXES: .cpp .c .o .class .java .h
+.SUFFIXES: .c .o .class .java .h
 
 # Default build target not possible due to different architecture compilers
 all : win32 win64 winarm winarm64
@@ -69,13 +73,13 @@ $(JAVA_CLASS_DIR) :
 
 # Build rules for all libraries
 $(BUILD_DIR)/x86/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
-	$(COMPILE_X86) $(LDFLAGS) -o $@ $(OBJECTSx86) $(LIBRARIES)
+	$(LINK_X86) $(LDFLAGS) /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
 $(BUILD_DIR)/x86_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx64)
-	$(COMPILE_X64) $(LDFLAGS) -o $@ $(OBJECTSx64) $(LIBRARIES)
+	$(LINK_X64) $(LDFLAGS) /OUT:$@ $(OBJECTSx64) $(LIBRARIES)
 $(BUILD_DIR)/armv7/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm)
-	$(COMPILE_ARM) $(LDFLAGS) -o $@ $(OBJECTSarm) $(LIBRARIES)
+	$(LINK_ARM) $(LDFLAGS) /OUT:$@ $(OBJECTSarm) $(LIBRARIES)
 $(BUILD_DIR)/aarch64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm64)
-	$(COMPILE_ARM64) $(LDFLAGS) -o $@ $(OBJECTSarm64) $(LIBRARIES)
+	$(LINK_ARM64) $(LDFLAGS) /OUT:$@ $(OBJECTSarm64) $(LIBRARIES)
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/x86/%.o : %.c

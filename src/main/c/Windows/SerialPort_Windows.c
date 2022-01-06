@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 04, 2022
+ *  Last Updated on:  Jan 06, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -121,14 +121,16 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
 						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
 				{
+					friendlyNameLength = comPortLength;
 					friendlyNameString = (wchar_t*)realloc(friendlyNameString, comPortLength);
-					wcscpy(friendlyNameString, comPortString);
+					wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
 				}
 			}
 			else
 			{
+				friendlyNameLength = comPortLength;
 				friendlyNameString = (wchar_t*)malloc(comPortLength);
-				wcscpy(friendlyNameString, comPortString);
+				wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
 			}
 
 			// Fetch the bus-reported device description
@@ -141,13 +143,13 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescriptionString, portDescriptionLength, NULL, 0))
 				{
 					portDescriptionString = (wchar_t*)realloc(portDescriptionString, friendlyNameLength);
-					wcscpy(portDescriptionString, friendlyNameString);
+					wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
 				}
 			}
 			else
 			{
 				portDescriptionString = (wchar_t*)malloc(friendlyNameLength);
-				wcscpy(portDescriptionString, friendlyNameString);
+				wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
 			}
 
 			// Fetch the physical location for this device
@@ -191,7 +193,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			if (portNumber == -1)
 				portNumber = 0;
 			locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
-			_snwprintf(locationString, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
+			_snwprintf_s(locationString, 32, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
 
 			// Check if port is already enumerated
 			serialPort *port = fetchPort(&serialPorts, comPortString);
@@ -204,10 +206,10 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 				if (oldLength != newLength)
 				{
 					port->portLocation = (wchar_t*)realloc(port->portLocation, (1 + newLength) * sizeof(wchar_t));
-					wcscpy(port->portLocation, locationString);
+					wcscpy_s(port->portLocation, 32, locationString);
 				}
 				else if (wcscmp(port->portLocation, locationString))
-					wcscpy(port->portLocation, locationString);
+					wcscpy_s(port->portLocation, 32, locationString);
 			}
 			else
 				pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
@@ -302,8 +304,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	{
 		// Create new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		wcscpy(comPort, L"\\\\.\\");
-		wcscat(comPort, serialPorts.ports[i]->portPath);
+		wcscpy_s(comPort, sizeof(comPort) / sizeof(wchar_t), L"\\\\.\\");
+		wcscat_s(comPort, sizeof(comPort) / sizeof(wchar_t), serialPorts.ports[i]->portPath);
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewString(env, (jchar*)comPort, wcslen(comPort)));
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->friendlyName, wcslen(serialPorts.ports[i]->friendlyName)));
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portDescription, wcslen(serialPorts.ports[i]->portDescription)));

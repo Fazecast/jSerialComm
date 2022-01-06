@@ -11,21 +11,25 @@ MKDIR           = @md
 COPY            = @copy /y
 MOVE            = @move /y
 PRINT           = @echo
-FULL_CLASS      = com.fazecast.jSerialComm.SerialPort
-JAVAC           = "$(JDK_HOME)\bin\javac"
-JFLAGS          = -source 1.6 -target 1.6 -Xlint:-options
+
+# Java and resource definitions
 LIBRARY_NAME    = jSerialComm.dll
-SOURCES         = SerialPort_Windows.c WindowsHelperFunctions.c
-JAVA_SOURCE_DIR = ..\..\..\..\src\main\java\com\fazecast\jSerialComm
+BUILD_DIR       = ..\..\..\..\build
 RESOURCE_DIR    = ..\..\..\..\src\main\resources\Windows
-BUILD_DIR       = ..\..\..\..\bin\Windows
-JAVA_CLASS_DIR  = $(BUILD_DIR)\..\com\fazecast\jSerialComm
+JAVA_SOURCE_DIR = ..\..\..\..\src\main\java\com\fazecast\jSerialComm
+FULL_CLASS      = com.fazecast.jSerialComm.SerialPort
+JAVA_CLASS_DIR  = $(BUILD_DIR)\com\fazecast\jSerialComm
+JNI_HEADER_FILE = com_fazecast_jSerialComm_SerialPort.h
+JNI_HEADER      = ..\$(JNI_HEADER_FILE)
+JAVA_CLASS      = $(JAVA_CLASS_DIR)\SerialPort.class
+JFLAGS          = -source 1.6 -target 1.6 -Xlint:-options
+JAVAC           = "$(JDK_HOME)\bin\javac"
+
+# Architecture-dependent library variables
 OBJECTSx86      = $(BUILD_DIR)\x86\SerialPort_Windows.obj $(BUILD_DIR)\x86\WindowsHelperFunctions.obj
 OBJECTSx86_64   = $(BUILD_DIR)\x86_64\SerialPort_Windows.obj $(BUILD_DIR)\x86_64\WindowsHelperFunctions.obj
 OBJECTSarmv7    = $(BUILD_DIR)\armv7\SerialPort_Windows.obj $(BUILD_DIR)\armv7\WindowsHelperFunctions.obj
 OBJECTSaarch64  = $(BUILD_DIR)\aarch64\SerialPort_Windows.obj $(BUILD_DIR)\aarch64\WindowsHelperFunctions.obj
-JNI_HEADER      = ..\com_fazecast_jSerialComm_SerialPort.h
-JAVA_CLASS      = $(JAVA_CLASS_DIR)\SerialPort.class
 
 # Define phony and suffix rules
 .PHONY: all win32 win64 winarm winarm64 checkdirs clean
@@ -40,33 +44,27 @@ all :
 	$(PRINT) NOTE: Before attempting to use this Makefile, make sure that you have called 'vcvarsall.bat' for your intended architecture. This file can normally be found in "C:\Program Files (x86)\Microsoft Visual Studio [version]\VC\".
 	$(PRINT).
 	$(PRINT) Example: To build 64-bit Windows libraries, you would call:
-	$(PRINT)     C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat x64
-	$(PRINT)     nmake win64
+	$(PRINT)     C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat x64
+	$(PRINT)     nmake -f Makefile.native win64
 	$(PRINT).
 
-# Builds 32-bit Windows libraries
+# Build architecture-specific Windows libraries
 win32 : $(BUILD_DIR)\x86 $(BUILD_DIR)\x86\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\x86\*.dll $(RESOURCE_DIR)\x86
-	$(DELETE) ..\*.h
-	$(RMDIR) $(BUILD_DIR)\..
-
-# Builds 64-bit Windows libraries
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(RMDIR) $(BUILD_DIR)
 win64 : $(BUILD_DIR)\x86_64 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\x86_64\*.dll $(RESOURCE_DIR)\x86_64
-	$(DELETE) ..\*.h
-	$(RMDIR) $(BUILD_DIR)\..
-
-# Builds armv7 Windows libraries
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(RMDIR) $(BUILD_DIR)
 winarm : $(BUILD_DIR)\armv7 $(BUILD_DIR)\armv7\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\armv7\*.dll $(RESOURCE_DIR)\armv7
-	$(DELETE) ..\*.h
-	$(RMDIR) $(BUILD_DIR)\..
-
-# Builds arm64 Windows libraries
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(RMDIR) $(BUILD_DIR)
 winarm64 : $(BUILD_DIR)\aarch64 $(BUILD_DIR)\aarch64\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\aarch64\*.dll $(RESOURCE_DIR)\aarch64
-	$(DELETE) ..\*.h
-	$(RMDIR) $(BUILD_DIR)\..
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(RMDIR) $(BUILD_DIR)
 	
 # Rule to create build directories
 $(BUILD_DIR)\x86 :
@@ -78,19 +76,13 @@ $(BUILD_DIR)\armv7 :
 $(BUILD_DIR)\aarch64 :
 	$(MKDIR) "$@"
 
-# Rule to build 32-bit library
+# Build rules for all libraries
 $(BUILD_DIR)\x86\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
 	$(LINK) $(LDFLAGS) /MACHINE:X86 /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
-
-# Rule to build 64-bit library
 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86_64)
 	$(LINK) $(LDFLAGS) /MACHINE:X64 /OUT:$@ $(OBJECTSx86_64) $(LIBRARIES)
-
-# Rule to build armv7 library
 $(BUILD_DIR)\armv7\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarmv7)
 	$(LINK) $(LDFLAGS) /MACHINE:ARM /OUT:$@ $(OBJECTSarmv7) $(LIBRARIES)
-
-# Rule to build arm64 library
 $(BUILD_DIR)\aarch64\$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSaarch64)
 	$(LINK) $(LDFLAGS) /MACHINE:ARM64 /OUT:$@ $(OBJECTSaarch64) $(LIBRARIES)
 
@@ -106,6 +98,7 @@ $(OBJECTSaarch64) :
 
 # Rule to build JNI header file
 $(JNI_HEADER) : $(JAVA_CLASS)
+	$(COPY) $@ .\
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :

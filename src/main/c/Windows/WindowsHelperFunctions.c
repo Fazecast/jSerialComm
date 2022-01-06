@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Dec 16, 2021
+ *  Last Updated on:  Jan 06, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -59,10 +59,10 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
 
 	// Store port strings
-	wcscpy(port->portPath, key);
-	wcscpy(port->portLocation, location);
-	wcscpy(port->friendlyName, friendlyName);
-	wcscpy(port->portDescription, description);
+	wcscpy_s(port->portPath, wcslen(key)+1, key);
+	wcscpy_s(port->portLocation, wcslen(location)+1, location);
+	wcscpy_s(port->friendlyName, wcslen(friendlyName)+1, friendlyName);
+	wcscpy_s(port->portDescription, wcslen(description)+1, description);
 
 	// Return the newly created serial port structure
 	return port;

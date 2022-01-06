@@ -88,7 +88,7 @@ public class SerialPortTest
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
 			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
-		System.out.println("Re-enumerating ports again in 2 seconds...\n");
+		System.out.println("\nRe-enumerating ports again in 2 seconds...\n");
 		try { Thread.sleep(2000); } catch (Exception e) {}
 		ports = SerialPort.getCommPorts();
 		System.out.println("Available Ports:\n");
