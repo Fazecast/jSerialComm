@@ -59,15 +59,21 @@ public final class SerialPort
 		// Determine the temporary file directory for Java and remove any previous versions of this library
 		String OS = System.getProperty("os.name").toLowerCase(), arch = System.getProperty("os.arch").toLowerCase();
 		String libraryPath = "", fileName = "", backupLibraryPath = "";
-		String tempFileDirectory = System.getProperty("java.io.tmpdir");
+		String tempFileDirectory = System.getProperty("java.io.tmpdir"), userHomeDirectory = System.getProperty("user.home");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
 			tempFileDirectory += "/";
+		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
+				userHomeDirectory += "/";
 
 		// Make sure to use appId to separate tmpdir directories if library is used by multiple modules so they don't erase each others' folders
 		tempFileDirectory += "jSerialComm/" + System.getProperty(tmpdirAppIdProperty, "");
+		userHomeDirectory += ".jSerialComm/" + System.getProperty(tmpdirAppIdProperty, "");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
 			tempFileDirectory += "/";
+		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
+			userHomeDirectory += "/";
 		deleteDirectory(new File(tempFileDirectory));
+		deleteDirectory(new File(userHomeDirectory));
 
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
@@ -110,7 +116,10 @@ public final class SerialPort
 				backupLibraryPath = "Windows/x86";
 			}
 			else
+			{
 				libraryPath = "Windows/x86";
+				backupLibraryPath = "Windows/x86_64";
+			}
 			isWindows = true;
 			fileName = "jSerialComm.dll";
 		}
@@ -280,79 +289,93 @@ public final class SerialPort
 		// Copy platform-specific binary to a temporary location
 		try
 		{
-			// Get path of native library and copy file to working directory with open permissions
-			File tempNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-" + fileName);
-			File tempBackupNativeLibrary = new File(tempFileDirectory + (new Date()).getTime() + "-backup-" + fileName);
-			tempNativeLibrary.getParentFile().mkdirs();
-			tempNativeLibrary.getParentFile().setReadable(true, false);
-			tempNativeLibrary.getParentFile().setWritable(true, false);
-			tempNativeLibrary.getParentFile().setExecutable(true, false);
-			tempBackupNativeLibrary.deleteOnExit();
-			tempNativeLibrary.deleteOnExit();
-
-			// Load the native jSerialComm library
-			InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
-			InputStream backupFileContents = backupLibraryPath.isEmpty() ? null : SerialPort.class.getResourceAsStream("/" + backupLibraryPath + "/" + fileName);
-			if ((fileContents == null) && isAndroid)
+			boolean libraryLoaded = false;
+			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
 			{
-				libraryPath = libraryPath.replace("Android/", "lib/");
-				fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
-			}
-			if (fileContents == null)
-			{
-				System.err.println("Could not locate or access the native jSerialComm shared library.");
-				System.err.println("If you are using multiple projects with interdependencies, you may need to fix your build settings to ensure that library resources are copied properly.");
-			}
-			else
-			{
-				// Copy the native library to the system temp directory
-				FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-				byte transferBuffer[] = new byte[4096];
-				int numBytesRead;
-				while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-					destinationFileContents.write(transferBuffer, 0, numBytesRead);
-				destinationFileContents.close();
-				fileContents.close();
-				tempNativeLibrary.setReadable(true, false);
-				tempNativeLibrary.setWritable(true, false);
-				tempNativeLibrary.setExecutable(true, false);
-
-				// Load primary native library
-				boolean libraryLoaded = true;
-				try { System.load(tempNativeLibrary.getAbsolutePath()); }
-				catch (UnsatisfiedLinkError e)
+				// Get path of native library and copy file to working directory with open permissions
+				File tempNativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + (new Date()).getTime() + "-" + fileName);
+				File tempBackupNativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + (new Date()).getTime() + "-backup-" + fileName);
+				if (tempNativeLibrary.getParentFile().mkdirs())
 				{
-					libraryLoaded = false;
-					if (backupFileContents == null)
-						throw new UnsatisfiedLinkError("Cannot load native library " + tempNativeLibrary.getAbsolutePath() + " with expected architecture: " + libraryPath);
+					tempNativeLibrary.getParentFile().setReadable(true, false);
+					tempNativeLibrary.getParentFile().setWritable(true, false);
+					tempNativeLibrary.getParentFile().setExecutable(true, false);
+					tempBackupNativeLibrary.deleteOnExit();
+					tempNativeLibrary.deleteOnExit();
 				}
-				
-				// Load backup native library upon error if available
-				if (backupFileContents != null)
+				else
+					continue;
+
+				// Load the native jSerialComm library
+				InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
+				InputStream backupFileContents = backupLibraryPath.isEmpty() ? null : SerialPort.class.getResourceAsStream("/" + backupLibraryPath + "/" + fileName);
+				if ((fileContents == null) && isAndroid)
 				{
-					if (!libraryLoaded)
+					libraryPath = libraryPath.replace("Android/", "lib/");
+					fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + fileName);
+				}
+				if (fileContents == null)
+				{
+					System.err.println("Could not locate or access the native jSerialComm shared library.");
+					System.err.println("If you are using multiple projects with interdependencies, you may need to fix your build settings to ensure that library resources are copied properly.");
+				}
+				else
+				{
+					// Copy the native library to the system temp directory
+					FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+					byte transferBuffer[] = new byte[4096];
+					int numBytesRead;
+					while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+						destinationFileContents.write(transferBuffer, 0, numBytesRead);
+					destinationFileContents.close();
+					fileContents.close();
+					tempNativeLibrary.setReadable(false, false);
+					tempNativeLibrary.setWritable(false, false);
+					tempNativeLibrary.setExecutable(true, false);
+
+					// Load primary native library
+					libraryLoaded = true;
+					try { System.load(tempNativeLibrary.getAbsolutePath()); }
+					catch (UnsatisfiedLinkError e)
 					{
-						// Copy the native library to the system temp directory
-						destinationFileContents = new FileOutputStream(tempBackupNativeLibrary);
-						while ((numBytesRead = backupFileContents.read(transferBuffer)) > 0)
-							destinationFileContents.write(transferBuffer, 0, numBytesRead);
-						destinationFileContents.close();
-						backupFileContents.close();
-						tempBackupNativeLibrary.setReadable(true, false);
-						tempBackupNativeLibrary.setWritable(true, false);
-						tempBackupNativeLibrary.setExecutable(true, false);
-						
-						// Load backup native library
-						try { System.load(tempBackupNativeLibrary.getAbsolutePath()); }
-						catch (UnsatisfiedLinkError e) { throw new UnsatisfiedLinkError("Cannot load native libraries " + tempNativeLibrary.getAbsolutePath() + " or " + tempBackupNativeLibrary.getAbsolutePath() + " with expected architectures: " + libraryPath + " or " + backupLibraryPath); }
+						libraryLoaded = false;
+						if ((backupFileContents == null) && (attempt > 0))
+							throw new UnsatisfiedLinkError("Cannot load native library " + tempNativeLibrary.getAbsolutePath() + " with expected architecture: " + libraryPath);
 					}
-					else
-						backupFileContents.close();
+
+					// Load backup native library upon error if available
+					if (backupFileContents != null)
+					{
+						if (!libraryLoaded)
+						{
+							// Copy the native library to the system temp directory
+							destinationFileContents = new FileOutputStream(tempBackupNativeLibrary);
+							while ((numBytesRead = backupFileContents.read(transferBuffer)) > 0)
+								destinationFileContents.write(transferBuffer, 0, numBytesRead);
+							destinationFileContents.close();
+							backupFileContents.close();
+							tempBackupNativeLibrary.setReadable(false, false);
+							tempBackupNativeLibrary.setWritable(false, false);
+							tempBackupNativeLibrary.setExecutable(true, false);
+
+							// Load backup native library
+							libraryLoaded = true;
+							try { System.load(tempBackupNativeLibrary.getAbsolutePath()); }
+							catch (UnsatisfiedLinkError e)
+							{
+								libraryLoaded = false;
+								if (attempt > 0)
+									throw new UnsatisfiedLinkError("Cannot load native libraries " + tempNativeLibrary.getAbsolutePath() + " or " + tempBackupNativeLibrary.getAbsolutePath() + " with expected architectures: " + libraryPath + " or " + backupLibraryPath);
+							}
+						}
+						else
+							backupFileContents.close();
+					}
+
+					// Initialize native library
+					if (libraryLoaded)
+						initializeLibrary();
 				}
-				
-				// Initialize native library
-				if (libraryLoaded)
-					initializeLibrary();
 			}
 		}
 		catch (Exception e) { e.printStackTrace(); }
