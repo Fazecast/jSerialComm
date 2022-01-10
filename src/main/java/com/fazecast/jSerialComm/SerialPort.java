@@ -329,7 +329,7 @@ public final class SerialPort
 						destinationFileContents.write(transferBuffer, 0, numBytesRead);
 					destinationFileContents.close();
 					fileContents.close();
-					tempNativeLibrary.setReadable(false, false);
+					tempNativeLibrary.setReadable(true, false);
 					tempNativeLibrary.setWritable(false, false);
 					tempNativeLibrary.setExecutable(true, false);
 
@@ -354,7 +354,7 @@ public final class SerialPort
 								destinationFileContents.write(transferBuffer, 0, numBytesRead);
 							destinationFileContents.close();
 							backupFileContents.close();
-							tempBackupNativeLibrary.setReadable(false, false);
+							tempBackupNativeLibrary.setReadable(true, false);
 							tempBackupNativeLibrary.setWritable(false, false);
 							tempBackupNativeLibrary.setExecutable(true, false);
 
