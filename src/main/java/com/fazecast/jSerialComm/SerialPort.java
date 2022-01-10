@@ -420,7 +420,7 @@ public final class SerialPort
 	 * @return A {@link SerialPort} object.
 	 * @throws SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
-	static public final SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
+	static public final SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException, IOException
 	{
 		// Correct port descriptor, if needed
 		try

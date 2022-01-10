@@ -25,6 +25,7 @@
 
 package com.fazecast.jSerialComm;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Scanner;
 
@@ -81,7 +82,7 @@ public class SerialPortTest
 		public boolean delimiterIndicatesEndOfMessage() { return false; }
 	}
 
-	static public void main(String[] args)
+	static public void main(String[] args) throws SerialPortInvalidPortException, IOException
 	{
 		System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
 		SerialPort[] ports = SerialPort.getCommPorts();
