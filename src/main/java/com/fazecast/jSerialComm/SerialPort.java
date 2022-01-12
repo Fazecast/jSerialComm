@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 06, 2022
+ *  Last Updated on:  Jan 11, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -524,7 +524,7 @@ public final class SerialPort
 	static final public int LISTENING_EVENT_PORT_DISCONNECTED = 0x10000000;
 
 	// Serial Port Parameters
-	private volatile long portHandle = -1;
+	private volatile long portHandle = 0;
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = ONE_STOP_BIT, parity = NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
 	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
@@ -687,7 +687,7 @@ public final class SerialPort
 	 * 
 	 * @return Source line of latest native code error.
 	 */
-	public final synchronized int getLastErrorLocation() { return (portHandle > 0) ? getLastErrorLocation(portHandle) : -1; }
+	public final synchronized int getLastErrorLocation() { return (portHandle != 0) ? getLastErrorLocation((portHandle > 0) ? portHandle : -portHandle) : -1; }
 	
 	/**
 	 * Returns the error number returned by the most recent native source code line that failed execution.
@@ -697,7 +697,7 @@ public final class SerialPort
 	 * 
 	 * @return Error number of the latest native code error.
 	 */
-	public final synchronized int getLastErrorCode() { return (portHandle > 0) ? getLastErrorCode(portHandle) : 0; }
+	public final synchronized int getLastErrorCode() { return (portHandle != 0) ? getLastErrorCode((portHandle > 0) ? portHandle : -portHandle) : 0; }
 
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code

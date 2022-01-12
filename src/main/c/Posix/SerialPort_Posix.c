@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 04, 2022
+ *  Last Updated on:  Jan 11, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -315,6 +315,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port || (port->handle > 0))
 	{
 		(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+		port->errorLineNumber = __LINE__ - 3;
+		port->errorNumber = (!port ? 1 : 2);
 		return 0;
 	}
 
@@ -352,7 +354,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 
 	// Return a pointer to the serial port data structure
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	return (port->handle > 0) ? (jlong)(intptr_t)port : 0;
+	return (port->handle > 0) ? (jlong)(intptr_t)port : -(jlong)(intptr_t)port;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -671,7 +673,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	while (close(port->handle) && (errno == EINTR))
 		errno = 0;
 	port->handle = -1;
-	return -1;
+	return 0;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(JNIEnv *env, jobject obj, jlong serialPortPointer)

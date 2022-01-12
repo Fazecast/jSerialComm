@@ -119,6 +119,7 @@ public class SerialPortTest
 		System.out.println("\nOpening " + ubxPort.getSystemPortName() + ": " + ubxPort.getDescriptivePortName() + " - " + ubxPort.getPortDescription() + ": " + openedSuccessfully);
 		if (!openedSuccessfully)
 		{
+			System.out.println("Error code was " + ubxPort.getLastErrorCode() + " at Line " + ubxPort.getLastErrorLocation());
 			inputScanner.close();
 			return;
 		}
