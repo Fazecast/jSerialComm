@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 11, 2022
+ *  Last Updated on:  Jan 13, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -474,7 +474,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
 		rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
 		rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
-		if (ioctl(port->handle, TIOCSRS485, &rs485Conf))
+		if (ioctl(port->handle, TIOCSRS485, &rs485Conf) && rs485ModeEnabled)
 		{
 			port->errorLineNumber = __LINE__ - 2;
 			port->errorNumber = errno;
@@ -663,7 +663,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	options.c_cc[VTIME] = 0;
 	fcntl(port->handle, F_SETFL, O_NONBLOCK);
 	tcsetattr(port->handle, TCSANOW, &options);
-	tcsetattr(port->handle, TCSANOW, &options);
 
 	// Unblock, unlock, and close the port
 	fsync(port->handle);
@@ -780,9 +779,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
-	int numBytesWritten, result = 0, ioctlResult = 0;
 
 	// Write to the port
+	int numBytesWritten;
 	do {
 		errno = 0;
 		port->errorLineNumber = __LINE__ + 1;
