@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 04, 2022
+ *  Last Updated on:  Jan 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -88,7 +88,7 @@ int flock(int fd, int op);
 void searchForComPorts(serialPortVector* comPorts);
 
 // FreeBSD-specific functionality
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
 typedef int baud_rate;
 void searchForComPorts(serialPortVector* comPorts);

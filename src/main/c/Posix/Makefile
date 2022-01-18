@@ -14,10 +14,13 @@ COMPILE_ANDROID             := ndk-build
 COMPILE_FREEBSD_X86         := clang -target i386-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/i386-unknown-freebsd11.2
 COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/x86_64-unknown-freebsd11.2
 COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/arm64-unknown-freebsd11.2
+COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/i386-unknown-openbsd6.2
+COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/amd64-unknown-openbsd6.2
 CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
 CFLAGS_APPLE                := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
 LDFLAGS_FREEBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
+LDFLAGS_OPENBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
 LDFLAGS_APPLE               := -Os -dynamiclib -flto -shared -fuse-linker-plugin
 JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
 INCLUDES                    := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
@@ -37,6 +40,7 @@ RESOURCE_DIR_LINUX          := ../../../../src/main/resources/Linux
 RESOURCE_DIR_SOLARIS        := ../../../../src/main/resources/Solaris
 RESOURCE_DIR_OSX            := ../../../../src/main/resources/OSX
 RESOURCE_DIR_FREEBSD        := ../../../../src/main/resources/FreeBSD
+RESOURCE_DIR_OPENBSD        := ../../../../src/main/resources/OpenBSD
 JAVA_SOURCE_DIR             := ../../../../src/main/java/com/fazecast/jSerialComm
 FULL_CLASS                  := com.fazecast.jSerialComm.SerialPort
 JAVA_CLASS_DIR              := $(BUILD_DIR)/com/fazecast/jSerialComm
@@ -63,6 +67,8 @@ OBJECTSsolarisSparc64       := $(BUILD_DIR)/solaris_sparc64/SerialPort_Posix.o $
 OBJECTSfreebsd32            := $(BUILD_DIR)/freebsd_x86/SerialPort_Posix.o $(BUILD_DIR)/freebsd_x86/PosixHelperFunctions.o
 OBJECTSfreebsd64            := $(BUILD_DIR)/freebsd_x86_64/SerialPort_Posix.o $(BUILD_DIR)/freebsd_x86_64/PosixHelperFunctions.o
 OBJECTSfreebsdArm64         := $(BUILD_DIR)/freebsd_arm64/SerialPort_Posix.o $(BUILD_DIR)/freebsd_arm64/PosixHelperFunctions.o
+OBJECTSopenbsd32            := $(BUILD_DIR)/openbsd_x86/SerialPort_Posix.o $(BUILD_DIR)/openbsd_x86/PosixHelperFunctions.o
+OBJECTSopenbsd64            := $(BUILD_DIR)/openbsd_amd64/SerialPort_Posix.o $(BUILD_DIR)/openbsd_amd64/PosixHelperFunctions.o
 OBJECTSosx86                := $(BUILD_DIR)/osx_x86/SerialPort_Posix.o $(BUILD_DIR)/osx_x86/PosixHelperFunctions.o
 OBJECTSosx64                := $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUILD_DIR)/osx_x86_64/PosixHelperFunctions.o
 OBJECTSosxaarch64           := $(BUILD_DIR)/osx_aarch64/SerialPort_Posix.o $(BUILD_DIR)/osx_aarch64/PosixHelperFunctions.o
@@ -83,18 +89,20 @@ FLAGSsolarisSparc64         := -mno-app-regs -mcpu=v9 -m64
 FLAGSfreebsd32              := -m32
 FLAGSfreebsd64              := -m64
 FLAGSfreebsdArm64           := -m64
+FLAGSopenbsd32              := -m32
+FLAGSopenbsd64              := -m64
 FLAGSosx86                  := -arch i386 -m32
 FLAGSosx64                  := -arch x86_64 -m64
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64 openbsd openbsd32 openbsd64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
 # Default build target does nothing
 all :
-	$(PRINT) You must specify either linux, arm, powerpc, solaris, freebsd, osx, or android!
+	$(PRINT) You must specify either linux, arm, powerpc, solaris, freebsd, openbsd, osx, or android!
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
@@ -121,6 +129,11 @@ solaris : solaris32 solaris64 solarisSparc32 solarisSparc64
 
 # Build all FreeBSD libraries
 freebsd : freebsd32 freebsd64 freebsdArm64
+	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
+	$(DELETE) -rf ../*.h
+
+# Build all OpenBSD libraries
+openbsd : openbsd32 openbsd64
 	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
 	$(DELETE) -rf ../*.h
 
@@ -190,6 +203,14 @@ freebsdArm64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/freebsd_arm64 $(BUILD_DIR)/freebsd
 	$(DELETE) -rf $(BUILD_DIR)/freebsd_arm64/*.o
 	$(COPY) $(BUILD_DIR)/freebsd_arm64/*.* $(RESOURCE_DIR_FREEBSD)/arm64/
 
+# Build architecture-specific OpenBSD libraries
+openbsd32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/openbsd_x86 $(BUILD_DIR)/openbsd_x86/$(LIBRARY_NAME_POSIX)
+	$(DELETE) -rf $(BUILD_DIR)/openbsd_x86/*.o
+	$(COPY) $(BUILD_DIR)/openbsd_x86/*.* $(RESOURCE_DIR_OPENBSD)/x86/
+openbsd64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/openbsd_amd64 $(BUILD_DIR)/openbsd_amd64/$(LIBRARY_NAME_POSIX)
+	$(DELETE) -rf $(BUILD_DIR)/openbsd_amd64/*.o
+	$(COPY) $(BUILD_DIR)/openbsd_amd64/*.* $(RESOURCE_DIR_OPENBSD)/amd64/
+
 # Build architecture-specific OSX libraries
 osx32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86 $(BUILD_DIR)/osx_x86/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86/*.o
@@ -240,6 +261,10 @@ $(BUILD_DIR)/freebsd_x86_64 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/freebsd_arm64 :
 	$(MKDIR) -p $@
+$(BUILD_DIR)/openbsd_x86 :
+	$(MKDIR) -p $@
+$(BUILD_DIR)/openbsd_amd64 :
+	$(MKDIR) -p $@
 $(BUILD_DIR)/osx_x86 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/osx_x86_64 :
@@ -284,6 +309,10 @@ $(BUILD_DIR)/freebsd_x86_64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSfreeb
 	$(COMPILE_FREEBSD_X86_64) $(LDFLAGS_FREEBSD) $(FLAGSfreebsd64) -o $@ $(OBJECTSfreebsd64) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/freebsd_arm64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSfreebsdArm64)
 	$(COMPILE_FREEBSD_ARM64) $(LDFLAGS_FREEBSD) $(FLAGSfreebsdArm64) -o $@ $(OBJECTSfreebsdArm64) $(LIBRARIES_POSIX)
+$(BUILD_DIR)/openbsd_x86/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSopenbsd32)
+	$(COMPILE_OPENBSD_X86) $(LDFLAGS_OPENBSD) $(FLAGSopenbsd32) -o $@ $(OBJECTSopenbsd32) $(LIBRARIES_POSIX)
+$(BUILD_DIR)/openbsd_amd64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSopenbsd64)
+	$(COMPILE_OPENBSD_X86_64) $(LDFLAGS_OPENBSD) $(FLAGSopenbsd64) -o $@ $(OBJECTSopenbsd64) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/osx_x86/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx86)
 	$(COMPILE_OSX_X86) $(LDFLAGS_APPLE) $(FLAGSosx86) -o $@ $(OBJECTSosx86) $(LIBRARIES_APPLE)
 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE) : $(JNI_HEADER) $(OBJECTSosx64)
@@ -326,6 +355,10 @@ $(BUILD_DIR)/freebsd_x86_64/%.o : %.c
 	$(COMPILE_FREEBSD_X86_64) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSfreebsd64) -c $< -o $@
 $(BUILD_DIR)/freebsd_arm64/%.o : %.c
 	$(COMPILE_FREEBSD_ARM64) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSfreebsdArm64) -c $< -o $@
+$(BUILD_DIR)/openbsd_x86/%.o : %.c
+	$(COMPILE_OPENBSD_X86) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSopenbsd32) -c $< -o $@
+$(BUILD_DIR)/openbsd_amd64/%.o : %.c
+	$(COMPILE_OPENBSD_X86_64) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSopenbsd64) -c $< -o $@
 $(BUILD_DIR)/osx_x86/%.o : %.c
 	$(COMPILE_OSX_X86) $(INCLUDES) $(CFLAGS_APPLE) $(FLAGSosx86) -c $< -o $@
 $(BUILD_DIR)/osx_x86_64/%.o : %.c

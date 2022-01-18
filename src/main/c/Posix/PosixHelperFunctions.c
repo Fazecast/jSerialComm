@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 04, 2022
+ *  Last Updated on:  Jan 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -61,7 +61,7 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	pthread_mutex_init(&port->eventMutex, NULL);
 	pthread_condattr_t conditionVariableAttributes;
 	pthread_condattr_init(&conditionVariableAttributes);
-#if !defined(__APPLE__)
+#if !defined(__APPLE__) && !defined(__OpenBSD__)
 	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_MONOTONIC);
 #endif
 	pthread_cond_init(&port->eventReceived, &conditionVariableAttributes);
@@ -1066,7 +1066,7 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 }
 
 // BSD-specific functionality
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
 char getPortLocation(const char *deviceName, char* portLocation)
 {

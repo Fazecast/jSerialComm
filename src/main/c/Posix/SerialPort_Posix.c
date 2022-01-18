@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
@@ -218,7 +219,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
 	lastDitchSearchForComPorts(&serialPorts);
 
-#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 	searchForComPorts(&serialPorts);
 
