@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 17, 2022
+ *  Last Updated on:  Jan 18, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -278,15 +278,15 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 							LONG comPortNumber = 0;
 							if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
 							{
-								// Reduce latency timer to minimum value of 2
-								FT_SetLatencyTimer(devInfo[i].ftHandle, 2);
-
-								// Update port description if COM port is actually connected and present in the port list
-								FT_Close(devInfo[i].ftHandle);
+								// Check if COM port is actually connected and present in the port list
 								swprintf(comPort, sizeof(comPort) / sizeof(wchar_t), L"COM%ld", comPortNumber);
 								for (int j = 0; j < serialPorts.length; ++j)
 									if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
 									{
+										// Reduce latency timer to minimum value of 2
+										FT_SetLatencyTimer(devInfo[i].ftHandle, 2);
+
+										// Update the port description
 										serialPorts.ports[j]->enumerated = 1;
 										size_t descLength = 8+strlen(devInfo[i].Description);
 										wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
@@ -298,6 +298,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 										memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
 										break;
 									}
+								FT_Close(devInfo[i].ftHandle);
 							}
 						}
 					}
