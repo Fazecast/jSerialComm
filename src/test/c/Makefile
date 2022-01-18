@@ -35,6 +35,8 @@ $(BUILD_DIR) :
 # Build rules for all tests
 testOpenClose : $(BUILD_DIR)/testOpenClose.o $(BUILD_DIR)/PosixHelperFunctions.o
 	$(COMPILE) $(LDFLAGS) $(LIBRARIES) -o $@ $^
+testRS485 : $(BUILD_DIR)/testRS485.o
+	$(COMPILE) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 testEnumeratePosix : $(BUILD_DIR)/testEnumeratePosix.o $(BUILD_DIR)/PosixHelperFunctions.o
 	$(COMPILE) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 testEnumerateWindows : $(BUILD_DIR)/testEnumerateWindows.o $(BUILD_DIR)/WindowsHelperFunctions.o
