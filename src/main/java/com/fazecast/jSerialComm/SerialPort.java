@@ -160,17 +160,34 @@ public final class SerialPort
 			}
 			fileName = "libjSerialComm.so";
 		}
-		else if (OS.indexOf("bsd") >= 0)
+		else if (OS.indexOf("freebsd") >= 0)
 		{
 			if (arch.equals("aarch64") || arch.equals("arm64"))
 				libraryPath = "FreeBSD/arm64";
-			if (arch.indexOf("64") >= 0)
+			else if (arch.indexOf("64") >= 0)
 			{
 				libraryPath = "FreeBSD/x86_64";
 				backupLibraryPath = "FreeBSD/x86";
 			}
 			else
+			{
 				libraryPath = "FreeBSD/x86";
+				backupLibraryPath = "FreeBSD/x86_64";
+			}
+			fileName = "libjSerialComm.so";
+		}
+		else if (OS.indexOf("openbsd") >= 0)
+		{
+			if (arch.indexOf("64") >= 0)
+			{
+				libraryPath = "OpenBSD/amd64";
+				backupLibraryPath = "OpenBSD/x86";
+			}
+			else
+			{
+				libraryPath = "OpenBSD/x86";
+				backupLibraryPath = "OpenBSD/amd64";
+			}
 			fileName = "libjSerialComm.so";
 		}
 		else if ((OS.indexOf("nix") >= 0) || (OS.indexOf("nux") >= 0))
