@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 11, 2022
+ *  Last Updated on:  Jan 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -43,14 +43,14 @@ import java.util.Date;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.8.2
+ * @version 2.8.3
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	static private final String versionString = "2.8.2";
+	static private final String versionString = "2.8.3";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private volatile boolean isAndroid = false;
 	static private volatile boolean isWindows = false;
@@ -560,7 +560,7 @@ public final class SerialPort
 			safetySleepTimeMS = safetySleepTime;
 			sendDeviceQueueSize = (deviceSendQueueSize > 0) ? deviceSendQueueSize : sendDeviceQueueSize;
 			receiveDeviceQueueSize = (deviceReceiveQueueSize > 0) ? deviceReceiveQueueSize : receiveDeviceQueueSize;
-			if (portHandle > 0)
+			if (portHandle != 0)
 				return configPort(portHandle);
 	
 			// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
@@ -600,12 +600,12 @@ public final class SerialPort
 			}
 	
 			// Open the serial port and start an event-based listener if registered
-			if ((portHandle = openPortNative()) > 0)
+			if ((portHandle = openPortNative()) != 0)
 			{
 				if (serialEventListener != null)
 					serialEventListener.startListening();
 			}
-			return (portHandle > 0);
+			return (portHandle != 0);
         }
 	}
 
@@ -648,9 +648,9 @@ public final class SerialPort
         {
 			if (serialEventListener != null)
 				serialEventListener.stopListening();
-			if (portHandle > 0)
+			if (portHandle != 0)
 				portHandle = closePortNative(portHandle);
-			return (portHandle <= 0);
+			return (portHandle == 0);
         }
 	}
 
@@ -659,7 +659,7 @@ public final class SerialPort
 	 *
 	 * @return Whether the port is opened.
 	 */
-	public final synchronized boolean isOpen() { return (portHandle > 0); }
+	public final synchronized boolean isOpen() { return (portHandle != 0); }
 
 	/**
 	 * Disables the library from calling any of the underlying device driver configuration methods.
@@ -687,7 +687,7 @@ public final class SerialPort
 	 * 
 	 * @return Source line of latest native code error.
 	 */
-	public final synchronized int getLastErrorLocation() { return (portHandle != 0) ? getLastErrorLocation((portHandle > 0) ? portHandle : -portHandle) : -1; }
+	public final synchronized int getLastErrorLocation() { return getLastErrorLocation(portHandle); }
 	
 	/**
 	 * Returns the error number returned by the most recent native source code line that failed execution.
@@ -697,7 +697,7 @@ public final class SerialPort
 	 * 
 	 * @return Error number of the latest native code error.
 	 */
-	public final synchronized int getLastErrorCode() { return (portHandle != 0) ? getLastErrorCode((portHandle > 0) ? portHandle : -portHandle) : 0; }
+	public final synchronized int getLastErrorCode() { return getLastErrorCode(portHandle); }
 
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
@@ -738,7 +738,7 @@ public final class SerialPort
 	 *
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
-	public final int bytesAvailable() { return (portHandle > 0) ? bytesAvailable(portHandle) : -1; }
+	public final int bytesAvailable() { return (portHandle != 0) ? bytesAvailable(portHandle) : -1; }
 
 	/**
 	 * Returns the number of bytes still waiting to be written in the device's output queue.
@@ -747,7 +747,7 @@ public final class SerialPort
 	 *
 	 * @return The number of bytes currently waiting to be written, or -1 if the port is not open.
 	 */
-	public final int bytesAwaitingWrite() { return (portHandle > 0) ? bytesAwaitingWrite(portHandle) : -1; }
+	public final int bytesAwaitingWrite() { return (portHandle != 0) ? bytesAwaitingWrite(portHandle) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
@@ -762,7 +762,7 @@ public final class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, long bytesToRead) { return (portHandle > 0) ? readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout) : -1; }
+	public final int readBytes(byte[] buffer, long bytesToRead) { return (portHandle != 0) ? readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
@@ -778,7 +778,7 @@ public final class SerialPort
 	 * @param offset The read buffer index into which to begin storing data.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, long bytesToRead, long offset) { return (portHandle > 0) ? readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout) : -1; }
+	public final int readBytes(byte[] buffer, long bytesToRead, long offset) { return (portHandle != 0) ? readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout) : -1; }
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -797,7 +797,7 @@ public final class SerialPort
 	{
 		// Write to the serial port until all bytes have been consumed
 		int totalNumWritten = 0;
-		while ((portHandle > 0) && (totalNumWritten != bytesToWrite))
+		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
 		{
 			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode);
 			if (numWritten > 0)
@@ -805,7 +805,7 @@ public final class SerialPort
 			else
 				break;
 		}
-		return ((portHandle > 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
+		return ((portHandle != 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
 	}
 
 	/**
@@ -826,7 +826,7 @@ public final class SerialPort
 	{
 		// Write to the serial port until all bytes have been consumed
 		int totalNumWritten = 0;
-		while ((portHandle > 0) && (totalNumWritten != bytesToWrite))
+		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
 		{
 			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
 			if (numWritten > 0)
@@ -834,7 +834,7 @@ public final class SerialPort
 			else
 				break;
 		}
-		return ((portHandle > 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
+		return ((portHandle != 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
 	}
 	
 	/**
@@ -857,13 +857,13 @@ public final class SerialPort
 	 * Sets the BREAK signal on the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setBreak() { return (portHandle > 0) && setBreak(portHandle); }
+	public final boolean setBreak() { return (portHandle != 0) && setBreak(portHandle); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean clearBreak() { return (portHandle > 0) && clearBreak(portHandle); }
+	public final boolean clearBreak() { return (portHandle != 0) && clearBreak(portHandle); }
 
 	/**
 	 * Sets the state of the RTS line to 1.
@@ -872,7 +872,7 @@ public final class SerialPort
 	public final boolean setRTS()
 	{
 		isRtsEnabled = true;
-		return (portHandle > 0) ? setRTS(portHandle) : presetRTS();
+		return (portHandle != 0) ? setRTS(portHandle) : presetRTS();
 	}
 
 	/**
@@ -882,7 +882,7 @@ public final class SerialPort
 	public final boolean clearRTS()
 	{
 		isRtsEnabled = false;
-		return (portHandle > 0) ? clearRTS(portHandle) : preclearRTS();
+		return (portHandle != 0) ? clearRTS(portHandle) : preclearRTS();
 	}
 
 	/**
@@ -892,7 +892,7 @@ public final class SerialPort
 	public final boolean setDTR()
 	{
 		isDtrEnabled = true;
-		return (portHandle > 0) ? setDTR(portHandle) : presetDTR();
+		return (portHandle != 0) ? setDTR(portHandle) : presetDTR();
 	}
 
 	/**
@@ -902,26 +902,26 @@ public final class SerialPort
 	public final boolean clearDTR()
 	{
 		isDtrEnabled = false;
-		return (portHandle > 0) ? clearDTR(portHandle) : preclearDTR();
+		return (portHandle != 0) ? clearDTR(portHandle) : preclearDTR();
 	}
 
 	/**
 	 * Returns whether the CTS line is currently asserted.
 	 * @return Whether or not the CTS line is asserted.
 	 */
-	public final boolean getCTS() { return (portHandle > 0) && getCTS(portHandle); }
+	public final boolean getCTS() { return (portHandle != 0) && getCTS(portHandle); }
 
 	/**
 	 * Returns whether the DSR line is currently asserted.
 	 * @return Whether or not the DSR line is asserted.
 	 */
-	public final boolean getDSR() { return (portHandle > 0) && getDSR(portHandle); }
+	public final boolean getDSR() { return (portHandle != 0) && getDSR(portHandle); }
 	
 	/**
 	 * Returns whether the DCD line is currently asserted.
 	 * @return Whether or not the DCD line is asserted.
 	 */
-	public final boolean getDCD() { return (portHandle > 0) && getDCD(portHandle); }
+	public final boolean getDCD() { return (portHandle != 0) && getDCD(portHandle); }
 
 	/**
 	 * Returns whether the DTR line is currently asserted.
@@ -929,7 +929,7 @@ public final class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the DTR line is asserted.
 	 */
-	public final boolean getDTR() { return (portHandle > 0) && getDTR(portHandle); }
+	public final boolean getDTR() { return (portHandle != 0) && getDTR(portHandle); }
 
 	/**
 	 * Returns whether the RTS line is currently asserted.
@@ -937,13 +937,13 @@ public final class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the RTS line is asserted.
 	 */
-	public final boolean getRTS() { return (portHandle > 0) && getRTS(portHandle); }
+	public final boolean getRTS() { return (portHandle != 0) && getRTS(portHandle); }
 
 	/**
 	 * Returns whether the RI line is currently asserted.
 	 * @return Whether or not the RI line is asserted.
 	 */
-	public final boolean getRI() { return (portHandle > 0) && getRI(portHandle); }
+	public final boolean getRI() { return (portHandle != 0) && getRI(portHandle); }
 
 	// Default Constructor
 	private SerialPort() {}
@@ -982,7 +982,7 @@ public final class SerialPort
 			((userDataListener instanceof SerialPortMessageListener) ?
 					new SerialPortEventListener(((SerialPortMessageListener)userDataListener).getMessageDelimiter(), ((SerialPortMessageListener)userDataListener).delimiterIndicatesEndOfMessage()) :
 						new SerialPortEventListener()));
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
 			serialEventListener.startListening();
@@ -1095,7 +1095,7 @@ public final class SerialPort
 	{
 		autoFlushIOBuffers = true;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 			return flushRxTxBuffers(portHandle);
 		return true;
 	}
@@ -1174,7 +1174,7 @@ public final class SerialPort
 		parity = newParity;
 		rs485Mode = useRS485Mode;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1245,7 +1245,7 @@ public final class SerialPort
 		else
 			readTimeout = Math.round((float)newReadTimeout / 100.0f) * 100;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1266,7 +1266,7 @@ public final class SerialPort
 	{
 		baudRate = newBaudRate;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1287,7 +1287,7 @@ public final class SerialPort
 	{
 		dataBits = newDataBits;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1314,7 +1314,7 @@ public final class SerialPort
 	{
 		stopBits = newStopBits;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1362,7 +1362,7 @@ public final class SerialPort
 	{
 		flowControl = newFlowControlSettings;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1389,7 +1389,7 @@ public final class SerialPort
 	{
 		parity = newParity;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1449,7 +1449,7 @@ public final class SerialPort
 		rs485DelayBefore = delayBeforeSendMicroseconds;
 		rs485DelayAfter = delayAfterSendMicroseconds;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1474,7 +1474,7 @@ public final class SerialPort
 		xonStartChar = xonStartCharacter;
 		xoffStopChar = xoffStopCharacter;
 
-		if (portHandle > 0)
+		if (portHandle != 0)
 		{
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
@@ -1778,7 +1778,7 @@ public final class SerialPort
 		@Override
 		public final int available() throws SerialPortIOException
 		{
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			return bytesAvailable(portHandle);
 		}
@@ -1787,7 +1787,7 @@ public final class SerialPort
 		public final int read() throws SerialPortIOException, SerialPortTimeoutException
 		{
 			// Perform error checking
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 
 			// Read from the serial port
@@ -1808,7 +1808,7 @@ public final class SerialPort
 			// Perform error checking
 			if (b == null)
 				throw new NullPointerException("A null pointer was passed in for the read buffer.");
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			if (b.length == 0)
 				return 0;
@@ -1828,7 +1828,7 @@ public final class SerialPort
 				throw new NullPointerException("A null pointer was passed in for the read buffer.");
 			if ((len < 0) || (off < 0) || (len > (b.length - off)))
 				throw new IndexOutOfBoundsException("The specified read offset plus length extends past the end of the specified buffer.");
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			if ((b.length == 0) || (len == 0))
 				return 0;
@@ -1843,7 +1843,7 @@ public final class SerialPort
 		@Override
 		public final long skip(long n) throws SerialPortIOException
 		{
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			byte[] buffer = new byte[(int)n];
 			return readBytes(portHandle, buffer, n, 0, timeoutMode, readTimeout);
@@ -1860,7 +1860,7 @@ public final class SerialPort
 		@Override
 		public final void write(int b) throws SerialPortIOException, SerialPortTimeoutException
 		{
-			if (portHandle <= 0)
+			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			byteBuffer[0] = (byte)(b & 0xFF);
 			int bytesWritten = writeBytes(portHandle, byteBuffer, 1L, 0, timeoutMode);
@@ -1890,7 +1890,7 @@ public final class SerialPort
 			while (totalNumWritten != len)
 			{
 				// Always ensure that the port has not been closed
-				if (portHandle <= 0)
+				if (portHandle == 0)
 					throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 				
 				// Write the actual bytes to the serial port

@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 13, 2022
+ *  Last Updated on:  Jan 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -43,6 +43,7 @@
 #include "PosixHelperFunctions.h"
 
 // Cached class, method, and field IDs
+jclass jniErrorClass;
 jclass serialCommClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortFdField;
@@ -79,6 +80,23 @@ jfieldID eventFlagsField;
 // List of available serial ports
 serialPortVector serialPorts = { NULL, 0, 0 };
 
+// JNI exception handler
+char jniErrorMessage[64] = { 0 };
+int lastErrorLineNumber = 0, lastErrorNumber = 0;
+static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
+{
+	// Check if a JNI exception has been thrown
+	if ((*env)->ExceptionCheck(env))
+	{
+		(*env)->ExceptionDescribe(env);
+		(*env)->ExceptionClear(env);
+		snprintf(jniErrorMessage, sizeof(jniErrorMessage), "Native exception thrown at line %d", lineNumber);
+		(*env)->ThrowNew(env, jniErrorClass, jniErrorMessage);
+		return JNI_TRUE;
+	}
+	return JNI_FALSE;
+}
+
 #if defined(__linux__) && !defined(__ANDROID__)
 
 // Event listening threads
@@ -86,7 +104,7 @@ void* eventReadingThread1(void *serialPortPointer)
 {
 	// Make this thread immediately and asynchronously cancellable
 	int oldValue;
-	serialPort *port = (serialPort*)serialPortPointer;
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldValue);
 
@@ -134,7 +152,7 @@ void* eventReadingThread2(void *serialPortPointer)
 {
 	// Make this thread immediately and asynchronously cancellable
 	int oldValue;
-	serialPort *port = (serialPort*)serialPortPointer;
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldValue);
 	struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;
@@ -216,17 +234,24 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 	// Create a Java-based port listing
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
+	if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		// Create a new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portDescription));
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, serialPorts.ports[i]->friendlyName));
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portPath));
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portLocation));
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
+		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 	}
 	return arrayObject;
 }
@@ -234,40 +259,73 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrary(JNIEnv *env, jclass serialComm)
 {
 	// Cache class and method ID as global references
+	jniErrorClass = (*env)->FindClass(env, "java/lang/Exception");
 	serialCommClass = (jclass)(*env)->NewGlobalRef(env, serialComm);
+	if (checkJniError(env, __LINE__ - 1)) return;
 	serialCommConstructor = (*env)->GetMethodID(env, serialCommClass, "<init>", "()V");
+	if (checkJniError(env, __LINE__ - 1)) return;
 
 	// Cache Java fields as global references
 	serialPortFdField = (*env)->GetFieldID(env, serialCommClass, "portHandle", "J");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	comPortField = (*env)->GetFieldID(env, serialCommClass, "comPort", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	autoFlushIOBuffersField = (*env)->GetFieldID(env, serialCommClass, "autoFlushIOBuffers", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	baudRateField = (*env)->GetFieldID(env, serialCommClass, "baudRate", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	dataBitsField = (*env)->GetFieldID(env, serialCommClass, "dataBits", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	stopBitsField = (*env)->GetFieldID(env, serialCommClass, "stopBits", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	parityField = (*env)->GetFieldID(env, serialCommClass, "parity", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	flowControlField = (*env)->GetFieldID(env, serialCommClass, "flowControl", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	disableExclusiveLockField = (*env)->GetFieldID(env, serialCommClass, "disableExclusiveLock", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485EnableTerminationField = (*env)->GetFieldID(env, serialCommClass, "rs485EnableTermination", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485RxDuringTxField = (*env)->GetFieldID(env, serialCommClass, "rs485RxDuringTx", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485DelayBeforeField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayBefore", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485DelayAfterField = (*env)->GetFieldID(env, serialCommClass, "rs485DelayAfter", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	xonStartCharField = (*env)->GetFieldID(env, serialCommClass, "xonStartChar", "B");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	xoffStopCharField = (*env)->GetFieldID(env, serialCommClass, "xoffStopChar", "B");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	timeoutModeField = (*env)->GetFieldID(env, serialCommClass, "timeoutMode", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	readTimeoutField = (*env)->GetFieldID(env, serialCommClass, "readTimeout", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	writeTimeoutField = (*env)->GetFieldID(env, serialCommClass, "writeTimeout", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	eventFlagsField = (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
 
 	// Disable handling of various POSIX signals
 	sigset_t blockMask;
@@ -294,16 +352,22 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 
 	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
+	checkJniError(env, __LINE__ - 1);
 }
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(JNIEnv *env, jobject obj)
 {
 	// Retrieve the serial port parameter fields
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableExclusiveLock = (*env)->GetBooleanField(env, obj, disableExclusiveLockField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 
 	// Ensure that the serial port still exists and is not already open
 	serialPort *port = fetchPort(&serialPorts, portName);
@@ -315,20 +379,21 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port || (port->handle > 0))
 	{
 		(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-		port->errorLineNumber = __LINE__ - 3;
-		port->errorNumber = (!port ? 1 : 2);
+		checkJniError(env, __LINE__ - 1);
+		lastErrorLineNumber = __LINE__ - 3;
+		lastErrorNumber = (!port ? 1 : 2);
 		return 0;
 	}
 
 	// Try to open the serial port with read/write access
-	port->errorLineNumber = __LINE__ + 1;
+	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
 	if ((port->handle = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC)) > 0)
 	{
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (!disableExclusiveLock && flock(port->handle, LOCK_EX | LOCK_NB))
 		{
-			port->errorLineNumber = __LINE__ - 2;
-			port->errorNumber = errno;
+			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+			port->errorNumber = lastErrorNumber = errno;
 			while (close(port->handle) && (errno == EINTR))
 				errno = 0;
 			port->handle = -1;
@@ -350,11 +415,12 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		}
 	}
 	else
-		port->errorNumber = errno;
+		port->errorNumber = lastErrorNumber = errno;
 
 	// Return a pointer to the serial port data structure
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	return (port->handle > 0) ? (jlong)(intptr_t)port : -(jlong)(intptr_t)port;
+	checkJniError(env, __LINE__ - 1);
+	return (port->handle > 0) ? (jlong)(intptr_t)port : 0;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -362,26 +428,47 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int byteSizeInt = (*env)->GetIntField(env, obj, dataBitsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int stopBitsInt = (*env)->GetIntField(env, obj, stopBitsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int rs485DelayBefore = (*env)->GetIntField(env, obj, rs485DelayBeforeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int rs485DelayAfter = (*env)->GetIntField(env, obj, rs485DelayAfterField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int writeTimeout = (*env)->GetIntField(env, obj, writeTimeoutField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int eventsToMonitor = (*env)->GetIntField(env, obj, eventFlagsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485ActiveHigh = (*env)->GetBooleanField(env, obj, rs485ActiveHighField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485EnableTermination = (*env)->GetBooleanField(env, obj, rs485EnableTerminationField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	char xonStartChar = (*env)->GetByteField(env, obj, xonStartCharField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	char xoffStopChar = (*env)->GetByteField(env, obj, xoffStopCharField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Clear any serial port flags and set up raw non-canonical port parameters
 	struct termios options = { 0 };
@@ -422,8 +509,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	cfsetospeed(&options, baudRateCode);
 	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
 	{
-		port->errorLineNumber = __LINE__ - 2;
-		port->errorNumber = errno;
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
 
@@ -444,7 +531,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		sendDeviceQueueSize = serInfo.xmit_fifo_size;
 	receiveDeviceQueueSize = sendDeviceQueueSize;
 	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sendDeviceQueueSize);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, receiveDeviceQueueSize);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Attempt to set the requested RS-485 mode
 	struct serial_rs485 rs485Conf = { 0 };
@@ -474,18 +563,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
 		rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
 		rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
-		if (ioctl(port->handle, TIOCSRS485, &rs485Conf) && rs485ModeEnabled)
-		{
-			port->errorLineNumber = __LINE__ - 2;
-			port->errorNumber = errno;
-			return JNI_FALSE;
-		}
+		ioctl(port->handle, TIOCSRS485, &rs485Conf);
 	}
 
 #else
 
 	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 #endif
 
@@ -500,6 +586,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	struct termios options = { 0 };
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	tcgetattr(port->handle, &options);
 
 	// Set up the requested event flags
@@ -547,20 +634,20 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
 	{
-		port->errorLineNumber = __LINE__ - 2;
-		port->errorNumber = errno;
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
 	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
 	{
-		port->errorLineNumber = __LINE__ - 2;
-		port->errorNumber = errno;
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
 	if (!getBaudRateCode(baudRate) && setBaudRateCustom(port->handle, baudRate))
 	{
-		port->errorLineNumber = __LINE__ - 2;
-		port->errorNumber = errno;
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
 	return JNI_TRUE;
@@ -681,7 +768,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	int numBytesAvailable = -1;
 	port->errorLineNumber = __LINE__ + 1;
-	ioctl(((serialPort*)(intptr_t)serialPortPointer)->handle, FIONREAD, &numBytesAvailable);
+	ioctl(port->handle, FIONREAD, &numBytesAvailable);
 	port->errorNumber = errno;
 	return numBytesAvailable;
 }
@@ -692,7 +779,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	int numBytesToWrite = -1;
 	port->errorLineNumber = __LINE__ + 1;
-	ioctl(((serialPort*)(intptr_t)serialPortPointer)->handle, TIOCOUTQ, &numBytesToWrite);
+	ioctl(port->handle, TIOCOUTQ, &numBytesToWrite);
 	port->errorNumber = errno;
 	return numBytesToWrite;
 }
@@ -771,6 +858,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 
 	// Return number of bytes read if successful
 	(*env)->SetByteArrayRegion(env, buffer, offset, numBytesReadTotal, (jbyte*)port->readBuffer);
+	checkJniError(env, __LINE__ - 1);
 	return (numBytesRead == -1) ? -1 : numBytesReadTotal;
 }
 
@@ -779,6 +867,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
+	if (checkJniError(env, __LINE__ - 1)) return -1;
 
 	// Write to the port
 	int numBytesWritten;
@@ -795,6 +884,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 	// Return the number of bytes written if successful
 	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
+	checkJniError(env, __LINE__ - 1);
 	return numBytesWritten;
 }
 
@@ -888,7 +978,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JNIEnv *env, jobject obj)
 {
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[128];
@@ -900,13 +992,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	checkJniError(env, __LINE__ - 1);
 	return (result == 0);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(JNIEnv *env, jobject obj)
 {
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[128];
@@ -918,6 +1013,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	checkJniError(env, __LINE__ - 1);
 	return (result == 0);
 }
 
@@ -950,7 +1046,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JNIEnv *env, jobject obj)
 {
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[128];
@@ -962,13 +1060,16 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	checkJniError(env, __LINE__ - 1);
 	return (result == 0);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(JNIEnv *env, jobject obj)
 {
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 	// Send a system command to preclear the DTR mode of the serial port
 	char commandString[128];
@@ -980,6 +1081,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 	int result = system(commandString);
 
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+	checkJniError(env, __LINE__ - 1);
 	return (result == 0);
 }
 
@@ -1021,10 +1123,10 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorLocation(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	return ((serialPort*)(intptr_t)serialPortPointer)->errorLineNumber;
+	return serialPortPointer ? ((serialPort*)(intptr_t)serialPortPointer)->errorLineNumber : lastErrorLineNumber;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorCode(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	return ((serialPort*)(intptr_t)serialPortPointer)->errorNumber;
+	return serialPortPointer ? ((serialPort*)(intptr_t)serialPortPointer)->errorNumber : lastErrorNumber;
 }
