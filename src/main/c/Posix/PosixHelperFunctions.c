@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 17, 2022
+ *  Last Updated on:  Jan 18, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -1065,8 +1065,8 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 	return -1;
 }
 
-// BSD-specific functionality
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+// FreeBSD-specific functionality
+#elif defined(__FreeBSD__)
 
 char getPortLocation(const char *deviceName, char* portLocation)
 {
@@ -1189,10 +1189,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						struct stat fileStats;
 						stat(systemName, &fileStats);
 						if (!S_ISDIR(fileStats.st_mode))
-						{
-							char isUSB = getPortLocation(directoryEntry->d_name + 3, portLocation);
 							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
-						}
 
 						// Clean up memory
 						free(friendlyName);
@@ -1202,6 +1199,188 @@ void searchForComPorts(serialPortVector* comPorts)
 					free(portLocation);
 					free(systemName);
 				}
+			}
+			directoryEntry = readdir(directoryIterator);
+		}
+
+		// Close the directory
+		closedir(directoryIterator);
+	}
+}
+
+baud_rate getBaudRateCode(baud_rate baudRate)
+{
+	return baudRate;
+}
+
+int setBaudRateCustom(int portFD, baud_rate baudRate)
+{
+	// All baud rates allowed by default on this OS
+	return -1;
+}
+
+// OpenBSD-specific functionality
+#elif defined(__OpenBSD__)
+
+char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* friendlyName, char** description)
+{
+	// Only continue if this is a USB device
+	char found = 0;
+	sprintf(portLocation, "0-0");
+	if (usbDeviceFile[0] != 'U')
+		return found;
+
+	// Attempt to locate the device in dmesg
+	size_t bufferSize = 1024;
+	char *stdOutResult = (char*)malloc(bufferSize), *device = (char*)malloc(64);
+	snprintf(stdOutResult, bufferSize, "dmesg | grep ucom%s | tail -1", usbDeviceFile + 1);
+	FILE *pipe = popen(stdOutResult, "r");
+	device[0] = '\0';
+	if (pipe)
+	{
+		while (fgets(stdOutResult, bufferSize, pipe))
+			if (strstr(stdOutResult, " at "))
+			{
+				found = 1;
+				sprintf(friendlyName, "ucom%s", usbDeviceFile + 1);
+				strcpy(device, strstr(stdOutResult, " at ") + 4);
+				device[strcspn(device, "\r\n")] = '\0';
+			}
+		pclose(pipe);
+	}
+
+	// Parse port location and description
+	char *address = NULL, *port = NULL;
+	if (device[0])
+	{
+		char* usbFile = (char*)malloc(64);
+		for (int bus = 0; (bus < 255) && (!address || !port); ++bus)
+		{
+			// Ensure this bus exists
+			struct stat fileStats;
+			sprintf(usbFile, "/dev/usb%d", bus);
+			if (stat(usbFile, &fileStats))
+				continue;
+
+			// Read the USB address and description
+			snprintf(stdOutResult, bufferSize, "usbdevs -v -d /dev/usb%d 2>/dev/null | grep -B 2 %s", bus, device);
+			pipe = popen(stdOutResult, "r");
+			if (pipe)
+			{
+				while (fgets(stdOutResult, bufferSize, pipe))
+				{
+					if (strstr(stdOutResult, "addr ") && strrchr(stdOutResult, ','))
+					{
+						char *product = strrchr(stdOutResult, ',') + 2;
+						product[strcspn(product, "\r\n")] = '\0';
+						*description = (char*)realloc(*description, strlen(product) + 1);
+						memcpy(*description, product, strlen(product) + 1);
+					}
+					if (strstr(stdOutResult, "addr "))
+					{
+						address = strstr(stdOutResult, "addr ") + 5;
+						while ((address[0] != '\0') && (address[0] == '0'))
+							address = address + 1;
+						*(strchr(address, ':')) = '\0';
+						sprintf(portLocation, "%d-%s", bus, address);
+					}
+				}
+				pclose(pipe);
+			}
+
+			// Read the USB port location
+			snprintf(stdOutResult, bufferSize, "dmesg | grep \"%s at \" | tail -1", device);
+			pipe = popen(stdOutResult, "r");
+			if (pipe)
+			{
+				while (fgets(stdOutResult, bufferSize, pipe))
+					if (strstr(stdOutResult, "port "))
+					{
+						port = strstr(stdOutResult, "port ") + 5;
+						*(strchr(port, ' ')) = '\0';
+						strcat(portLocation, ".");
+						strcat(portLocation, port);
+					}
+				pclose(pipe);
+			}
+		}
+		free(usbFile);
+	}
+
+	// Clean up memory and return result
+	free(device);
+	free(stdOutResult);
+	return found;
+}
+
+void searchForComPorts(serialPortVector* comPorts)
+{
+	// Open the FreeBSD dev directory
+	DIR *directoryIterator = opendir("/dev/");
+	if (directoryIterator)
+	{
+		// Read all files in the current directory
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// See if the file names a potential serial port
+			if ((strlen(directoryEntry->d_name) >= 4) && (directoryEntry->d_name[0] != '.') &&
+					(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') && (directoryEntry->d_name[3] != 'v')) ||
+					 ((directoryEntry->d_name[0] == 'c') && (directoryEntry->d_name[1] == 'u') && (directoryEntry->d_name[2] == 'a')) ||
+					 ((directoryEntry->d_name[0] == 'd') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y'))))
+			{
+				// Determine system name of port
+				char* systemName = (char*)malloc(256);
+				strcpy(systemName, "/dev/");
+				strcat(systemName, directoryEntry->d_name);
+
+				// Set static friendly name and description
+				char* friendlyName = (char*)malloc(64);
+				char* description = (char*)malloc(32);
+				strcpy(friendlyName, "Serial Port");
+				strcpy(description, "Serial Port");
+
+				// Determine location and description of port
+				char* portLocation = (char*)malloc(256);
+				char isUSB = getUsbPortDetails(directoryEntry->d_name + 3, portLocation, friendlyName, &description);
+
+				// Update friendly name
+				if ((directoryEntry->d_name[0] != 'c') && (directoryEntry->d_name[0] != 'd'))
+					strcat(friendlyName, " (Dial-In)");
+
+				// Check if port is already enumerated
+				serialPort *port = fetchPort(comPorts, systemName);
+				if (port)
+				{
+					// See if device has changed locations
+					port->enumerated = 1;
+					if (isUSB)
+					{
+						int oldLength = strlen(port->portLocation);
+						int newLength = strlen(portLocation);
+						if (oldLength != newLength)
+						{
+							port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+							strcpy(port->portLocation, portLocation);
+						}
+						else if (memcmp(port->portLocation, portLocation, newLength))
+							strcpy(port->portLocation, portLocation);
+					}
+				}
+				else
+				{
+					// Add the port to the list if it is not a directory
+					struct stat fileStats;
+					stat(systemName, &fileStats);
+					if (!S_ISDIR(fileStats.st_mode) && isUSB)
+						pushBack(comPorts, systemName, friendlyName, description, portLocation);
+				}
+
+				// Clean up memory
+				free(portLocation);
+				free(description);
+				free(friendlyName);
+				free(systemName);
 			}
 			directoryEntry = readdir(directoryIterator);
 		}
