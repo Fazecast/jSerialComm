@@ -1017,7 +1017,8 @@ public final class SerialPort
 		{
 			serialEventListener.stopListening();
 			serialEventListener = null;
-			configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
+			if (portHandle != 0)
+				configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
 		}
 		userDataListener = null;
 	}
