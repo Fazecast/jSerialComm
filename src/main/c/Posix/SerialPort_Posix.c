@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 17, 2022
+ *  Last Updated on:  Jan 19, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -789,7 +789,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 {
 	// Ensure that the allocated read buffer is large enough
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	int numBytesRead, numBytesReadTotal = 0, bytesRemaining = bytesToRead, ioctlResult = 0;
+	int numBytesRead = -1, numBytesReadTotal = 0, bytesRemaining = bytesToRead, ioctlResult = 0;
 	if (bytesToRead > port->readBufferLength)
 	{
 		port->errorLineNumber = __LINE__ + 1;
@@ -867,6 +867,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 {
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	int writeBlockingMode = (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING);
 	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
 	if (checkJniError(env, __LINE__ - 1)) return -1;
 
@@ -877,10 +878,10 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		port->errorLineNumber = __LINE__ + 1;
 		numBytesWritten = write(port->handle, writeBuffer + offset, bytesToWrite);
 		port->errorNumber = errno;
-	} while ((numBytesWritten < 0) && (errno == EINTR));
+	} while ((numBytesWritten < 0) && ((errno == EINTR) || (errno == EAGAIN) || (errno == EWOULDBLOCK)));
 
 	// Wait until all bytes were written in write-blocking mode
-	if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) > 0) && (numBytesWritten > 0))
+	if ((writeBlockingMode > 0) && (numBytesWritten > 0))
 		tcdrain(port->handle);
 
 	// Return the number of bytes written if successful
