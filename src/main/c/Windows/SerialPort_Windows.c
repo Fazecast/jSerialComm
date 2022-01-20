@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 18, 2022
+ *  Last Updated on:  Jan 20, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -31,9 +31,11 @@
 #include <initguid.h>
 #include <windows.h>
 #include <delayimp.h>
+#include <direct.h>
 #include <stdlib.h>
 #include <string.h>
 #include <setupapi.h>
+#include <shellapi.h>
 #include <devpkey.h>
 #include <devguid.h>
 #include "ftdi/ftd2xx.h"
@@ -74,7 +76,6 @@ jfieldID eventFlagsField;
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
 typedef int (__stdcall *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
-typedef int (__stdcall *FT_SetLatencyTimerFunction)(FT_HANDLE, UCHAR);
 typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
 typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
@@ -250,8 +251,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		FT_GetComPortNumberFunction FT_GetComPortNumber = (FT_GetComPortNumberFunction)GetProcAddress(ftdiLibInstance, "FT_GetComPortNumber");
 		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
 		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
-		FT_SetLatencyTimerFunction FT_SetLatencyTimer = (FT_SetLatencyTimerFunction)GetProcAddress(ftdiLibInstance, "FT_SetLatencyTimer");
-		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_GetComPortNumber && FT_Open && FT_Close && FT_SetLatencyTimer)
+		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_GetComPortNumber && FT_Open && FT_Close)
 		{
 			DWORD numDevs;
 			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
@@ -278,13 +278,90 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 							LONG comPortNumber = 0;
 							if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
 							{
-								// Check if COM port is actually connected and present in the port list
+								// Close port and check if actually connected and present in the port list
+								FT_Close(devInfo[i].ftHandle);
 								swprintf(comPort, sizeof(comPort) / sizeof(wchar_t), L"COM%ld", comPortNumber);
 								for (int j = 0; j < serialPorts.length; ++j)
 									if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
 									{
-										// Reduce latency timer to minimum value of 2
-										FT_SetLatencyTimer(devInfo[i].ftHandle, 2);
+										// Reduce the port's latency timer to minimum value of 2
+										HKEY key, paramKey = 0;
+										if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS)
+										{
+											DWORD index = 0, latency = 2, subkeySize = 255, portNameSize = 16, oldLatency = 2, oldLatencySize = sizeof(DWORD);
+											wchar_t *subkey = (wchar_t*)malloc(subkeySize*sizeof(wchar_t)), *regPortName = (wchar_t*)malloc(portNameSize*sizeof(wchar_t));
+											while (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS)
+											{
+												char *subkeyString = (char*)malloc(subkeySize);
+												memset(subkeyString, 0, subkeySize);
+												wcstombs(subkeyString, subkey, subkeySize);
+												subkeySize = 255;
+												portNameSize = 16;
+												memset(regPortName, 0, portNameSize * sizeof(wchar_t));
+												wcscat_s(subkey, subkeySize, L"\\0000\\Device Parameters");
+												if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
+												{
+													if ((RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)regPortName, &portNameSize) == ERROR_SUCCESS) && (wcscmp(serialPorts.ports[j]->portPath, regPortName) == 0))
+														RegQueryValueExW(paramKey, L"LatencyTimer", NULL, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
+													RegCloseKey(paramKey);
+												}
+												if (oldLatency > latency)
+												{
+													if (RegOpenKeyExW(key, subkey, 0, KEY_SET_VALUE, &paramKey) == ERROR_SUCCESS)
+													{
+														RegSetValueExW(paramKey, L"LatencyTimer", 0, REG_DWORD, (LPBYTE)&latency, sizeof(latency));
+														RegCloseKey(paramKey);
+													}
+													else
+													{
+														// Create registry update file
+														char *workingDirectory = _getcwd(NULL, 0);
+														wchar_t *workingDirectoryWide = _wgetcwd(NULL, 0);
+														int workingDirectoryLength = strlen(workingDirectory) + 1;
+														char *registryFileName = (char*)malloc(workingDirectoryLength + 8);
+														wchar_t *paramsString = (wchar_t*)malloc((workingDirectoryLength + 11) * sizeof(wchar_t));
+														sprintf(registryFileName, "%s\\del.reg", workingDirectory);
+														swprintf(paramsString, workingDirectoryLength + 11, L"/s %s\\del.reg", workingDirectoryWide);
+														FILE *registryFile = fopen(registryFileName, "wb");
+														if (registryFile)
+														{
+															fprintf(registryFile, "Windows Registry Editor Version 5.00\n\n");
+															fprintf(registryFile, "[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS\\%s\\0000\\Device Parameters]\n", subkeyString);
+															fprintf(registryFile, "\"LatencyTimer\"=dword:00000002\n\n");
+															fclose(registryFile);
+														}
+
+														// Launch a new administrative process to update the registry value
+														SHELLEXECUTEINFOW shExInfo = { 0 };
+														shExInfo.cbSize = sizeof(shExInfo);
+														shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+														shExInfo.hwnd = NULL;
+														shExInfo.lpVerb = L"runas";
+														shExInfo.lpFile = L"C:\\Windows\\regedit.exe";
+														shExInfo.lpParameters = paramsString;
+														shExInfo.lpDirectory = NULL;
+														shExInfo.nShow = SW_SHOW;
+														shExInfo.hInstApp = 0;
+														if (ShellExecuteExW(&shExInfo))
+														{
+															WaitForSingleObject(shExInfo.hProcess, INFINITE);
+															CloseHandle(shExInfo.hProcess);
+														}
+
+														// Delete the registry update file
+														remove(registryFileName);
+														free(workingDirectoryWide);
+														free(workingDirectory);
+														free(registryFileName);
+														free(paramsString);
+													}
+												}
+												free(subkeyString);
+											}
+											RegCloseKey(key);
+											free(regPortName);
+											free(subkey);
+										}
 
 										// Update the port description
 										serialPorts.ports[j]->enumerated = 1;
@@ -298,7 +375,6 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 										memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
 										break;
 									}
-								FT_Close(devInfo[i].ftHandle);
 							}
 						}
 					}
