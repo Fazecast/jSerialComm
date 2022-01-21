@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Dec 16, 2021
+ *  Last Updated on:  Jan 21, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -49,5 +49,9 @@ typedef struct serialPortVector
 serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
+
+// Windows-specific functionality
+void reduceLatencyToMinimum(const wchar_t* portName);
+int getPortPathFromSerial(wchar_t* portPath, const char* serialNumber);
 
 #endif		// #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__

@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 20, 2022
+ *  Last Updated on:  Jan 21, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -32,10 +32,11 @@
 #include <windows.h>
 #include <delayimp.h>
 #include <direct.h>
+#include <ntddmodm.h>
+#include <ntddser.h>
 #include <stdlib.h>
 #include <string.h>
 #include <setupapi.h>
-#include <shellapi.h>
 #include <devpkey.h>
 #include <devguid.h>
 #include "ftdi/ftd2xx.h"
@@ -75,9 +76,6 @@ jfieldID eventFlagsField;
 // Runtime-loadable DLL functions
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
-typedef int (__stdcall *FT_GetComPortNumberFunction)(FT_HANDLE, LPLONG);
-typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
-typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
 
 // List of available serial ports
 serialPortVector serialPorts = { NULL, 0, 0 };
@@ -107,139 +105,149 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 	// Enumerate all serial ports present on the current system
 	wchar_t comPort[128];
-	HDEVINFO devList = SetupDiGetClassDevsW(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
-	if (devList != INVALID_HANDLE_VALUE)
+	const struct { GUID guid; DWORD flags; } setupClasses[] = {
+			{ .guid = GUID_DEVCLASS_PORTS, .flags = DIGCF_PRESENT },
+			{ .guid = GUID_DEVCLASS_MODEM, .flags = DIGCF_PRESENT },
+			{ .guid = GUID_DEVCLASS_MULTIPORTSERIAL, .flags = DIGCF_PRESENT },
+			{ .guid = GUID_DEVINTERFACE_COMPORT, .flags = DIGCF_PRESENT | DIGCF_DEVICEINTERFACE },
+			{ .guid = GUID_DEVINTERFACE_MODEM, .flags = DIGCF_PRESENT | DIGCF_DEVICEINTERFACE }
+	};
+	for (int i = 0; i < (sizeof(setupClasses) / sizeof(setupClasses[0])); ++i)
 	{
-		// Iterate through all devices
-		DWORD devInterfaceIndex = 0;
-		DEVPROPTYPE devInfoPropType;
-		SP_DEVINFO_DATA devInfoData;
-		devInfoData.cbSize = sizeof(devInfoData);
-		while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
+		HDEVINFO devList = SetupDiGetClassDevsW(&setupClasses[i].guid, NULL, NULL, setupClasses[i].flags);
+		if (devList != INVALID_HANDLE_VALUE)
 		{
-			// Fetch the corresponding COM port for this device
-			wchar_t *comPortString = NULL;
-			DWORD comPortLength = sizeof(comPort) / sizeof(wchar_t);
-			HKEY key = SetupDiOpenDevRegKey(devList, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_QUERY_VALUE);
-			if ((key != INVALID_HANDLE_VALUE) && (RegQueryValueExW(key, L"PortName", NULL, NULL, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS))
-				comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
-			if (key != INVALID_HANDLE_VALUE)
-				RegCloseKey(key);
-			if (!comPortString)
-				continue;
+			// Iterate through all devices
+			DWORD devInterfaceIndex = 0;
+			DEVPROPTYPE devInfoPropType;
+			SP_DEVINFO_DATA devInfoData;
+			devInfoData.cbSize = sizeof(devInfoData);
+			while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
+			{
+				// Fetch the corresponding COM port for this device
+				wchar_t *comPortString = NULL;
+				DWORD comPortLength = sizeof(comPort) / sizeof(wchar_t);
+				HKEY key = SetupDiOpenDevRegKey(devList, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_QUERY_VALUE);
+				if ((key != INVALID_HANDLE_VALUE) && (RegQueryValueExW(key, L"PortName", NULL, NULL, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS))
+					comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
+				if (key != INVALID_HANDLE_VALUE)
+					RegCloseKey(key);
+				if (!comPortString)
+					continue;
 
-			// Fetch the friendly name for this device
-			DWORD friendlyNameLength = 0;
-			wchar_t *friendlyNameString = NULL;
-			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, NULL, 0, &friendlyNameLength, 0);
-			if (!friendlyNameLength)
-				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
-			if (friendlyNameLength)
-			{
-				friendlyNameString = (wchar_t*)malloc(friendlyNameLength);
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
-						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
+				// Fetch the friendly name for this device
+				DWORD friendlyNameLength = 0;
+				wchar_t *friendlyNameString = NULL;
+				SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, NULL, 0, &friendlyNameLength, 0);
+				if (!friendlyNameLength)
+					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
+				if (friendlyNameLength)
 				{
-					friendlyNameLength = comPortLength;
-					friendlyNameString = (wchar_t*)realloc(friendlyNameString, comPortLength);
-					wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
-				}
-			}
-			else
-			{
-				friendlyNameLength = comPortLength;
-				friendlyNameString = (wchar_t*)malloc(comPortLength);
-				wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
-			}
-
-			// Fetch the bus-reported device description
-			DWORD portDescriptionLength = 0;
-			wchar_t *portDescriptionString = NULL;
-			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0);
-			if (portDescriptionLength)
-			{
-				portDescriptionString = (wchar_t*)malloc(portDescriptionLength);
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescriptionString, portDescriptionLength, NULL, 0))
-				{
-					portDescriptionString = (wchar_t*)realloc(portDescriptionString, friendlyNameLength);
-					wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
-				}
-			}
-			else
-			{
-				portDescriptionString = (wchar_t*)malloc(friendlyNameLength);
-				wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
-			}
-
-			// Fetch the physical location for this device
-			wchar_t *locationString = NULL;
-			DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
-			if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusNumber, &devInfoPropType, (BYTE*)&busNumber, sizeof(busNumber), NULL, 0) &&
-					!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
-				busNumber = -1;
-			if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_Address, &devInfoPropType, (BYTE*)&portNumber, sizeof(portNumber), NULL, 0) &&
-					!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
-				portNumber = -1;
-			SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, NULL, 0, &locationLength, 0);
-			if (!locationLength)
-				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
-			if (locationLength)
-			{
-				locationString = (wchar_t*)malloc(locationLength);
-				if (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, (BYTE*)locationString, locationLength, NULL, 0) ||
-						SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
-				{
-					if (wcsstr(locationString, L"Hub"))
-						hubNumber = _wtoi(wcschr(wcsstr(locationString, L"Hub"), L'#') + 1);
-					if ((portNumber == -1) && wcsstr(locationString, L"Port"))
+					friendlyNameString = (wchar_t*)malloc(friendlyNameLength);
+					if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
+							!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
 					{
-						wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
-						if (portString)
-						{
-							wchar_t *end = wcschr(portString, L'.');
-							if (end)
-								*end = L'\0';
-						}
-						portNumber = _wtoi(portString);
+						friendlyNameLength = comPortLength;
+						friendlyNameString = (wchar_t*)realloc(friendlyNameString, comPortLength);
+						wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
 					}
 				}
-				free(locationString);
-			}
-			if (busNumber == -1)
-				busNumber = 0;
-			if (hubNumber == -1)
-				hubNumber = 0;
-			if (portNumber == -1)
-				portNumber = 0;
-			locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
-			_snwprintf_s(locationString, 32, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
-
-			// Check if port is already enumerated
-			serialPort *port = fetchPort(&serialPorts, comPortString);
-			if (port)
-			{
-				// See if device has changed locations
-				port->enumerated = 1;
-				int oldLength = wcslen(port->portLocation);
-				int newLength = wcslen(locationString);
-				if (oldLength != newLength)
+				else
 				{
-					port->portLocation = (wchar_t*)realloc(port->portLocation, (1 + newLength) * sizeof(wchar_t));
-					wcscpy_s(port->portLocation, 32, locationString);
+					friendlyNameLength = comPortLength;
+					friendlyNameString = (wchar_t*)malloc(comPortLength);
+					wcscpy_s(friendlyNameString, comPortLength / sizeof(wchar_t), comPortString);
 				}
-				else if (wcscmp(port->portLocation, locationString))
-					wcscpy_s(port->portLocation, 32, locationString);
-			}
-			else
-				pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
 
-			// Clean up memory and reset device info structure
-			free(locationString);
-			free(portDescriptionString);
-			free(friendlyNameString);
-			devInfoData.cbSize = sizeof(devInfoData);
+				// Fetch the bus-reported device description
+				DWORD portDescriptionLength = 0;
+				wchar_t *portDescriptionString = NULL;
+				SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0);
+				if (portDescriptionLength)
+				{
+					portDescriptionString = (wchar_t*)malloc(portDescriptionLength);
+					if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, (BYTE*)portDescriptionString, portDescriptionLength, NULL, 0))
+					{
+						portDescriptionString = (wchar_t*)realloc(portDescriptionString, friendlyNameLength);
+						wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
+					}
+				}
+				else
+				{
+					portDescriptionString = (wchar_t*)malloc(friendlyNameLength);
+					wcscpy_s(portDescriptionString, friendlyNameLength / sizeof(wchar_t), friendlyNameString);
+				}
+
+				// Fetch the physical location for this device
+				wchar_t *locationString = NULL;
+				DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
+				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusNumber, &devInfoPropType, (BYTE*)&busNumber, sizeof(busNumber), NULL, 0) &&
+						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
+					busNumber = -1;
+				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_Address, &devInfoPropType, (BYTE*)&portNumber, sizeof(portNumber), NULL, 0) &&
+						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
+					portNumber = -1;
+				SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, NULL, 0, &locationLength, 0);
+				if (!locationLength)
+					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
+				if (locationLength)
+				{
+					locationString = (wchar_t*)malloc(locationLength);
+					if (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, (BYTE*)locationString, locationLength, NULL, 0) ||
+							SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
+					{
+						if (wcsstr(locationString, L"Hub"))
+							hubNumber = _wtoi(wcschr(wcsstr(locationString, L"Hub"), L'#') + 1);
+						if ((portNumber == -1) && wcsstr(locationString, L"Port"))
+						{
+							wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
+							if (portString)
+							{
+								wchar_t *end = wcschr(portString, L'.');
+								if (end)
+									*end = L'\0';
+							}
+							portNumber = _wtoi(portString);
+						}
+					}
+					free(locationString);
+				}
+				if (busNumber == -1)
+					busNumber = 0;
+				if (hubNumber == -1)
+					hubNumber = 0;
+				if (portNumber == -1)
+					portNumber = 0;
+				locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
+				_snwprintf_s(locationString, 32, 32, L"%d-%d.%d", busNumber, hubNumber, portNumber);
+
+				// Check if port is already enumerated
+				serialPort *port = fetchPort(&serialPorts, comPortString);
+				if (port)
+				{
+					// See if device has changed locations
+					port->enumerated = 1;
+					int oldLength = wcslen(port->portLocation);
+					int newLength = wcslen(locationString);
+					if (oldLength != newLength)
+					{
+						port->portLocation = (wchar_t*)realloc(port->portLocation, (1 + newLength) * sizeof(wchar_t));
+						wcscpy_s(port->portLocation, 32, locationString);
+					}
+					else if (wcscmp(port->portLocation, locationString))
+						wcscpy_s(port->portLocation, 32, locationString);
+				}
+				else
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
+
+				// Clean up memory and reset device info structure
+				free(locationString);
+				free(portDescriptionString);
+				free(friendlyNameString);
+				devInfoData.cbSize = sizeof(devInfoData);
+			}
+			SetupDiDestroyDeviceInfoList(devList);
 		}
-		SetupDiDestroyDeviceInfoList(devList);
 	}
 
 	// Attempt to locate any FTDI-specified port descriptions
@@ -248,10 +256,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	{
 		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
 		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
-		FT_GetComPortNumberFunction FT_GetComPortNumber = (FT_GetComPortNumberFunction)GetProcAddress(ftdiLibInstance, "FT_GetComPortNumber");
-		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
-		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
-		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_GetComPortNumber && FT_Open && FT_Close)
+		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList)
 		{
 			DWORD numDevs;
 			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
@@ -273,30 +278,24 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 								}
 
 						// Update the port description if not already open
-						if (!isOpen)
+						if (!isOpen && getPortPathFromSerial(comPort, devInfo[i].SerialNumber))
 						{
-							LONG comPortNumber = 0;
-							if ((FT_Open(i, &devInfo[i].ftHandle) == FT_OK) && (FT_GetComPortNumber(devInfo[i].ftHandle, &comPortNumber) == FT_OK))
-							{
-								// Close port and check if actually connected and present in the port list
-								FT_Close(devInfo[i].ftHandle);
-								swprintf(comPort, sizeof(comPort) / sizeof(wchar_t), L"COM%ld", comPortNumber);
-								for (int j = 0; j < serialPorts.length; ++j)
-									if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
+							// Check if actually connected and present in the port list
+							for (int j = 0; j < serialPorts.length; ++j)
+								if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
+								{
+									// Update the port description
+									serialPorts.ports[j]->enumerated = 1;
+									size_t descLength = 8 + strlen(devInfo[i].Description);
+									wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
+									if (newMemory)
 									{
-										// Update the port description
-										serialPorts.ports[j]->enumerated = 1;
-										size_t descLength = 8+strlen(devInfo[i].Description);
-										wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
-										if (newMemory)
-										{
-											serialPorts.ports[j]->portDescription = newMemory;
-											MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
-										}
-										memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
-										break;
+										serialPorts.ports[j]->portDescription = newMemory;
+										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
 									}
-							}
+									memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
+									break;
+								}
 						}
 					}
 				}
@@ -444,85 +443,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		return 0;
 	}
 
-	// Reduce the port's latency timer to minimum value of 2
-	HKEY key, paramKey = 0;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS)
-	{
-		DWORD index = 0, subkeySize = 255, portNameSize = 16;
-		wchar_t *subkey = (wchar_t*)malloc(subkeySize*sizeof(wchar_t)), *regPortName = (wchar_t*)malloc(portNameSize*sizeof(wchar_t));
-		while (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS)
-		{
-			DWORD latency = 2, oldLatency = 2, oldLatencySize = sizeof(DWORD);
-			char *subkeyString = (char*)malloc(subkeySize + 2);
-			memset(subkeyString, 0, subkeySize + 2);
-			wcstombs(subkeyString, subkey, subkeySize + 1);
-			subkeySize = 255;
-			portNameSize = 16;
-			memset(regPortName, 0, portNameSize * sizeof(wchar_t));
-			wcscat_s(subkey, subkeySize, L"\\0000\\Device Parameters");
-			if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
-			{
-				if ((RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)regPortName, &portNameSize) == ERROR_SUCCESS) && (wcscmp(port->portPath + 4, regPortName) == 0))
-					RegQueryValueExW(paramKey, L"LatencyTimer", NULL, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
-				RegCloseKey(paramKey);
-			}
-			if (oldLatency > latency)
-			{
-				if (RegOpenKeyExW(key, subkey, 0, KEY_SET_VALUE, &paramKey) == ERROR_SUCCESS)
-				{
-					RegSetValueExW(paramKey, L"LatencyTimer", 0, REG_DWORD, (LPBYTE)&latency, sizeof(latency));
-					RegCloseKey(paramKey);
-				}
-				else
-				{
-					// Create registry update file
-					char *workingDirectory = _getcwd(NULL, 0);
-					wchar_t *workingDirectoryWide = _wgetcwd(NULL, 0);
-					int workingDirectoryLength = strlen(workingDirectory) + 1;
-					char *registryFileName = (char*)malloc(workingDirectoryLength + 8);
-					wchar_t *paramsString = (wchar_t*)malloc((workingDirectoryLength + 11) * sizeof(wchar_t));
-					sprintf(registryFileName, "%s\\del.reg", workingDirectory);
-					swprintf(paramsString, workingDirectoryLength + 11, L"/s %s\\del.reg", workingDirectoryWide);
-					FILE *registryFile = fopen(registryFileName, "wb");
-					if (registryFile)
-					{
-						fprintf(registryFile, "Windows Registry Editor Version 5.00\n\n");
-						fprintf(registryFile, "[HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS\\%s\\0000\\Device Parameters]\n", subkeyString);
-						fprintf(registryFile, "\"LatencyTimer\"=dword:00000002\n\n");
-						fclose(registryFile);
-					}
-
-					// Launch a new administrative process to update the registry value
-					SHELLEXECUTEINFOW shExInfo = { 0 };
-					shExInfo.cbSize = sizeof(shExInfo);
-					shExInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-					shExInfo.hwnd = NULL;
-					shExInfo.lpVerb = L"runas";
-					shExInfo.lpFile = L"C:\\Windows\\regedit.exe";
-					shExInfo.lpParameters = paramsString;
-					shExInfo.lpDirectory = NULL;
-					shExInfo.nShow = SW_SHOW;
-					shExInfo.hInstApp = 0;
-					if (ShellExecuteExW(&shExInfo))
-					{
-						WaitForSingleObject(shExInfo.hProcess, INFINITE);
-						CloseHandle(shExInfo.hProcess);
-					}
-
-					// Delete the registry update file
-					remove(registryFileName);
-					free(workingDirectoryWide);
-					free(workingDirectory);
-					free(registryFileName);
-					free(paramsString);
-				}
-			}
-			free(subkeyString);
-		}
-		RegCloseKey(key);
-		free(regPortName);
-		free(subkey);
-	}
+	// Reduce the port's latency to its minimum value
+	reduceLatencyToMinimum(port->portPath + 4);
 
 	// Try to open the serial port with read/write access
 	if ((port->handle = CreateFileW(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)
