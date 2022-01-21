@@ -132,7 +132,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 					comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
 				if (key != INVALID_HANDLE_VALUE)
 					RegCloseKey(key);
-				if (!comPortString)
+				if (!comPortString || wcsstr(comPortString, L"LPT"))
 					continue;
 
 				// Fetch the friendly name for this device
