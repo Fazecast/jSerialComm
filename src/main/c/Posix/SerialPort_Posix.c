@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 19, 2022
+ *  Last Updated on:  Jan 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -335,7 +335,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	ignoreAction.sa_handler = SIG_IGN;
 	ignoreAction.sa_mask = blockMask;
 	sigaction(SIGIO, &ignoreAction, NULL);
-	sigaction(SIGINT, &ignoreAction, NULL);
+	sigaction(SIGHUP, &ignoreAction, NULL);
 	sigaction(SIGTERM, &ignoreAction, NULL);
 	sigaction(SIGCONT, &ignoreAction, NULL);
 	sigaction(SIGUSR1, &ignoreAction, NULL);
