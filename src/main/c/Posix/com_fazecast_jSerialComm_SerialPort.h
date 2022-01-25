@@ -101,6 +101,14 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    retrievePortDetails
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDetails
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    openPortNative
  * Signature: ()J
  */

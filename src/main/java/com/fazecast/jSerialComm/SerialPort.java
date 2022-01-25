@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 20, 2022
+ *  Last Updated on:  Jan 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -460,7 +460,7 @@ public final class SerialPort
 	 * @return A {@link SerialPort} object.
 	 * @throws SerialPortInvalidPortException If a {@link SerialPort} object cannot be created due to a logical or formatting error in the portDescriptor parameter.
 	 */
-	static public final SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
+	static public final synchronized SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
 	{
 		// Correct port descriptor, if needed
 		try
@@ -493,6 +493,8 @@ public final class SerialPort
 		serialPort.comPort = portDescriptor;
 		serialPort.friendlyName = "User-Specified Port";
 		serialPort.portDescription = "User-Specified Port";
+		serialPort.portLocation = "0-0";
+		serialPort.retrievePortDetails();
 		return serialPort;
 	}
 
@@ -552,7 +554,7 @@ public final class SerialPort
 	private volatile String comPort, friendlyName, portDescription, portLocation;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
-	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false;
+	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
 	private SerialPortInputStream inputStream = null;
 	private SerialPortOutputStream outputStream = null;
 
@@ -709,7 +711,7 @@ public final class SerialPort
 	 * exclusive locks on system resources.
 	 */
 	public final synchronized void disableExclusiveLock() { disableExclusiveLock = true; }
-	
+
 	/**
 	 * Returns the source code line location of the latest error encountered during execution of
 	 * the native code for this port.
@@ -734,6 +736,7 @@ public final class SerialPort
 	// Serial Port Setup Methods
 	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
+	private final native void retrievePortDetails();					// Retrieves port descriptions, names, and details
 	private final native long openPortNative();							// Opens serial port
 	private final native long closePortNative(long portHandle);			// Closes serial port
 	private final native boolean configPort(long portHandle);			// Changes/sets serial port parameters as defined by this class

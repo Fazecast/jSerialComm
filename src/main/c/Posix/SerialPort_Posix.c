@@ -79,6 +79,7 @@ jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
 // List of available serial ports
+char portsEnumerated = 0;
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler
@@ -96,6 +97,37 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 		return JNI_TRUE;
 	}
 	return JNI_FALSE;
+}
+
+// Generalized port enumeration function
+static void enumeratePorts(void)
+{
+	// Reset the enumerated flag on all non-open serial ports
+	for (int i = 0; i < serialPorts.length; ++i)
+		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle > 0);
+
+	// Enumerate serial ports on this machine
+#if defined(__linux__)
+
+	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
+	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/serial", "/dev/ttyS");
+	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
+	lastDitchSearchForComPorts(&serialPorts);
+
+#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+
+	searchForComPorts(&serialPorts);
+
+#endif
+
+	// Remove all non-enumerated ports from the serial port listing
+	for (int i = 0; i < serialPorts.length; ++i)
+		if (!serialPorts.ports[i]->enumerated)
+		{
+			removePort(&serialPorts, serialPorts.ports[i]);
+			i--;
+		}
+	portsEnumerated = 1;
 }
 
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -207,31 +239,8 @@ void* eventReadingThread2(void *serialPortPointer)
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
-	// Reset the enumerated flag on all non-open serial ports
-	for (int i = 0; i < serialPorts.length; ++i)
-		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle > 0);
-
-	// Enumerate serial ports on this machine
-#if defined(__linux__)
-
-	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
-	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/serial", "/dev/ttyS");
-	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
-	lastDitchSearchForComPorts(&serialPorts);
-
-#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-
-	searchForComPorts(&serialPorts);
-
-#endif
-
-	// Remove all non-enumerated ports from the serial port listing
-	for (int i = 0; i < serialPorts.length; ++i)
-		if (!serialPorts.ports[i]->enumerated)
-		{
-			removePort(&serialPorts, serialPorts.ports[i]);
-			i--;
-		}
+	// Enumerate all ports on the current system
+	enumeratePorts();
 
 	// Create a Java-based port listing
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
@@ -353,6 +362,38 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 
 	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
+	checkJniError(env, __LINE__ - 1);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDetails(JNIEnv *env, jobject obj)
+{
+	// Retrieve the serial port parameter fields
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return;
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return;
+
+	// Ensure that the serial port exists
+	if (!portsEnumerated)
+		enumeratePorts();
+	serialPort *port = fetchPort(&serialPorts, portName);
+	if (!port)
+	{
+		(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
+		checkJniError(env, __LINE__ - 1);
+		return;
+	}
+
+	// Fill in the Java-side port details
+	(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewStringUTF(env, port->portDescription));
+	if (checkJniError(env, __LINE__ - 1)) return;
+	(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewStringUTF(env, port->friendlyName));
+	if (checkJniError(env, __LINE__ - 1)) return;
+	(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewStringUTF(env, port->portLocation));
+	if (checkJniError(env, __LINE__ - 1)) return;
+
+	// Release all JNI structures
+	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
 	checkJniError(env, __LINE__ - 1);
 }
 

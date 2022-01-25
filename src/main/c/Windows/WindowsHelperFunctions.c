@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jan 22, 2022
+ *  Last Updated on:  Jan 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -77,6 +77,11 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key)
 {
+	// Move past any opening slashes
+	if ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\'))
+		key += 4;
+
+	// Retrieve the serial port specified by the passed-in key
 	for (int i = 0; i < vector->length; ++i)
 		if (wcscmp(key, vector->ports[i]->portPath) == 0)
 			return vector->ports[i];

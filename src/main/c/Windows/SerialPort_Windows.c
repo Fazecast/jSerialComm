@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 21, 2022
+ *  Last Updated on:  Jan 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -78,6 +78,7 @@ typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
 
 // List of available serial ports
+char portsEnumerated = 0;
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler
@@ -97,7 +98,8 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 	return JNI_FALSE;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
+// Generalized port enumeration function
+static void enumeratePorts(void)
 {
 	// Reset the enumerated flag on all non-open serial ports
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -312,8 +314,16 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 			removePort(&serialPorts, serialPorts.ports[i]);
 			i--;
 		}
+	portsEnumerated = 1;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
+{
+	// Enumerate all ports on the current system
+	enumeratePorts();
 
 	// Get relevant SerialComm methods and fill in com port array
+	wchar_t comPort[128];
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
 	if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -412,6 +422,38 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 
 	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
+	checkJniError(env, __LINE__ - 1);
+}
+
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDetails(JNIEnv *env, jobject obj)
+{
+	// Retrieve the serial port parameter fields
+	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
+	if (checkJniError(env, __LINE__ - 1)) return;
+	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return;
+
+	// Ensure that the serial port exists
+	if (!portsEnumerated)
+		enumeratePorts();
+	serialPort *port = fetchPort(&serialPorts, portName);
+	if (!port)
+	{
+		(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
+		checkJniError(env, __LINE__ - 1);
+		return;
+	}
+
+	// Fill in the Java-side port details
+	(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewString(env, (jchar*)port->friendlyName, wcslen(port->friendlyName)));
+	if (checkJniError(env, __LINE__ - 1)) return;
+	(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewString(env, (jchar*)port->portDescription, wcslen(port->portDescription)));
+	if (checkJniError(env, __LINE__ - 1)) return;
+	(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewString(env, (jchar*)port->portLocation, wcslen(port->portLocation)));
+	if (checkJniError(env, __LINE__ - 1)) return;
+
+	// Release all JNI structures
+	(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
 	checkJniError(env, __LINE__ - 1);
 }
 
