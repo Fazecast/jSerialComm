@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 17, 2022
+ *  Last Updated on:  Jan 24, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -78,6 +78,8 @@ void lastDitchSearchForComPorts(serialPortVector* comPorts);
 // Solaris-specific functionality
 #elif defined(__sun__)
 
+#define faccessat(dirfd, pathname, mode, flags) access(pathname, mode)
+
 #define LOCK_SH 1
 #define LOCK_EX 2
 #define LOCK_NB 4
@@ -102,8 +104,9 @@ void searchForComPorts(serialPortVector* comPorts);
 
 #endif
 
-// Common baud rate functionality
+// Common Posix functionality
 baud_rate getBaudRateCode(baud_rate baudRate);
 int setBaudRateCustom(int portFD, baud_rate baudRate);
+int verifyAndSetUserPortGroup(const char *portFile);
 
 #endif		// #ifndef __POSIX_HELPER_FUNCTIONS_HEADER_H__

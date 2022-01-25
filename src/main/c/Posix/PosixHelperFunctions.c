@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 18, 2022
+ *  Last Updated on:  Jan 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -26,6 +26,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -1628,3 +1630,41 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 }
 
 #endif
+
+int verifyAndSetUserPortGroup(const char *portFile)
+{
+	// Check if the user can currently access the port file
+	int numGroups = getgroups(0, NULL), userPartOfPortGroup = 0;
+	int userCanAccess = (faccessat(0, portFile, R_OK | W_OK, AT_EACCESS) == 0);
+
+	// Attempt to acquire access if not available
+	if (!userCanAccess)
+	{
+		// Check if the user is part of the group that owns the port
+		struct stat fileStats;
+		gid_t *userGroups = (gid_t*)malloc(numGroups * sizeof(gid_t));
+		if ((stat(portFile, &fileStats) == 0) && (getgroups(numGroups, userGroups) >= 0))
+			for (int i = 0; i < numGroups; ++i)
+				if (userGroups[i] == fileStats.st_gid)
+				{
+					userPartOfPortGroup = 1;
+					break;
+				}
+
+		// Attempt to add the user to the group that owns the port
+		if (!userPartOfPortGroup)
+		{
+			struct group *portGroup;
+			struct passwd *userDetails;
+			if ((portGroup = getgrgid(fileStats.st_gid)) && (userDetails = getpwuid(geteuid())))
+			{
+				char *addUserToGroupCmd = (char*)malloc(256);
+				snprintf(addUserToGroupCmd, 256, "sudo usermod -a -G %s %s", portGroup->gr_name, userDetails->pw_name);
+				userCanAccess = (system(addUserToGroupCmd) == 0);
+			}
+		}
+	}
+
+	// Return whether the user can currently access the serial port
+	return userCanAccess;
+}
