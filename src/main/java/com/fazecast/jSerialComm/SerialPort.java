@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 25, 2022
+ *  Last Updated on:  Jan 27, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -85,12 +85,17 @@ public final class SerialPort
 				String line;
 				while ((line = buildProperties.readLine()) != null)
 				{
-					if((line.contains("[ro.product.cpu.abi]:") || line.contains("[ro.product.cpu.abi2]:") || line.contains("[ro.product.cpu.abilist]:") ||
-							line.contains("[ro.product.cpu.abilist64]:") || line.contains("[ro.product.cpu.abilist32]:")))
-					{
+					if (line.contains("[ro.product.cpu.abi]:"))
 						libraryPath = "Android/" + line.split(":")[1].trim().replace("[", "").replace("]", "").split(",")[0];
-						break;
-
+					else if (line.contains("[ro.product.cpu.abi2]:"))
+						backupLibraryPath = "Android/" + line.split(":")[1].trim().replace("[", "").replace("]", "").split(",")[0];
+					else if (line.contains("[ro.product.cpu.abilist]:"))
+					{
+						String[] abiList = line.split(":")[1].trim().replace("[", "").replace("]", "").split(",");
+						if (abiList.length > 0)
+							libraryPath = "Android/" + abiList[0];
+						if (abiList.length > 1)
+							backupLibraryPath = "Android/" + abiList[1];
 					}
 				}
 				getpropProcess.waitFor();
@@ -100,7 +105,9 @@ public final class SerialPort
 			catch (Exception e) { e.printStackTrace(); }
 
 			if (libraryPath.isEmpty())
-				libraryPath = "Android/armeabi";
+				libraryPath = "Android/armeabi-v7a";
+			if (backupLibraryPath.isEmpty())
+				backupLibraryPath = "Android/armeabi-v7a";
 			isAndroid = true;
 			fileName = "libjSerialComm.so";
 		}
