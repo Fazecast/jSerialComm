@@ -720,6 +720,29 @@ public final class SerialPort
 	public final synchronized void disableExclusiveLock() { disableExclusiveLock = true; }
 
 	/**
+	 * Allows the library to request elevation of the current user's permissions for use in making certain
+	 * system-specific changes regarding this serial port.
+	 * <p>
+	 * Examples of such changes include reducing the default latency for FTDI-type devices using
+	 * the Windows registry, or adding the current Linux user to the same OS group to which the serial
+	 * port belongs so that they can access the port without having to make these changes manually.
+	 * <p>
+	 * On Windows, if elevated permissions are required, a User Access Control (UAC) dialog box will
+	 * appear, requesting authorization to carry out the privileged operation.
+	 * On a non-Windows system, elevated permissions will be requested as if you had used the 'sudo' command
+	 * in a terminal. As such, this function should not be used if your application does not contain or use
+	 * a console.
+	 * <p>
+	 * Care should be taken when choosing to use this function as it <i>may</i> cause a prompt to appear
+	 * during runtime of your final application requesting permission to make these elevated changes which
+	 * may detract from the user experience of your application. When possible, making any system changes
+	 * related to serial port usage should be done manually before attempting to use such ports, but in some
+	 * situations, this function may make it easier for your application to automatically apply these
+	 * necessary changes.
+	 */
+	public final synchronized void allowElevatedPermissionsRequest() { requestElevatedPermissions = true; }
+
+	/**
 	 * Returns the source code line location of the latest error encountered during execution of
 	 * the native code for this port.
 	 * <p>

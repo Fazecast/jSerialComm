@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 25, 2022
+ *  Last Updated on:  Jan 28, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -63,6 +63,7 @@ jfieldID parityField;
 jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
+jfieldID requestElevatedPermissionsField;
 jfieldID rs485ModeField;
 jfieldID rs485DelayBeforeField;
 jfieldID rs485DelayAfterField;
@@ -269,7 +270,7 @@ static void enumeratePorts(void)
 					for (int i = 0; i < numDevs; ++i)
 					{
 						// Determine if the port is currently enumerated and already open
-						char isOpen = (devInfo[i].Flags & FT_FLAGS_OPENED) ? 1 : 0;
+						char isOpen = ((devInfo[i].Flags & FT_FLAGS_OPENED) || !strlen(devInfo[i].SerialNumber)) ? 1 : 0;
 						if (!isOpen)
 							for (int j = 0; j < serialPorts.length; ++j)
 								if ((memcmp(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
@@ -284,7 +285,7 @@ static void enumeratePorts(void)
 						{
 							// Check if actually connected and present in the port list
 							for (int j = 0; j < serialPorts.length; ++j)
-								if (wcscmp(serialPorts.ports[j]->portPath, comPort) == 0)
+								if ((wcscmp(serialPorts.ports[j]->portPath + 4, comPort) == 0) && strlen(devInfo[i].Description))
 								{
 									// Update the port description
 									serialPorts.ports[j]->enumerated = 1;
@@ -331,9 +332,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		// Create new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
 		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
-		wcscpy_s(comPort, sizeof(comPort) / sizeof(wchar_t), L"\\\\.\\");
-		wcscat_s(comPort, sizeof(comPort) / sizeof(wchar_t), serialPorts.ports[i]->portPath);
-		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewString(env, (jchar*)comPort, wcslen(comPort)));
+		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portPath, wcslen(serialPorts.ports[i]->portPath)));
 		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->friendlyName, wcslen(serialPorts.ports[i]->friendlyName)));
 		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
@@ -392,6 +391,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	sendDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "sendDeviceQueueSize", "I");
 	if (checkJniError(env, __LINE__ - 1)) return;
 	receiveDeviceQueueSizeField = (*env)->GetFieldID(env, serialCommClass, "receiveDeviceQueueSize", "I");
+	if (checkJniError(env, __LINE__ - 1)) return;
+	requestElevatedPermissionsField = (*env)->GetFieldID(env, serialCommClass, "requestElevatedPermissions", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return;
@@ -464,6 +465,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
@@ -486,7 +489,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	}
 
 	// Reduce the port's latency to its minimum value
-	reduceLatencyToMinimum(port->portPath + 4);
+	reduceLatencyToMinimum(portName + 4, requestElevatedPermissions);
 
 	// Try to open the serial port with read/write access
 	if ((port->handle = CreateFileW(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)

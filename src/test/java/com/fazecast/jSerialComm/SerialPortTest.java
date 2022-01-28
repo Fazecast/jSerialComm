@@ -2,10 +2,10 @@
  * SerialPortTest.java
  *
  *       Created on:  Feb 27, 2015
- *  Last Updated on:  Nov 29, 2021
+ *  Last Updated on:  Jan 28, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2021 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -87,13 +87,13 @@ public class SerialPortTest
 		SerialPort[] ports = SerialPort.getCommPorts();
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
 		System.out.println("\nRe-enumerating ports again in 2 seconds...\n");
 		try { Thread.sleep(2000); } catch (Exception e) {}
 		ports = SerialPort.getCommPorts();
 		System.out.println("Available Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + ": " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation());
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = 0;
@@ -113,6 +113,7 @@ public class SerialPortTest
 		}
 		else
 			ubxPort = ports[serialPortChoice];
+		ubxPort.allowElevatedPermissionsRequest();
 		byte[] readBuffer = new byte[2048];
 		System.out.println("\nPre-setting RTS: " + (ubxPort.setRTS() ? "Success" : "Failure"));
 		boolean openedSuccessfully = ubxPort.openPort(0);

@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jan 25, 2022
+ *  Last Updated on:  Jan 28, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -39,6 +39,7 @@
 serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location)
 {
 	// Allocate memory for the new SerialPort storage structure
+	unsigned char containsSlashes = ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\'));
 	if (vector->capacity == vector->length)
 	{
 		serialPort** newArray = (serialPort**)realloc(vector->ports, ++vector->capacity * sizeof(serialPort*));
@@ -60,13 +61,19 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	memset(port, 0, sizeof(serialPort));
 	port->handle = (void*)-1;
 	port->enumerated = 1;
-	port->portPath = (wchar_t*)malloc((wcslen(key)+1)*sizeof(wchar_t));
+	port->portPath = (wchar_t*)malloc((wcslen(key)+(containsSlashes ? 1 : 5))*sizeof(wchar_t));
 	port->portLocation = (wchar_t*)malloc((wcslen(location)+1)*sizeof(wchar_t));
 	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
 
 	// Store port strings
-	wcscpy_s(port->portPath, wcslen(key)+1, key);
+	if (containsSlashes)
+		wcscpy_s(port->portPath, wcslen(key)+1, key);
+	else
+	{
+		wcscpy_s(port->portPath, wcslen(key)+5, L"\\\\.\\");
+		wcscat_s(port->portPath, wcslen(key)+5, key);
+	}
 	wcscpy_s(port->portLocation, wcslen(location)+1, location);
 	wcscpy_s(port->friendlyName, wcslen(friendlyName)+1, friendlyName);
 	wcscpy_s(port->portDescription, wcslen(description)+1, description);
@@ -77,13 +84,10 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key)
 {
-	// Move past any opening slashes
-	if ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\'))
-		key += 4;
-
 	// Retrieve the serial port specified by the passed-in key
+	int keyOffset = ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\')) ? 0 : 4;
 	for (int i = 0; i < vector->length; ++i)
-		if (wcscmp(key, vector->ports[i]->portPath) == 0)
+		if (wcscmp(key, vector->ports[i]->portPath + keyOffset) == 0)
 			return vector->ports[i];
 	return NULL;
 }
@@ -113,7 +117,7 @@ void removePort(serialPortVector* vector, serialPort* port)
 }
 
 // Windows-specific functionality
-void reduceLatencyToMinimum(const wchar_t* portName)
+void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevatedPermissions)
 {
 	// Search for this port in all FTDI enumerated ports
 	HKEY key, paramKey = 0;
@@ -144,7 +148,7 @@ void reduceLatencyToMinimum(const wchar_t* portName)
 					RegSetValueExW(paramKey, L"LatencyTimer", 0, REG_DWORD, (LPBYTE)&latency, sizeof(latency));
 					RegCloseKey(paramKey);
 				}
-				else
+				else if (requestElevatedPermissions)
 				{
 					// Create registry update file
 					char *workingDirectory = _getcwd(NULL, 0);
