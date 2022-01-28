@@ -268,18 +268,22 @@ public class SerialPortTest
 		ubxPort.addDataListener(new SerialPortDataListener() {
 			@Override
 			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_PARITY_ERROR | SerialPort.LISTENING_EVENT_DATA_WRITTEN | SerialPort.LISTENING_EVENT_BREAK_INTERRUPT |
-					SerialPort.LISTENING_EVENT_CARRIER_DETECT | SerialPort.LISTENING_EVENT_CTS | SerialPort.LISTENING_EVENT_DSR | SerialPort.LISTENING_EVENT_RING_INDICATOR | 
+					SerialPort.LISTENING_EVENT_CARRIER_DETECT | SerialPort.LISTENING_EVENT_CTS | SerialPort.LISTENING_EVENT_DSR | SerialPort.LISTENING_EVENT_RING_INDICATOR | SerialPort.LISTENING_EVENT_PORT_DISCONNECTED |
 					SerialPort.LISTENING_EVENT_FRAMING_ERROR | SerialPort.LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR | SerialPort.LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR | SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
 			@Override
 			public void serialEvent(SerialPortEvent event)
 			{
-				System.out.println("Received event type: " + event.getEventType());
 				if (event.getEventType() == SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
 				{
+					System.out.println("Received event type: LISTENING_EVENT_DATA_AVAILABLE");
 					byte[] buffer = new byte[event.getSerialPort().bytesAvailable()];
 					event.getSerialPort().readBytes(buffer, buffer.length);
 					System.out.println("   Reading " + buffer.length + " bytes");
 				}
+				else if (event.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+					System.out.println("Received event type: LISTENING_EVENT_PORT_DISCONNECTED");
+				else
+					System.out.println("Received event type: " + event.getEventType());
 			}
 		});
 		try { Thread.sleep(5000); } catch (Exception e) {}
@@ -310,29 +314,6 @@ public class SerialPortTest
 		try { Thread.sleep(10000); } catch (Exception e) {}
 		ubxPort.removeDataListener();
 		System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
-
-		/*System.out.println("\nPhysically unplug device within the next 10 seconds to see if the disconnect event fires...");
-		ubxPort.addDataListener(new SerialPortDataListener() {
-			@Override
-			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED | SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
-			@Override
-			public void serialEvent(SerialPortEvent event)
-			{
-				if (event.getEventType() == SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
-				{
-					System.out.println("Received event type: LISTENING_EVENT_DATA_AVAILABLE");
-					byte[] buffer = new byte[event.getSerialPort().bytesAvailable()];
-					event.getSerialPort().readBytes(buffer, buffer.length);
-					System.out.println("   Reading " + buffer.length + " bytes");
-				}
-				else
-				{
-					System.out.println("Received event type: LISTENING_EVENT_PORT_DISCONNECTED");
-				}
-			}
-		});
-		try { Thread.sleep(10000); } catch (Exception e) {}
-		ubxPort.closePort();*/
 
 		/*System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
 		System.out.println("\nAvailable Ports:\n");

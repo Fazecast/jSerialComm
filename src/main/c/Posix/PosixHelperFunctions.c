@@ -1640,37 +1640,41 @@ int verifyAndSetUserPortGroup(const char *portFile)
 	// Attempt to acquire access if not available
 	if (!userCanAccess)
 	{
-		// Check if the user is part of the group that owns the port
+		// Ensure that the port still exists
 		struct stat fileStats;
-		gid_t *userGroups = (gid_t*)malloc(numGroups * sizeof(gid_t));
-		if ((stat(portFile, &fileStats) == 0) && (getgroups(numGroups, userGroups) >= 0))
-			for (int i = 0; i < numGroups; ++i)
-				if (userGroups[i] == fileStats.st_gid)
-				{
-					userPartOfPortGroup = 1;
-					break;
-				}
-
-		// Attempt to add the user to the group that owns the port
-		char *addUserToGroupCmd = (char*)malloc(256);
-		if (!userPartOfPortGroup)
+		if (stat(portFile, &fileStats) == 0)
 		{
-			struct group *portGroup;
-			struct passwd *userDetails;
-			if ((portGroup = getgrgid(fileStats.st_gid)) && (userDetails = getpwuid(geteuid())))
+			// Check if the user is part of the group that owns the port
+			gid_t *userGroups = (gid_t*)malloc(numGroups * sizeof(gid_t));
+			if (getgroups(numGroups, userGroups) >= 0)
+				for (int i = 0; i < numGroups; ++i)
+					if (userGroups[i] == fileStats.st_gid)
+					{
+						userPartOfPortGroup = 1;
+						break;
+					}
+
+			// Attempt to add the user to the group that owns the port
+			char *addUserToGroupCmd = (char*)malloc(256);
+			if (!userPartOfPortGroup)
 			{
-				snprintf(addUserToGroupCmd, 256, "sudo usermod -a -G %s %s", portGroup->gr_name, userDetails->pw_name);
-				userCanAccess = (system(addUserToGroupCmd) == 0);
+				struct group *portGroup;
+				struct passwd *userDetails;
+				if ((portGroup = getgrgid(fileStats.st_gid)) && (userDetails = getpwuid(geteuid())))
+				{
+					snprintf(addUserToGroupCmd, 256, "sudo usermod -a -G %s %s", portGroup->gr_name, userDetails->pw_name);
+					userCanAccess = (system(addUserToGroupCmd) == 0);
+				}
 			}
+
+			// Attempt to enable all read/write port permissions
+			snprintf(addUserToGroupCmd, 256, "sudo chmod 666 %s", portFile);
+			userCanAccess = (system(addUserToGroupCmd) == 0) || userCanAccess;
+
+			// Clean up memory
+			free(addUserToGroupCmd);
+			free(userGroups);
 		}
-
-		// Attempt to enable all read/write port permissions
-		snprintf(addUserToGroupCmd, 256, "sudo chmod 666 %s", portFile);
-		userCanAccess = (system(addUserToGroupCmd) == 0) || userCanAccess;
-
-		// Clean up memory
-		free(addUserToGroupCmd);
-		free(userGroups);
 	}
 
 	// Return whether the user can currently access the serial port
