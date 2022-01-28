@@ -339,7 +339,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 
 	// Disable handling of various POSIX signals
 	sigset_t blockMask;
-	sigemptyset(&blockMask);
+	memset(&blockMask, 0, sizeof(blockMask));
 	struct sigaction ignoreAction = { 0 };
 	ignoreAction.sa_handler = SIG_IGN;
 	ignoreAction.sa_mask = blockMask;
