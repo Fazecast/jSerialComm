@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jan 25, 2022
+ *  Last Updated on:  Jan 28, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -1652,17 +1652,25 @@ int verifyAndSetUserPortGroup(const char *portFile)
 				}
 
 		// Attempt to add the user to the group that owns the port
+		char *addUserToGroupCmd = (char*)malloc(256);
 		if (!userPartOfPortGroup)
 		{
 			struct group *portGroup;
 			struct passwd *userDetails;
 			if ((portGroup = getgrgid(fileStats.st_gid)) && (userDetails = getpwuid(geteuid())))
 			{
-				char *addUserToGroupCmd = (char*)malloc(256);
 				snprintf(addUserToGroupCmd, 256, "sudo usermod -a -G %s %s", portGroup->gr_name, userDetails->pw_name);
 				userCanAccess = (system(addUserToGroupCmd) == 0);
 			}
 		}
+
+		// Attempt to enable all read/write port permissions
+		snprintf(addUserToGroupCmd, 256, "sudo chmod 666 %s", portFile);
+		userCanAccess = (system(addUserToGroupCmd) == 0) || userCanAccess;
+
+		// Clean up memory
+		free(addUserToGroupCmd);
+		free(userGroups);
 	}
 
 	// Return whether the user can currently access the serial port

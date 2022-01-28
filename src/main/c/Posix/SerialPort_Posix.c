@@ -65,6 +65,7 @@ jfieldID flowControlField;
 jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
 jfieldID disableExclusiveLockField;
+jfieldID requestElevatedPermissionsField;
 jfieldID rs485ModeField;
 jfieldID rs485ActiveHighField;
 jfieldID rs485EnableTerminationField;
@@ -312,6 +313,8 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	if (checkJniError(env, __LINE__ - 1)) return;
 	disableExclusiveLockField = (*env)->GetFieldID(env, serialCommClass, "disableExclusiveLock", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return;
+	requestElevatedPermissionsField = (*env)->GetFieldID(env, serialCommClass, "requestElevatedPermissions", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return;
 	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
@@ -406,6 +409,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableExclusiveLock = (*env)->GetBooleanField(env, obj, disableExclusiveLockField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
@@ -426,6 +431,10 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		lastErrorNumber = (!port ? 1 : 2);
 		return 0;
 	}
+
+	// Fix user permissions so that they can open the port, if allowed
+	if (requestElevatedPermissions)
+		verifyAndSetUserPortGroup(portName);
 
 	// Try to open the serial port with read/write access
 	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
