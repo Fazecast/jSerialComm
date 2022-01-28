@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 25, 2022
+ *  Last Updated on:  Jan 28, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -854,7 +854,11 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			port->errorLineNumber = __LINE__ + 1;
 			do { errno = 0; numBytesRead = read(port->handle, port->readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
+			{
+				// If all bytes were not successfully read, it is an error
+				numBytesRead = -1;
 				break;
+			}
 
 			// Fix index variables
 			numBytesReadTotal += numBytesRead;
@@ -879,7 +883,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			port->errorLineNumber = __LINE__ + 1;
 			do { errno = 0; numBytesRead = read(port->handle, port->readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
+			{
+				// If any bytes were read, return those bytes
+				if (!numBytesReadTotal)
+					numBytesRead = -1;
 				break;
+			}
 
 			// Fix index variables
 			numBytesReadTotal += numBytesRead;
@@ -894,7 +903,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		// Read from the port
 		port->errorLineNumber = __LINE__ + 1;
 		do { errno = 0; numBytesRead = read(port->handle, port->readBuffer, bytesToRead); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
-		if (numBytesRead > 0)
+		if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
+			numBytesRead = -1;
+		else
 			numBytesReadTotal = numBytesRead;
 	}
 
