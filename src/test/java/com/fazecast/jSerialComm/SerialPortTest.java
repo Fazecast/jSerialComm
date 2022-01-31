@@ -32,7 +32,7 @@ import java.util.Scanner;
  * This class provides a test case for the jSerialComm library.
  * 
  * @author Will Hedgecock &lt;will.hedgecock@gmail.com&gt;
- * @version 2.9.0
+ * @version 2.9.1
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
