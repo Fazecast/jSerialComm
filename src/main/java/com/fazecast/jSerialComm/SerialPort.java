@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 28, 2022
+ *  Last Updated on:  Feb 14, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -1765,10 +1765,12 @@ public final class SerialPort
 			
 			try
 			{
-				serialEventThread.join(500);
-				if (serialEventThread.isAlive())
-					serialEventThread.interrupt();
-				serialEventThread.join();
+				do
+				{
+					serialEventThread.join(500);
+					if (serialEventThread.isAlive())
+						serialEventThread.interrupt();
+				} while (serialEventThread.isAlive());
 			}
 			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 			serialEventThread = null;
