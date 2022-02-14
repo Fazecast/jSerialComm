@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 28, 2022
+ *  Last Updated on:  Feb 14, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -803,8 +803,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	tcsetattr(port->handle, TCSANOW, &options);
 
 	// Unblock, unlock, and close the port
-	fsync(port->handle);
-	tcdrain(port->handle);
+	fdatasync(port->handle);
 	tcflush(port->handle, TCIOFLUSH);
 	flock(port->handle, LOCK_UN | LOCK_NB);
 	while (close(port->handle) && (errno == EINTR))

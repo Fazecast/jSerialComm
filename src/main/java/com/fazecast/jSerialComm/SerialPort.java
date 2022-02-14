@@ -1765,6 +1765,8 @@ public final class SerialPort
 			
 			try
 			{
+				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
+				//   be in an unspecified, possibly unrecoverable state
 				do
 				{
 					serialEventThread.join(500);
