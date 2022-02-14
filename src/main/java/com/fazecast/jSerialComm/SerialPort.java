@@ -501,7 +501,9 @@ public final class SerialPort
 		serialPort.friendlyName = "User-Specified Port";
 		serialPort.portDescription = "User-Specified Port";
 		serialPort.portLocation = "0-0";
-		serialPort.retrievePortDetails();
+		synchronized (SerialPort.class) {
+			serialPort.retrievePortDetails();
+		}
 		return serialPort;
 	}
 
@@ -584,60 +586,59 @@ public final class SerialPort
 	 */
 	public final synchronized boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
-		// Synchronize this method to the class scope as well
-        synchronized (SerialPort.class)
-        {
-			// Set the send/receive internal buffer sizes, and return true if already opened
-			safetySleepTimeMS = safetySleepTime;
-			sendDeviceQueueSize = (deviceSendQueueSize > 0) ? deviceSendQueueSize : sendDeviceQueueSize;
-			receiveDeviceQueueSize = (deviceReceiveQueueSize > 0) ? deviceReceiveQueueSize : receiveDeviceQueueSize;
-			if (portHandle != 0)
-				return configPort(portHandle);
-	
-			// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
-			if (safetySleepTimeMS > 0)
-				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-	
-			// If this is an Android root application, we must explicitly allow serial port access to the library
-			File portFile = isAndroid ? new File(comPort) : null;
-			if (portFile != null && (!portFile.canRead() || !portFile.canWrite()))
+		// Set the send/receive internal buffer sizes, and return true if already opened
+		safetySleepTimeMS = safetySleepTime;
+		sendDeviceQueueSize = (deviceSendQueueSize > 0) ? deviceSendQueueSize : sendDeviceQueueSize;
+		receiveDeviceQueueSize = (deviceReceiveQueueSize > 0) ? deviceReceiveQueueSize : receiveDeviceQueueSize;
+		if (portHandle != 0)
+			return configPort(portHandle);
+
+		// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
+		if (safetySleepTimeMS > 0)
+			try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
+
+		// If this is an Android root application, we must explicitly allow serial port access to the library
+		File portFile = isAndroid ? new File(comPort) : null;
+		if (portFile != null && (!portFile.canRead() || !portFile.canWrite()))
+		{
+			Process process = null;
+			try
 			{
-				Process process = null;
-				try
-				{
-					process = Runtime.getRuntime().exec("su");
-					DataOutputStream writer = new DataOutputStream(process.getOutputStream());
-					writer.writeBytes("chmod 666 " + comPort + "\n");
-					writer.writeBytes("exit\n");
-					writer.flush();
-					BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-					while (reader.readLine() != null);
-				}
-				catch (Exception e)
-				{
-					e.printStackTrace();
+				process = Runtime.getRuntime().exec("su");
+				DataOutputStream writer = new DataOutputStream(process.getOutputStream());
+				writer.writeBytes("chmod 666 " + comPort + "\n");
+				writer.writeBytes("exit\n");
+				writer.flush();
+				BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+				while (reader.readLine() != null);
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				return false;
+			}
+			finally
+			{
+				if (process == null)
 					return false;
-				}
-				finally
-				{
-					if (process == null)
-						return false;
-					try { process.waitFor(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
-					try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-					try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-					try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
-					try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
-				}
+				try { process.waitFor(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
+				try { process.getInputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { process.getOutputStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { process.getErrorStream().close(); } catch (IOException e) { e.printStackTrace(); return false; }
+				try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
 			}
-	
-			// Open the serial port and start an event-based listener if registered
-			if ((portHandle = openPortNative()) != 0)
-			{
-				if (serialEventListener != null)
-					serialEventListener.startListening();
-			}
-			return (portHandle != 0);
-        }
+		}
+
+		// Natively open the serial port, and synchronize to the class scope since port enumeration methods are class-based,
+		//   and this method may alter or read a global class structure in native code
+		synchronized (SerialPort.class) {
+			portHandle = openPortNative();
+		}
+
+		// Start an event-based listener if registered and the port is open
+		if ((portHandle != 0) && (serialEventListener != null))
+			serialEventListener.startListening();
+		return (portHandle != 0);
 	}
 
 	/**
@@ -684,15 +685,19 @@ public final class SerialPort
 	 */
 	public final synchronized boolean closePort()
 	{
-		// Synchronize this method to the class scope as well
-        synchronized (SerialPort.class)
-        {
-			if (serialEventListener != null)
-				serialEventListener.stopListening();
-			if (portHandle != 0)
+		// Stop a registered event listener
+		if (serialEventListener != null)
+			serialEventListener.stopListening();
+
+		// Natively close the port, and synchronize to the class scope since port enumeration methods are class-based,
+		//   and this method may alter or read a global class structure in native code
+		if (portHandle != 0)
+		{
+			synchronized (SerialPort.class) {
 				portHandle = closePortNative(portHandle);
-			return (portHandle == 0);
-        }
+			}
+		}
+		return (portHandle == 0);
 	}
 
 	/**

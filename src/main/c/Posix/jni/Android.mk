@@ -5,8 +5,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := jSerialComm
 TARGET_OUT := ../../resources/Android/$(TARGET_ARCH_ABI)
 LOCAL_SRC_FILES := ../SerialPort_Posix.c ../PosixHelperFunctions.c
+LOCAL_CFLAGS := -fsigned-char -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LOCAL_LDLIBS := -llog
-LOCAL_CFLAGS := -fsigned-char
 
 include $(BUILD_SHARED_LIBRARY)
 
