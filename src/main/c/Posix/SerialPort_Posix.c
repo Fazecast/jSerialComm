@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 14, 2022
+ *  Last Updated on:  Feb 15, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -79,8 +79,9 @@ jfieldID readTimeoutField;
 jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
-// List of available serial ports
+// Global list of available serial ports
 char portsEnumerated = 0;
+pthread_mutex_t criticalSection;
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler
@@ -240,30 +241,36 @@ void* eventReadingThread2(void *serialPortPointer)
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
+	// Mark this entire function as a critical section
+	pthread_mutex_lock(&criticalSection);
+
 	// Enumerate all ports on the current system
 	enumeratePorts();
 
 	// Create a Java-based port listing
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
-	if (checkJniError(env, __LINE__ - 1)) return arrayObject;
-	for (int i = 0; i < serialPorts.length; ++i)
+	char stopLooping = checkJniError(env, __LINE__ - 1) ? 1 : 0;
+	for (int i = 0; !stopLooping && (i < serialPorts.length); ++i)
 	{
 		// Create a new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portDescription));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, serialPorts.ports[i]->friendlyName));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portPath));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portLocation));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 	}
+
+	// Exit critical section and return the com port array
+	pthread_mutex_unlock(&criticalSection);
 	return arrayObject;
 }
 
@@ -354,6 +361,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	sigaction(SIGUSR2, &ignoreAction, NULL);
 	sigaction(SIGTTOU, &ignoreAction, NULL);
 	sigaction(SIGTTIN, &ignoreAction, NULL);
+
+	// Initialize the critical section lock
+	pthread_mutex_init(&criticalSection, NULL);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
@@ -366,6 +376,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
 	checkJniError(env, __LINE__ - 1);
+
+	// Delete the critical section lock
+	pthread_mutex_destroy(&criticalSection);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDetails(JNIEnv *env, jobject obj)
@@ -377,25 +390,33 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (checkJniError(env, __LINE__ - 1)) return;
 
 	// Ensure that the serial port exists
+	char continueRetrieval = 1;
+	pthread_mutex_lock(&criticalSection);
 	if (!portsEnumerated)
 		enumeratePorts();
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
-	{
-		(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-		checkJniError(env, __LINE__ - 1);
-		return;
-	}
+		continueRetrieval = 0;
 
 	// Fill in the Java-side port details
-	(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewStringUTF(env, port->portDescription));
-	if (checkJniError(env, __LINE__ - 1)) return;
-	(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewStringUTF(env, port->friendlyName));
-	if (checkJniError(env, __LINE__ - 1)) return;
-	(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewStringUTF(env, port->portLocation));
-	if (checkJniError(env, __LINE__ - 1)) return;
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewStringUTF(env, port->portDescription));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewStringUTF(env, port->friendlyName));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewStringUTF(env, port->portLocation));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
 
 	// Release all JNI structures
+	pthread_mutex_unlock(&criticalSection);
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
 	checkJniError(env, __LINE__ - 1);
 }
@@ -405,8 +426,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	// Retrieve the serial port parameter fields
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
-	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableExclusiveLock = (*env)->GetBooleanField(env, obj, disableExclusiveLockField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
@@ -415,14 +434,18 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 
 	// Ensure that the serial port still exists and is not already open
+	pthread_mutex_lock(&criticalSection);
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
 		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0");
 	}
+	pthread_mutex_unlock(&criticalSection);
 	if (!port || (port->handle > 0))
 	{
 		(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -437,17 +460,21 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		verifyAndSetUserPortGroup(portName);
 
 	// Try to open the serial port with read/write access
+	pthread_mutex_lock(&criticalSection);
 	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
 	if ((port->handle = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC)) > 0)
 	{
 		// Ensure that multiple root users cannot access the device simultaneously
+		pthread_mutex_unlock(&criticalSection);
 		if (!disableExclusiveLock && flock(port->handle, LOCK_EX | LOCK_NB))
 		{
 			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 			port->errorNumber = lastErrorNumber = errno;
 			while (close(port->handle) && (errno == EINTR))
 				errno = 0;
+			pthread_mutex_lock(&criticalSection);
 			port->handle = -1;
+			pthread_mutex_unlock(&criticalSection);
 		}
 		else if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
 		{
@@ -455,7 +482,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			fcntl(port->handle, F_SETFL, O_NONBLOCK);
 			while (close(port->handle) && (errno == EINTR))
 				errno = 0;
+			pthread_mutex_lock(&criticalSection);
 			port->handle = -1;
+			pthread_mutex_unlock(&criticalSection);
 		}
 		else if (autoFlushIOBuffers)
 		{
@@ -466,7 +495,10 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		}
 	}
 	else
+	{
 		port->errorNumber = lastErrorNumber = errno;
+		pthread_mutex_unlock(&criticalSection);
+	}
 
 	// Return a pointer to the serial port data structure
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
@@ -808,7 +840,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	flock(port->handle, LOCK_UN | LOCK_NB);
 	while (close(port->handle) && (errno == EINTR))
 		errno = 0;
+	pthread_mutex_lock(&criticalSection);
 	port->handle = -1;
+	pthread_mutex_unlock(&criticalSection);
 	return 0;
 }
 

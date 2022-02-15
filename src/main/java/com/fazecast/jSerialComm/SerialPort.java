@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 14, 2022
+ *  Last Updated on:  Feb 15, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -444,10 +444,16 @@ public final class SerialPort
 	 * <p>
 	 * The serial ports can be accessed by iterating through each of the SerialPort objects in this array.
 	 * <p>
-	 * Note that the {@link #openPort()} method must be called before any attempts to read from or write to the port.
+	 * Note that the array will also include any serial ports that your application currently has open, even if
+	 * the devices attached to those ports become disconnected. As such, it is important that you always call
+	 * {@link #closePort()} on a SerialPort object if it becomes disconnected, which is detectable by inspecting
+	 * the return values from the various read calls or by registering a {@link SerialPortDataListener} for the 
+	 * {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED} event.
+	 * <p>
+	 * The {@link #openPort()} method must be called before any attempts to read from or write to the port.
 	 * Likewise, {@link #closePort()} should be called when you are finished accessing the port.
 	 * <p>
-	 * Also note that repeated calls to this function will re-enumerate all serial ports and will return a completely
+	 * Note that repeated calls to this function will re-enumerate all serial ports and will return a completely
 	 * unique set of array objects. As such, you should store a reference to the serial port object(s) you are
 	 * interested in in your own application code.
 	 * <p>
@@ -501,9 +507,7 @@ public final class SerialPort
 		serialPort.friendlyName = "User-Specified Port";
 		serialPort.portDescription = "User-Specified Port";
 		serialPort.portLocation = "0-0";
-		synchronized (SerialPort.class) {
-			serialPort.retrievePortDetails();
-		}
+		serialPort.retrievePortDetails();
 		return serialPort;
 	}
 
@@ -629,13 +633,8 @@ public final class SerialPort
 			}
 		}
 
-		// Natively open the serial port, and synchronize to the class scope since port enumeration methods are class-based,
-		//   and this method may alter or read a global class structure in native code
-		synchronized (SerialPort.class) {
-			portHandle = openPortNative();
-		}
-
-		// Start an event-based listener if registered and the port is open
+		// Natively open the serial port, and start an event-based listener if registered
+		portHandle = openPortNative();
 		if ((portHandle != 0) && (serialEventListener != null))
 			serialEventListener.startListening();
 		return (portHandle != 0);
@@ -689,14 +688,9 @@ public final class SerialPort
 		if (serialEventListener != null)
 			serialEventListener.stopListening();
 
-		// Natively close the port, and synchronize to the class scope since port enumeration methods are class-based,
-		//   and this method may alter or read a global class structure in native code
+		// Natively close the port
 		if (portHandle != 0)
-		{
-			synchronized (SerialPort.class) {
-				portHandle = closePortNative(portHandle);
-			}
-		}
+			portHandle = closePortNative(portHandle);
 		return (portHandle == 0);
 	}
 
@@ -751,8 +745,8 @@ public final class SerialPort
 	 * Returns the source code line location of the latest error encountered during execution of
 	 * the native code for this port.
 	 * <p>
-	 * This function must be called while the port is still open as soon as an error is encountered,
-	 * or it may return an incorrect source code line location.
+	 * This function must be called as soon as an error is encountered, or it may return an incorrect source
+	 * code line location.
 	 * 
 	 * @return Source line of latest native code error.
 	 */
@@ -761,8 +755,8 @@ public final class SerialPort
 	/**
 	 * Returns the error number returned by the most recent native source code line that failed execution.
 	 * <p>
-	 * This function must be called while the port is still open as soon as an error is encountered,
-	 * or it may return an incorrect or invalid error code.
+	 * This function must be called as soon as an error is encountered, or it may return an incorrect or
+	 * invalid error code.
 	 * 
 	 * @return Error number of the latest native code error.
 	 */

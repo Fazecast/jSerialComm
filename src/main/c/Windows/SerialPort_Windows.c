@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jan 28, 2022
+ *  Last Updated on:  Feb 15, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -78,8 +78,9 @@ jfieldID eventFlagsField;
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
 
-// List of available serial ports
+// Global list of available serial ports
 char portsEnumerated = 0;
+CRITICAL_SECTION criticalSection;
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler
@@ -320,31 +321,37 @@ static void enumeratePorts(void)
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
 {
+	// Mark this entire function as a critical section
+	EnterCriticalSection(&criticalSection);
+
 	// Enumerate all ports on the current system
 	enumeratePorts();
 
 	// Get relevant SerialComm methods and fill in com port array
 	wchar_t comPort[128];
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
-	if (checkJniError(env, __LINE__ - 1)) return arrayObject;
-	for (int i = 0; i < serialPorts.length; ++i)
+	char stopLooping = checkJniError(env, __LINE__ - 1) ? 1 : 0;
+	for (int i = 0; !stopLooping && (i < serialPorts.length); ++i)
 	{
 		// Create new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialCommClass, serialCommConstructor);
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portPath, wcslen(serialPorts.ports[i]->portPath)));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->friendlyName, wcslen(serialPorts.ports[i]->friendlyName)));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portDescription, wcslen(serialPorts.ports[i]->portDescription)));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portLocation, wcslen(serialPorts.ports[i]->portLocation)));
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
-		if (checkJniError(env, __LINE__ - 1)) return arrayObject;
+		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 	}
+
+	// Exit critical section and return the com port array
+	LeaveCriticalSection(&criticalSection);
 	return arrayObject;
 }
 
@@ -412,6 +419,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	if (checkJniError(env, __LINE__ - 1)) return;
 	eventFlagsField = (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I");
 	if (checkJniError(env, __LINE__ - 1)) return;
+
+	// Initialize the critical section lock
+	InitializeCriticalSection(&criticalSection);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
@@ -424,6 +434,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 	// Delete the cached global reference
 	(*env)->DeleteGlobalRef(env, serialCommClass);
 	checkJniError(env, __LINE__ - 1);
+
+	// Delete the critical section lock
+	DeleteCriticalSection(&criticalSection);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDetails(JNIEnv *env, jobject obj)
@@ -435,25 +448,33 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (checkJniError(env, __LINE__ - 1)) return;
 
 	// Ensure that the serial port exists
+	char continueRetrieval = 1;
+	EnterCriticalSection(&criticalSection);
 	if (!portsEnumerated)
 		enumeratePorts();
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
-	{
-		(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
-		checkJniError(env, __LINE__ - 1);
-		return;
-	}
+		continueRetrieval = 0;
 
 	// Fill in the Java-side port details
-	(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewString(env, (jchar*)port->friendlyName, wcslen(port->friendlyName)));
-	if (checkJniError(env, __LINE__ - 1)) return;
-	(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewString(env, (jchar*)port->portDescription, wcslen(port->portDescription)));
-	if (checkJniError(env, __LINE__ - 1)) return;
-	(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewString(env, (jchar*)port->portLocation, wcslen(port->portLocation)));
-	if (checkJniError(env, __LINE__ - 1)) return;
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, friendlyNameField, (*env)->NewString(env, (jchar*)port->friendlyName, wcslen(port->friendlyName)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, portDescriptionField, (*env)->NewString(env, (jchar*)port->portDescription, wcslen(port->portDescription)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewString(env, (jchar*)port->portLocation, wcslen(port->portLocation)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
 
 	// Release all JNI structures
+	LeaveCriticalSection(&criticalSection);
 	(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
 	checkJniError(env, __LINE__ - 1);
 }
@@ -463,22 +484,24 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	// Retrieve the serial port parameter fields
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
-	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 
 	// Ensure that the serial port still exists and is not already open
+	EnterCriticalSection(&criticalSection);
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
 		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0");
 	}
+	LeaveCriticalSection(&criticalSection);
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))
 	{
 		(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
@@ -492,9 +515,12 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	reduceLatencyToMinimum(portName + 4, requestElevatedPermissions);
 
 	// Try to open the serial port with read/write access
+	EnterCriticalSection(&criticalSection);
+	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
 	if ((port->handle = CreateFileW(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)
 	{
 		// Configure the port parameters and timeouts
+		LeaveCriticalSection(&criticalSection);
 		if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
 		{
 			// Close the port if there was a problem setting the parameters
@@ -502,15 +528,17 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			CancelIoEx(port->handle, NULL);
 			SetCommMask(port->handle, 0);
 			CloseHandle(port->handle);
+			EnterCriticalSection(&criticalSection);
 			port->handle = INVALID_HANDLE_VALUE;
+			LeaveCriticalSection(&criticalSection);
 		}
 		else if (autoFlushIOBuffers)
 			Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(env, obj, (jlong)(intptr_t)port);
 	}
 	else
 	{
-		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 15;
 		port->errorNumber = lastErrorNumber = GetLastError();
+		LeaveCriticalSection(&criticalSection);
 	}
 
 	// Return a pointer to the serial port data structure
@@ -790,14 +818,15 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 	// Purge any outstanding port operations
 	PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 	CancelIoEx(port->handle, NULL);
-	FlushFileBuffers(port->handle);
 	SetCommMask(port->handle, 0);
 
 	// Close the port
 	port->eventListenerRunning = 0;
 	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
 	port->errorNumber = lastErrorNumber = (!CloseHandle(port->handle) ? GetLastError() : 0);
+	EnterCriticalSection(&criticalSection);
 	port->handle = INVALID_HANDLE_VALUE;
+	LeaveCriticalSection(&criticalSection);
 	return 0;
 }
 
