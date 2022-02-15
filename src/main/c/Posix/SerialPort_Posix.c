@@ -355,7 +355,6 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrar
 	ignoreAction.sa_mask = blockMask;
 	sigaction(SIGIO, &ignoreAction, NULL);
 	sigaction(SIGHUP, &ignoreAction, NULL);
-	sigaction(SIGTERM, &ignoreAction, NULL);
 	sigaction(SIGCONT, &ignoreAction, NULL);
 	sigaction(SIGUSR1, &ignoreAction, NULL);
 	sigaction(SIGUSR2, &ignoreAction, NULL);
