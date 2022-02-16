@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 15, 2022
+ *  Last Updated on:  Feb 16, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -54,6 +54,7 @@ public final class SerialPort
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private volatile boolean isAndroid = false;
 	static private volatile boolean isWindows = false;
+	static private volatile boolean isShuttingDown = false;
 	static
 	{
 		// Determine the temporary file directory for Java and remove any previous versions of this library
@@ -405,7 +406,14 @@ public final class SerialPort
 		catch (Exception e) { e.printStackTrace(); }
 
 		// Add a shutdown hook to ensure all ports get closed
-		Runtime.getRuntime().addShutdownHook(new Thread() { public void run() { uninitializeLibrary(); } });
+		Runtime.getRuntime().addShutdownHook(new Thread()
+		{
+			public void run()
+			{
+				isShuttingDown = true;
+				uninitializeLibrary();
+			}
+		});
 	}
 
 	// Static symbolic link testing function
@@ -1726,7 +1734,7 @@ public final class SerialPort
 				@Override
 				public void run()
 				{
-					while (eventListenerRunning)
+					while (eventListenerRunning && !isShuttingDown)
 					{
 						try { waitForSerialEvent(); }
 						catch (Exception e)
@@ -1825,7 +1833,7 @@ public final class SerialPort
 					}
 				}
 			}
-			if (event != LISTENING_EVENT_TIMED_OUT)
+			if (eventListenerRunning && !isShuttingDown && (event != LISTENING_EVENT_TIMED_OUT))
 				userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, event));
 		}
 	}
