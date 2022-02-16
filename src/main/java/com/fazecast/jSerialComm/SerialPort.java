@@ -1758,17 +1758,18 @@ public final class SerialPort
 			eventListenerRunning = false;
 			configTimeouts(portHandle, TIMEOUT_NONBLOCKING, 0, 0, 0);
 			setEventListeningStatus(portHandle, false);
-			
+
+			// Wait until the event-reading thread returns. This thread MUST return or the serial port will
+			//   be in an unspecified, possibly unrecoverable state
 			try
 			{
-				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
-				//   be in an unspecified, possibly unrecoverable state
-				do
-				{
-					serialEventThread.join(500);
-					if (serialEventThread.isAlive())
-						serialEventThread.interrupt();
-				} while (serialEventThread.isAlive());
+				if (!Thread.currentThread().equals(serialEventThread))
+					do
+					{
+						serialEventThread.join(500);
+						if (serialEventThread.isAlive())
+							serialEventThread.interrupt();
+					} while (serialEventThread.isAlive());
 			}
 			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 			serialEventThread = null;
