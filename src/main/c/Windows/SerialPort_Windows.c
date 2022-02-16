@@ -328,7 +328,6 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	enumeratePorts();
 
 	// Get relevant SerialComm methods and fill in com port array
-	wchar_t comPort[128];
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialCommClass, 0);
 	char stopLooping = checkJniError(env, __LINE__ - 1) ? 1 : 0;
 	for (int i = 0; !stopLooping && (i < serialPorts.length); ++i)
@@ -470,7 +469,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (continueRetrieval)
 	{
 		(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewString(env, (jchar*)port->portLocation, wcslen(port->portLocation)));
-		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+		checkJniError(env, __LINE__ - 1);
 	}
 
 	// Release all JNI structures

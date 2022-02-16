@@ -130,9 +130,8 @@ void removePort(serialPortVector* vector, serialPort* port)
 
 void getDriverName(const char* directoryToSearch, char* friendlyName)
 {
-	friendlyName[0] = '\0';
-
 	// Open the directory
+	friendlyName[0] = '\0';
 	DIR *directoryIterator = opendir(directoryToSearch);
 	if (!directoryIterator)
 		return;
@@ -163,16 +162,14 @@ void getDriverName(const char* directoryToSearch, char* friendlyName)
 
 void getFriendlyName(const char* productFile, char* friendlyName)
 {
-	int friendlyNameLength = 0;
 	friendlyName[0] = '\0';
-
 	FILE *input = fopen(productFile, "rb");
 	if (input)
 	{
-		char ch = getc(input);
-		while ((ch != '\n') && (ch != EOF))
+		int ch = getc(input), friendlyNameLength = 0;
+		while (((char)ch != '\n') && (ch != EOF))
 		{
-			friendlyName[friendlyNameLength++] = ch;
+			friendlyName[friendlyNameLength++] = (char)ch;
 			ch = getc(input);
 		}
 		friendlyName[friendlyNameLength] = '\0';
@@ -182,16 +179,14 @@ void getFriendlyName(const char* productFile, char* friendlyName)
 
 void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription)
 {
-	int interfaceDescriptionLength = 0;
 	interfaceDescription[0] = '\0';
-
 	FILE *input = fopen(interfaceFile, "rb");
 	if (input)
 	{
-		char ch = getc(input);
-		while ((ch != '\n') && (ch != EOF))
+		int ch = getc(input), interfaceDescriptionLength = 0;
+		while (((char)ch != '\n') && (ch != EOF))
 		{
-			interfaceDescription[interfaceDescriptionLength++] = ch;
+			interfaceDescription[interfaceDescriptionLength++] = (char)ch;
 			ch = getc(input);
 		}
 		interfaceDescription[interfaceDescriptionLength] = '\0';
@@ -216,10 +211,10 @@ char getPortLocation(const char* portDirectory, char* portLocation)
 	FILE *input = fopen(busnumFile, "rb");
 	if (input)
 	{
-		char ch = getc(input);
-		while ((ch != '\n') && (ch != EOF))
+		int ch = getc(input);
+		while (((char)ch != '\n') && (ch != EOF))
 		{
-			portLocation[portLocationLength++] = ch;
+			portLocation[portLocationLength++] = (char)ch;
 			ch = getc(input);
 		}
 		portLocation[portLocationLength++] = '-';
@@ -236,10 +231,10 @@ char getPortLocation(const char* portDirectory, char* portLocation)
 	input = fopen(devpathFile, "rb");
 	if (input)
 	{
-		char ch = getc(input);
-		while ((ch != '\n') && (ch != EOF))
+		int ch = getc(input);
+		while (((char)ch != '\n') && (ch != EOF))
 		{
-			portLocation[portLocationLength++] = ch;
+			portLocation[portLocationLength++] = (char)ch;
 			ch = getc(input);
 		}
 		portLocation[portLocationLength] = '\0';
@@ -1282,7 +1277,7 @@ char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* frie
 					if (strstr(stdOutResult, "addr "))
 					{
 						address = strstr(stdOutResult, "addr ") + 5;
-						while ((address[0] != '\0') && (address[0] == '0'))
+						while (address[0] == '0')
 							address = address + 1;
 						*(strchr(address, ':')) = '\0';
 						sprintf(portLocation, "%d-%s", bus, address);
@@ -1416,11 +1411,10 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 
 void searchForComPorts(serialPortVector* comPorts)
 {
-	serialPort *port;
 	io_object_t serialPort;
 	io_iterator_t serialPortIterator;
-	char friendlyName[1024], comPortCu[1024], comPortTty[1024];
-	char portLocation[1024], portDescription[1024];
+	char comPortCu[1024], comPortTty[1024];
+	char friendlyName[1024], portLocation[1024];
 
 	// Enumerate serial ports on machine
 	IOServiceGetMatchingServices(kIOMasterPortDefault, IOServiceMatching(kIOSerialBSDServiceValue), &serialPortIterator);
@@ -1488,7 +1482,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			strcpy(portLocation, "0-0");
 
 		// Check if callout port is already enumerated
-		port = fetchPort(comPorts, comPortCu);
+		struct serialPort *port = fetchPort(comPorts, comPortCu);
 		if (port)
 		{
 			// See if device has changed locations
@@ -1635,7 +1629,7 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 int verifyAndSetUserPortGroup(const char *portFile)
 {
 	// Check if the user can currently access the port file
-	int numGroups = getgroups(0, NULL), userPartOfPortGroup = 0;
+	int numGroups = getgroups(0, NULL);
 	int userCanAccess = (faccessat(0, portFile, R_OK | W_OK, AT_EACCESS) == 0);
 
 	// Attempt to acquire access if not available
@@ -1646,6 +1640,7 @@ int verifyAndSetUserPortGroup(const char *portFile)
 		if (stat(portFile, &fileStats) == 0)
 		{
 			// Check if the user is part of the group that owns the port
+			int userPartOfPortGroup = 0;
 			gid_t *userGroups = (gid_t*)malloc(numGroups * sizeof(gid_t));
 			if (getgroups(numGroups, userGroups) >= 0)
 				for (int i = 0; i < numGroups; ++i)

@@ -411,7 +411,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (continueRetrieval)
 	{
 		(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewStringUTF(env, port->portLocation));
-		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+		checkJniError(env, __LINE__ - 1);
 	}
 
 	// Release all JNI structures
@@ -520,14 +520,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int rs485DelayBefore = (*env)->GetIntField(env, obj, rs485DelayBeforeField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int rs485DelayAfter = (*env)->GetIntField(env, obj, rs485DelayAfterField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
@@ -538,12 +530,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	unsigned char rs485ActiveHigh = (*env)->GetBooleanField(env, obj, rs485ActiveHighField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	unsigned char rs485EnableTermination = (*env)->GetBooleanField(env, obj, rs485EnableTerminationField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
@@ -552,6 +538,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	char xoffStopChar = (*env)->GetByteField(env, obj, xoffStopCharField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+#if defined(__linux__)
+	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	int rs485DelayBefore = (*env)->GetIntField(env, obj, rs485DelayBeforeField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	int rs485DelayAfter = (*env)->GetIntField(env, obj, rs485DelayAfterField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char rs485ActiveHigh = (*env)->GetBooleanField(env, obj, rs485ActiveHighField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char rs485EnableTermination = (*env)->GetBooleanField(env, obj, rs485EnableTerminationField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char rs485RxDuringTx = (*env)->GetBooleanField(env, obj, rs485RxDuringTxField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+#endif
 
 	// Clear any serial port flags and set up raw non-canonical port parameters
 	struct termios options = { 0 };
