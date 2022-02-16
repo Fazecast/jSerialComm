@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 15, 2022
+ *  Last Updated on:  Feb 16, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -515,12 +515,16 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	reduceLatencyToMinimum(portName + 4, requestElevatedPermissions);
 
 	// Try to open the serial port with read/write access
-	EnterCriticalSection(&criticalSection);
 	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
-	if ((port->handle = CreateFileW(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL)) != INVALID_HANDLE_VALUE)
+	void *portHandle = CreateFileW(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_OVERLAPPED, NULL);
+	if (portHandle != INVALID_HANDLE_VALUE)
 	{
-		// Configure the port parameters and timeouts
+		// Set the newly opened port handle in the serial port structure
+		EnterCriticalSection(&criticalSection);
+		port->handle = portHandle;
 		LeaveCriticalSection(&criticalSection);
+
+		// Configure the port parameters and timeouts
 		if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
 		{
 			// Close the port if there was a problem setting the parameters
@@ -536,10 +540,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuffers(env, obj, (jlong)(intptr_t)port);
 	}
 	else
-	{
 		port->errorNumber = lastErrorNumber = GetLastError();
-		LeaveCriticalSection(&criticalSection);
-	}
 
 	// Return a pointer to the serial port data structure
 	(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);

@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 15, 2022
+ *  Last Updated on:  Feb 16, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -459,12 +459,16 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		verifyAndSetUserPortGroup(portName);
 
 	// Try to open the serial port with read/write access
-	pthread_mutex_lock(&criticalSection);
 	port->errorLineNumber = lastErrorLineNumber = __LINE__ + 1;
-	if ((port->handle = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC)) > 0)
+	int portHandle = open(portName, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+	if (portHandle > 0)
 	{
-		// Ensure that multiple root users cannot access the device simultaneously
+		// Set the newly opened port handle in the serial port structure
+		pthread_mutex_lock(&criticalSection);
+		port->handle = portHandle;
 		pthread_mutex_unlock(&criticalSection);
+
+		// Ensure that multiple root users cannot access the device simultaneously
 		if (!disableExclusiveLock && flock(port->handle, LOCK_EX | LOCK_NB))
 		{
 			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
@@ -494,10 +498,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		}
 	}
 	else
-	{
 		port->errorNumber = lastErrorNumber = errno;
-		pthread_mutex_unlock(&criticalSection);
-	}
 
 	// Return a pointer to the serial port data structure
 	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);

@@ -249,6 +249,7 @@ char getPortLocation(const char* portDirectory, char* portLocation)
 	{
 		isUSB = 0;
 		portLocation[portLocationLength++] = '0';
+		portLocation[portLocationLength] = '\0';
 	}
 
 	// Clean up the dynamic memory
