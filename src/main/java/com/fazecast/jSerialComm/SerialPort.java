@@ -576,10 +576,8 @@ public final class SerialPort
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
-	 * Note on Windows using an FTDI device: The first time this method is called, you may be prompted to allow elevated privileges
-	 * so that the driver latency can be correctly specified. This should only be necessary the first time you use a new FTDI device.
-	 * Declining the elevated privileges will not affect the ability of the serial port to be accessed; however, read/write timing
-	 * may not be as expected.
+	 * Note that when trying to open a Serial-over-Bluetooth port, this method may fail if the underlying device driver takes too
+	 * long to connect. In that case, retrying this method may allow it to eventually connect and succeed.
 	 * <p>
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
@@ -645,10 +643,8 @@ public final class SerialPort
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
-	 * Note on Windows using an FTDI device: The first time this method is called, you may be prompted to allow elevated privileges
-	 * so that the driver latency can be correctly specified. This should only be necessary the first time you use a new FTDI device.
-	 * Declining the elevated privileges will not affect the ability of the serial port to be accessed; however, read/write timing
-	 * may not be as expected.
+	 * Note that when trying to open a Serial-over-Bluetooth port, this method may fail if the underlying device driver takes too
+	 * long to connect. In that case, retrying this method may allow it to eventually connect and succeed.
 	 * <p>
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
@@ -664,10 +660,8 @@ public final class SerialPort
 	 * <p>
 	 * All serial port parameters or timeouts can be changed at any time before or after the port has been opened.
 	 * <p>
-	 * Note on Windows using an FTDI device: The first time this method is called, you may be prompted to allow elevated privileges
-	 * so that the driver latency can be correctly specified. This should only be necessary the first time you use a new FTDI device.
-	 * Declining the elevated privileges will not affect the ability of the serial port to be accessed; however, read/write timing
-	 * may not be as expected.
+	 * Note that when trying to open a Serial-over-Bluetooth port, this method may fail if the underlying device driver takes too
+	 * long to connect. In that case, retrying this method may allow it to eventually connect and succeed.
 	 * <p>
 	 * Note that calling this method on an already opened port will simply reconfigure the port parameters.
 	 *
