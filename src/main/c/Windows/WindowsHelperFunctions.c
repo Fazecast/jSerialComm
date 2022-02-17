@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Feb 16, 2022
+ *  Last Updated on:  Feb 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -33,6 +33,7 @@
 #include <shellapi.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include "WindowsHelperFunctions.h"
 
 // Common storage functionality
@@ -65,6 +66,21 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	port->portLocation = (wchar_t*)malloc((wcslen(location)+1)*sizeof(wchar_t));
 	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
+	if (!port->portPath || !port->portLocation || !port->friendlyName || !port->portDescription)
+	{
+		// Clean up memory associated with the port
+		vector->length--;
+		if (port->portPath)
+			free(port->portPath);
+		if (port->portLocation)
+			free(port->portLocation);
+		if (port->friendlyName)
+			free(port->friendlyName);
+		if (port->portDescription)
+			free(port->portDescription);
+		free(port);
+		return NULL;
+	}
 
 	// Store port strings
 	if (containsSlashes)
@@ -120,32 +136,43 @@ void removePort(serialPortVector* vector, serialPort* port)
 void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevatedPermissions)
 {
 	// Search for this port in all FTDI enumerated ports
-	HKEY key, paramKey = 0;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS)
+	HKEY key, paramKey;
+	DWORD maxSubkeySize, maxPortNameSize = 8;
+	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS) &&
+			(RegQueryInfoKeyW(key, NULL, NULL, NULL, NULL, &maxSubkeySize, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 	{
-		DWORD index = 0, subkeySize = 255, portNameSize = 16;
-		wchar_t *subkey = (wchar_t*)malloc(subkeySize*sizeof(wchar_t)), *regPortName = (wchar_t*)malloc(portNameSize*sizeof(wchar_t));
-		while (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS)
+		maxSubkeySize += 32;
+		DWORD index = 0, subkeySize = maxSubkeySize;
+		wchar_t *subkey = (wchar_t*)malloc(maxSubkeySize * sizeof(wchar_t)), *portPath = (wchar_t*)malloc(maxPortNameSize * sizeof(wchar_t));
+		while (subkey && portPath && (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 		{
-			DWORD latency = 2, oldLatency = 2, oldLatencySize = sizeof(DWORD);
-			char *subkeyString = (char*)malloc(subkeySize + 2);
-			memset(subkeyString, 0, subkeySize + 2);
-			wcstombs(subkeyString, subkey, subkeySize + 1);
-			subkeySize = 255;
-			portNameSize = 16;
-			memset(regPortName, 0, portNameSize * sizeof(wchar_t));
-			wcscat_s(subkey, subkeySize, L"\\0000\\Device Parameters");
-			if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
+			// Retrieve the current port latency value
+			size_t convertedSize;
+			char *subkeyString = NULL;
+			subkeySize = maxSubkeySize;
+			DWORD desiredLatency = 2, oldLatency = 2;
+			if ((wcstombs_s(&convertedSize, NULL, 0, subkey, 0) == 0) && (convertedSize < 255))
 			{
-				if ((RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)regPortName, &portNameSize) == ERROR_SUCCESS) && (wcscmp(portName, regPortName) == 0))
-					RegQueryValueExW(paramKey, L"LatencyTimer", NULL, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
-				RegCloseKey(paramKey);
+				subkeyString = (char*)malloc(convertedSize);
+				if (subkeyString && (wcstombs_s(NULL, subkeyString, convertedSize, subkey, convertedSize - 1) == 0) &&
+						(wcscat_s(subkey, maxSubkeySize, L"\\0000\\Device Parameters") == 0))
+				{
+					if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
+					{
+						DWORD oldLatencySize = sizeof(DWORD), portNameSize = maxPortNameSize * sizeof(wchar_t);
+						if ((RegGetValueW(paramKey, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS) && (wcscmp(portName, portPath) == 0))
+							RegGetValueW(paramKey, NULL, L"LatencyTimer", RRF_RT_REG_DWORD, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
+						RegCloseKey(paramKey);
+					}
+				}
 			}
-			if (oldLatency > latency)
+
+			// Update the port latency value if it is too high
+			if (oldLatency > desiredLatency)
 			{
 				if (RegOpenKeyExW(key, subkey, 0, KEY_SET_VALUE, &paramKey) == ERROR_SUCCESS)
 				{
-					RegSetValueExW(paramKey, L"LatencyTimer", 0, REG_DWORD, (LPBYTE)&latency, sizeof(latency));
+					RegSetValueExW(paramKey, L"LatencyTimer", 0, REG_DWORD, (LPBYTE)&desiredLatency, sizeof(desiredLatency));
 					RegCloseKey(paramKey);
 				}
 				else if (requestElevatedPermissions)
@@ -192,46 +219,58 @@ void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevat
 					free(paramsString);
 				}
 			}
-			free(subkeyString);
+
+			// Clean up memory
+			if (subkeyString)
+				free(subkeyString);
 		}
 		RegCloseKey(key);
-		free(regPortName);
+		free(portPath);
 		free(subkey);
 	}
 }
 
-int getPortPathFromSerial(wchar_t* portPath, const char* serialNumber)
+int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* serialNumber)
 {
 	// Search for this port in all FTDI enumerated ports
 	int found = 0;
-	HKEY key, paramKey = 0;
-	if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS)
+	HKEY key, paramKey;
+	DWORD maxSubkeySize;
+	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Enum\\FTDIBUS", 0, KEY_READ, &key) == ERROR_SUCCESS) &&
+			(RegQueryInfoKeyW(key, NULL, NULL, NULL, NULL, &maxSubkeySize, NULL, NULL, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 	{
-		DWORD index = 0, subkeySize = 255, portNameSize = 16;
-		wchar_t *subkey = (wchar_t*)malloc(subkeySize * sizeof(wchar_t));
-		while (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS)
+		maxSubkeySize += 32;
+		DWORD index = 0, subkeySize = maxSubkeySize;
+		wchar_t *subkey = (wchar_t*)malloc(maxSubkeySize * sizeof(wchar_t));
+		while (subkey && (RegEnumKeyExW(key, index++, subkey, &subkeySize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS))
 		{
-			// Determine if this device matches the specified serial number
-			char *subkeyString = (char*)malloc(subkeySize + 2);
-			memset(subkeyString, 0, subkeySize + 2);
-			wcstombs(subkeyString, subkey, subkeySize + 1);
-			subkeySize = 255;
-			if (strstr(subkeyString, serialNumber))
+			// Convert this string from wchar* to char*
+			size_t convertedSize;
+			subkeySize = maxSubkeySize;
+			if ((wcstombs_s(&convertedSize, NULL, 0, subkey, 0) == 0) && (convertedSize < 255))
 			{
-				portNameSize = 16;
-				memset(portPath, 0, portNameSize * sizeof(wchar_t));
-				wcscat_s(subkey, subkeySize, L"\\0000\\Device Parameters");
-				if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
+				char *subkeyString = (char*)malloc(convertedSize);
+				if (subkeyString && (wcstombs_s(NULL, subkeyString, convertedSize, subkey, convertedSize - 1) == 0))
 				{
-					if (RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS)
-						found = 1;
-					RegCloseKey(paramKey);
+					// Determine if this device matches the specified serial number
+					if (serialNumber && strstr(subkeyString, serialNumber) && (wcscat_s(subkey, maxSubkeySize, L"\\0000\\Device Parameters") == 0))
+					{
+						DWORD portNameSize = portPathLength;
+						if ((RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS) &&
+								(RegGetValueW(paramKey, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS))
+						{
+							found = 1;
+							RegCloseKey(paramKey);
+						}
+					}
 				}
+				if (subkeyString)
+					free(subkeyString);
 			}
-			free(subkeyString);
 		}
 		RegCloseKey(key);
-		free(subkey);
+		if (subkey)
+			free(subkey);
 	}
 	return found;
 }

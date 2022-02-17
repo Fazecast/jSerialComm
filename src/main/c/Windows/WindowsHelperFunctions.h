@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jan 28, 2022
+ *  Last Updated on:  Feb 17, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -52,6 +52,6 @@ void removePort(serialPortVector* vector, serialPort* port);
 
 // Windows-specific functionality
 void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevatedPermissions);
-int getPortPathFromSerial(wchar_t* portPath, const char* serialNumber);
+int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* serialNumber);
 
 #endif		// #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__
