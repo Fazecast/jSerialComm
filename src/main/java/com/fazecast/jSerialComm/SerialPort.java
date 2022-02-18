@@ -36,8 +36,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 /**
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
@@ -52,6 +54,7 @@ public final class SerialPort
 	// Static initializer loads correct native library for this machine
 	static private final String versionString = "2.9.1";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
+	static private List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private volatile boolean isAndroid = false;
 	static private volatile boolean isWindows = false;
 	static private volatile boolean isShuttingDown = false;
@@ -406,6 +409,17 @@ public final class SerialPort
 		{
 			public void run()
 			{
+				// Run any user-specified shutdown hooks
+				try {
+					for (Thread hook : shutdownHooks)
+					{
+						hook.start();
+						hook.join();
+					}
+				}
+				catch (InterruptedException e) {}
+
+				// Un-initialize the native library
 				isShuttingDown = true;
 				uninitializeLibrary();
 			}
@@ -442,6 +456,23 @@ public final class SerialPort
 	 * @return The current library version.
 	 */
 	static public final String getVersion() { return versionString; }
+
+	/**
+	 * Registers a shutdown hook that will run just before the application fully closes, due to either
+	 * exiting normally or in response to a user interrupt such as Ctrl+C.
+	 * <p>
+	 * These hooks can be used to carry out any final serial port operations that should be executed to
+	 * ensure graceful disconnection or device shutdown.
+	 * <p>
+	 * There is no need to add a shutdown hook just to close all open ports, as this is done automatically
+	 * by the library; however, any special reads, writes, or port handling that should take place prior
+	 * to closing of the ports should be handled in a shutdown hook registered with this method.
+	 *
+	 * @param hook A {@link java.lang.Thread} object that will run just before the application shuts down.
+	 * @see java.lang.Runtime#addShutdownHook(Thread)
+	 * @see java.lang.Thread
+	 */
+	static public final synchronized void addShutdownHook(Thread hook) { shutdownHooks.add(hook); }
 
 	/**
 	 * Returns a list of all available serial ports on this machine.
