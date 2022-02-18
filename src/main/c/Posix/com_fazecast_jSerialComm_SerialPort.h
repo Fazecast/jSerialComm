@@ -85,14 +85,6 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    initializeLibrary
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_initializeLibrary
-  (JNIEnv *, jclass);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    uninitializeLibrary
  * Signature: ()V
  */

@@ -396,16 +396,12 @@ public final class SerialPort
 						else
 							backupFileContents.close();
 					}
-
-					// Initialize native library
-					if (libraryLoaded)
-						initializeLibrary();
 				}
 			}
 		}
 		catch (Exception e) { e.printStackTrace(); }
 
-		// Add a shutdown hook to ensure all ports get closed
+		// Add a shutdown hook to ensure that all ports get closed
 		Runtime.getRuntime().addShutdownHook(new Thread()
 		{
 			public void run()
@@ -765,7 +761,6 @@ public final class SerialPort
 	public final synchronized int getLastErrorCode() { return getLastErrorCode(portHandle); }
 
 	// Serial Port Setup Methods
-	private static native void initializeLibrary();						// Initializes the JNI code
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
 	private final native void retrievePortDetails();					// Retrieves port descriptions, names, and details
 	private final native long openPortNative();							// Opens serial port
