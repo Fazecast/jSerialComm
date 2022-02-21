@@ -45,14 +45,14 @@ import java.util.List;
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.1
+ * @version 2.9.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
 public final class SerialPort
 {
 	// Static initializer loads correct native library for this machine
-	static private final String versionString = "2.9.1";
+	static private final String versionString = "2.9.2";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private volatile boolean isAndroid = false;
