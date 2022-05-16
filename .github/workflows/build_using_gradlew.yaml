@@ -1,0 +1,24 @@
+name: jSerialComm
+
+on: [push,pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '8'
+
+      - name: Test Compiler
+        run: javac -version
+
+
+      - name: Build Gradle
+        run: |
+          bash ./gradlew jar
+
