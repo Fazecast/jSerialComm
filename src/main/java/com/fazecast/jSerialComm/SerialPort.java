@@ -405,8 +405,8 @@ public final class SerialPort
 		catch (Exception e) { e.printStackTrace(); }
 
 		// Add a shutdown hook to ensure that all ports get closed
-		Runtime.getRuntime().addShutdownHook(new Thread()
-		{
+		Runtime.getRuntime().addShutdownHook(SerialPortThreadFactory.get().newThread(new Runnable() {
+			@Override
 			public void run()
 			{
 				// Run any user-specified shutdown hooks
@@ -423,7 +423,7 @@ public final class SerialPort
 				isShuttingDown = true;
 				uninitializeLibrary();
 			}
-		});
+		}));
 	}
 
 	// Static symbolic link testing function
@@ -1755,7 +1755,7 @@ public final class SerialPort
 
 			dataPacketIndex = 0;
 			setEventListeningStatus(portHandle, true);
-			serialEventThread = new Thread(new Runnable()
+			serialEventThread = SerialPortThreadFactory.get().newThread(new Runnable()
 			{
 				@Override
 				public void run()
