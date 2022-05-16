@@ -21,8 +21,8 @@ if (hasProperty('manualBuild'))
   assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
 }
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
 javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
 javadoc.options.addBooleanOption('html4', true)
 

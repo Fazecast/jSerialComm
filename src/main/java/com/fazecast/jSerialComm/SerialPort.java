@@ -49,7 +49,7 @@ import java.util.List;
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
-public final class SerialPort
+public final class SerialPort implements AutoCloseable
 {
 	// Static initializer loads correct native library for this machine
 	static private final String versionString = "2.9.2";
@@ -722,6 +722,14 @@ public final class SerialPort
 		if (portHandle != 0)
 			portHandle = closePortNative(portHandle);
 		return (portHandle == 0);
+	}
+
+	@Override
+	public void close() throws SerialPortIOException
+	{
+		if (!closePort()) {
+			throw new SerialPortIOException("Failed to close");
+		}
 	}
 
 	/**
