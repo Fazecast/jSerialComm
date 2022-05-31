@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Feb 16, 2022
+ *  Last Updated on:  May 31, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -127,6 +127,59 @@ void removePort(serialPortVector* vector, serialPort* port)
 #include <linux/serial.h>
 #include <asm/termios.h>
 #include <asm/ioctls.h>
+
+void pushBackPrefix(portPathPrefixes* vector, const char* prefix, const char* driverPath)
+{
+	// Allocate memory for the new port path prefix storage structure
+	if (vector->capacity == vector->length)
+	{
+		++vector->capacity;
+		char** newPrefixArray = (char**)realloc(vector->prefixes, vector->capacity * sizeof(const char*));
+		char** newDriverArray = (char**)realloc(vector->driverPaths, vector->capacity * sizeof(const char*));
+		if (newPrefixArray && newDriverArray)
+		{
+			vector->prefixes = newPrefixArray;
+			vector->driverPaths = newDriverArray;
+		}
+		else
+		{
+			vector->capacity--;
+			if (newPrefixArray)
+				free(newPrefixArray);
+			if (newDriverArray)
+				free(newDriverArray);
+			return;
+		}
+	}
+	char* newPrefix = (char*)malloc(strlen(prefix) + 1);
+	char* newDriverPath = (char*)malloc(strlen(driverPath) + 1);
+	if (newPrefix && newDriverPath)
+	{
+		strcpy(newPrefix, prefix);
+		strcpy(newDriverPath, driverPath);
+		vector->prefixes[vector->length] = newPrefix;
+		vector->driverPaths[vector->length] = newDriverPath;
+		++vector->length;
+	}
+	else if (newPrefix)
+		free(newPrefix);
+	else if (newDriverPath)
+		free(newDriverPath);
+}
+
+void freePortPathPrefixes(portPathPrefixes* vector)
+{
+	for (int i = 0; i < vector->length; ++i)
+	{
+		free(vector->prefixes[i]);
+		free(vector->driverPaths[i]);
+	}
+	if (vector->prefixes)
+		free(vector->prefixes);
+	if (vector->driverPaths)
+		free(vector->driverPaths);
+	vector->length = vector->capacity = 0;
+}
 
 void getDriverName(const char* directoryToSearch, char* friendlyName)
 {
@@ -324,6 +377,44 @@ char driverGetPortLocation(char topLevel, const char *fullPathToSearch, const ch
 	// Close the directory
 	closedir(directoryIterator);
 	return isUSB;
+}
+
+void retrievePortPathPrefixes(portPathPrefixes* prefixes)
+{
+	// Open the tty drivers file
+	FILE *input = fopen("/proc/tty/drivers", "r");
+	if (input)
+	{
+		// Read the file line by line
+		int maxLineSize = 255;
+		char *line = (char*)malloc(maxLineSize), *driverPath = (char*)malloc(maxLineSize);
+		while (fgets(line, maxLineSize, input))
+		{
+			// Parse the prefix, driver, and type fields
+			int i = 0;
+			char *token, *remainder = line, *prefix = NULL, *driver = NULL, *type = NULL;
+			while ((token = strtok_r(remainder, " \t\r\n", &remainder)))
+				if (++i == 1)
+					driver = token;
+				else if (i == 2)
+					prefix = token;
+				else if (i == 5)
+					type = token;
+
+			// Add a new prefix to the vector if the driver type is "serial"
+			if (prefix && driver && type && (strcmp(type, "serial") == 0))
+			{
+				strcpy(driverPath, "/proc/tty/driver/");
+				strcat(driverPath, driver);
+				pushBackPrefix(prefixes, prefix, driverPath);
+			}
+		}
+
+		// Close the drivers file and clean up memory
+		free(driverPath);
+		free(line);
+		fclose(input);
+	}
 }
 
 void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPathToSearch)

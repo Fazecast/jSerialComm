@@ -111,10 +111,13 @@ static void enumeratePorts(void)
 	// Enumerate serial ports on this machine
 #if defined(__linux__)
 
+	portPathPrefixes portPrefixes = { NULL, NULL, 0, 0 };
+	retrievePortPathPrefixes(&portPrefixes);
 	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
-	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/serial", "/dev/ttyS");
-	driverBasedSearchForComPorts(&serialPorts, "/proc/tty/driver/mvebu_serial", "/dev/ttyMV");
+	for (int i = 0; i < portPrefixes.length; ++i)
+		driverBasedSearchForComPorts(&serialPorts, portPrefixes.driverPaths[i], portPrefixes.prefixes[i]);
 	lastDitchSearchForComPorts(&serialPorts);
+	freePortPathPrefixes(&portPrefixes);
 
 #elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 

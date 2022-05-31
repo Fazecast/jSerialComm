@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Feb 14, 2022
+ *  Last Updated on:  May 31, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -62,6 +62,15 @@ void removePort(serialPortVector* vector, serialPort* port);
 // Linux-specific functionality
 #if defined(__linux__)
 
+// Port path prefix storage functionality
+typedef struct portPathPrefixes
+{
+	char **prefixes, **driverPaths;
+	int length, capacity;
+} portPathPrefixes;
+void pushBackPrefix(portPathPrefixes* vector, const char* prefix, const char* driverPath);
+void freePortPathPrefixes(portPathPrefixes* vector);
+
 typedef int baud_rate;
 #ifdef __ANDROID__
 extern int ioctl(int __fd, int __request, ...);
@@ -71,6 +80,7 @@ extern int ioctl(int __fd, unsigned long int __request, ...);
 void getDriverName(const char* directoryToSearch, char* friendlyName);
 void getFriendlyName(const char* productFile, char* friendlyName);
 void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription);
+void retrievePortPathPrefixes(portPathPrefixes* prefixes);
 void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPathToSearch);
 void driverBasedSearchForComPorts(serialPortVector* comPorts, const char* fullPathToDriver, const char* fullBasePathToPort);
 void lastDitchSearchForComPorts(serialPortVector* comPorts);
