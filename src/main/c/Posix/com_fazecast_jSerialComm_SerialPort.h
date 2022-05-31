@@ -77,18 +77,18 @@ extern "C" {
 #define com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED 268435456L
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    getCommPorts
- * Signature: ()[Lcom/fazecast/jSerialComm/SerialPort;
- */
-JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts
-  (JNIEnv *, jclass);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    uninitializeLibrary
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getCommPortsNative
+ * Signature: ()[Lcom/fazecast/jSerialComm/SerialPort;
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPortsNative
   (JNIEnv *, jclass);
 
 /*

@@ -1,4 +1,4 @@
-## Windows specific library variables
+# Windows specific library variables
 COMPILE         = cl
 LINK            = link
 CFLAGS          = /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TC

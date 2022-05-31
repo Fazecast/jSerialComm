@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 18, 2022
+ *  Last Updated on:  Feb 23, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -366,7 +366,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 	JNI_OnUnload(jvm, NULL);
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
+JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPortsNative(JNIEnv *env, jclass serialComm)
 {
 	// Mark this entire function as a critical section
 	pthread_mutex_lock(&criticalSection);
