@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 29, 2022
+ *  Last Updated on:  May 31, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -358,6 +358,47 @@ static void enumeratePorts(void)
 			}
 		}
 		FreeLibrary(ftdiLibInstance);
+	}
+
+	// Attempt to locate any non-registered virtual serial ports (e.g., from VSPE)
+	HKEY key, paramKey;
+	DWORD keyType, numValues, maxValueLength, maxComPortLength;
+	if ((RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) &&
+			(RegQueryInfoKeyW(key, NULL, NULL, NULL, NULL, NULL, NULL, &numValues, &maxValueLength, &maxComPortLength, NULL, NULL) == ERROR_SUCCESS))
+	{
+		// Allocate memory
+		++maxValueLength;
+		++maxComPortLength;
+		WCHAR *valueName = (WCHAR*)malloc(maxValueLength*sizeof(WCHAR));
+		WCHAR *comPort = (WCHAR*)malloc(maxComPortLength*sizeof(WCHAR));
+
+		// Iterate through all COM ports
+		for (DWORD i = 0; i < numValues; ++i)
+		{
+			// Get serial port name and COM value
+			DWORD valueLength = maxValueLength;
+			DWORD comPortLength = maxComPortLength;
+			memset(valueName, 0, valueLength*sizeof(WCHAR));
+			memset(comPort, 0, comPortLength*sizeof(WCHAR));
+			if ((RegEnumValueW(key, i, valueName, &valueLength, NULL, &keyType, (BYTE*)comPort, &comPortLength) == ERROR_SUCCESS) && (keyType == REG_SZ))
+			{
+				// Set port name and description
+				wchar_t* comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
+				wchar_t* friendlyNameString = wcsrchr(valueName, L'\\') ? (wcsrchr(valueName, L'\\') + 1) : valueName;
+
+				// Add new SerialComm object to vector if it does not already exist
+				serialPort *port = fetchPort(&serialPorts, comPortString);
+				if (port)
+					port->enumerated = 1;
+				else
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X");
+			}
+		}
+
+		// Clean up memory
+		free(valueName);
+		free(comPort);
+		RegCloseKey(key);
 	}
 
 	// Remove all non-enumerated ports from the serial port listing
