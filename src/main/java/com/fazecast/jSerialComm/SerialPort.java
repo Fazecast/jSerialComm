@@ -131,32 +131,10 @@ public final class SerialPort
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
 		{
-			try
-			{
-				Process getpropProcess = Runtime.getRuntime().exec("getprop");
-				BufferedReader buildProperties = new BufferedReader(new InputStreamReader(getpropProcess.getInputStream()));
-				String line;
-				while ((line = buildProperties.readLine()) != null)
-				{
-					if (line.contains("[ro.product.cpu.abi]:"))
-						libraryPath = "Android/" + line.split(":")[1].trim().replace("[", "").replace("]", "").split(",")[0];
-					else if (line.contains("[ro.product.cpu.abilist]:"))
-					{
-						String[] abiList = line.split(":")[1].trim().replace("[", "").replace("]", "").split(",");
-						if (abiList.length > 0)
-							libraryPath = "Android/" + abiList[0];
-					}
-				}
-				getpropProcess.waitFor();
-				buildProperties.close();
-			}
-			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-			catch (Exception e) { e.printStackTrace(); }
-
-			if (libraryPath.isEmpty())
-				libraryPath = "Android/armeabi-v7a";
 			isAndroid = true;
+			libraryPath = "Android";
 			libraryFileName = "libjSerialComm.so";
+			architectures = new String[] { "arm64-v8a", "armeabi-v7a", "x86_64", "x86" };
 		}
 		else if (OS.contains("win"))
 		{
