@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 18, 2022
+ *  Last Updated on:  May 29, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -475,7 +475,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 	JNI_OnUnload(jvm, NULL);
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPorts(JNIEnv *env, jclass serialComm)
+JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPortsNative(JNIEnv *env, jclass serialComm)
 {
 	// Mark this entire function as a critical section
 	EnterCriticalSection(&criticalSection);
@@ -853,20 +853,19 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	}
 
 	// Parse any received serial port events
-	DWORD modemStatus;
 	if (eventMask & EV_BREAK)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_BREAK_INTERRUPT;
 	if (eventMask & EV_TXEMPTY)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_WRITTEN;
 	if ((eventMask & EV_RXCHAR) && (commInfo.cbInQue > 0))
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
-	if ((eventMask & EV_CTS) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_CTS_ON))
+	if (eventMask & EV_CTS)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CTS;
-	if ((eventMask & EV_DSR) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_DSR_ON))
+	if (eventMask & EV_DSR)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DSR;
-	if ((eventMask & EV_RING) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RING_ON))
+	if (eventMask & EV_RING)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_RING_INDICATOR;
-	if ((eventMask & EV_RLSD) && GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RLSD_ON))
+	if (eventMask & EV_RLSD)
 		event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT;
 
 	// Return the serial event type
