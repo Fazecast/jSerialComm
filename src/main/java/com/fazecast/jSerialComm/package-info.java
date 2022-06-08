@@ -1,7 +1,7 @@
 /*
- * SerialPortPacketListener.java
+ * package-info.java
  *
- *       Created on:  Feb 25, 2015
+ *       Created on:  Jun 08, 2022
  *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
@@ -23,22 +23,11 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
-package com.fazecast.jSerialComm;
-
 /**
- * This interface must be implemented to enable full packet reads using event-based serial port I/O.
- * <p>
- * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
- * 
- * @see com.fazecast.jSerialComm.SerialPortDataListener
- * @see java.util.EventListener
+ * This package contains all of the classes and interfaces that make up the
+ * Java serial communications library.
+ *
+ * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
+ * @version 2.9.2
  */
-public interface SerialPortPacketListener extends SerialPortDataListener
-{
-	/**
-	 * Must be overridden to return the desired number of bytes that <b>must</b> be read before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
-	 * 
-	 * @return The number of bytes that must be read before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
-	 */
-	public abstract int getPacketSize();
-}
+package com.fazecast.jSerialComm;

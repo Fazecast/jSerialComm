@@ -2,7 +2,7 @@
  * SerialPortThreadFactory.java
  *
  *       Created on:  May 31, 2022
- *  Last Updated on:  May 31, 2022
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -32,8 +32,6 @@ import java.util.concurrent.ThreadFactory;
  *
  * A user can call the {@link #set(ThreadFactory)} method to override the way in which threads are created.
  *
- * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.2
  * @see java.util.concurrent.ThreadFactory
  */
 public class SerialPortThreadFactory

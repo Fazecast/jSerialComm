@@ -2,10 +2,10 @@
  * SerialPortInvalidPortException.java
  *
  *       Created on:  Apr 15, 2019
- *  Last Updated on:  Apr 15, 2019
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2019-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -28,8 +28,6 @@ package com.fazecast.jSerialComm;
 /**
  * This class describes a serial port invalid port exception.
  *
- * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.2
  * @see java.lang.RuntimeException
  */
 public final class SerialPortInvalidPortException extends RuntimeException

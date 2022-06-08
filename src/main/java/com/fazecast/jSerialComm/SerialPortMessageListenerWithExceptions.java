@@ -2,10 +2,10 @@
  * SerialPortMessageListenerWithExceptions.java
  *
  *       Created on:  Jan 03, 2020
- *  Last Updated on:  Jan 03, 2020
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -30,8 +30,6 @@ package com.fazecast.jSerialComm;
  * <p>
  * <i>Note</i>: Using this interface will negate any serial port read timeout settings since they make no sense in an asynchronous context.
  *
- * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.2
  * @see com.fazecast.jSerialComm.SerialPortMessageListener
  * @see com.fazecast.jSerialComm.SerialPortDataListener
  * @see java.util.EventListener

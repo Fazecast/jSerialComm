@@ -2,10 +2,10 @@
  * SerialPortTimeoutException.java
  *
  *       Created on:  Aug 08, 2018
- *  Last Updated on:  Aug 20, 2018
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2018-2020 Fazecast, Inc.
+ * Copyright (C) 2012-2022 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -30,8 +30,6 @@ import java.io.InterruptedIOException;
 /**
  * This class describes a serial port timeout exception.
  * 
- * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.2
  * @see java.io.InterruptedIOException
  */
 public final class SerialPortTimeoutException extends InterruptedIOException
