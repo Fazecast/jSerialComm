@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 29, 2022
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -40,12 +40,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Vector;
 
 /**
  * This class provides native access to serial ports and devices without requiring external libraries or tools.
  *
- * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.2
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
@@ -112,21 +111,23 @@ public final class SerialPort
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		String userHomeDirectory = System.getProperty("user.home");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
-			tempFileDirectory += "/";
+			tempFileDirectory += File.separator;
 		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
-			userHomeDirectory += "/";
+			userHomeDirectory += File.separator;
 		if (!manualLibraryPath.isEmpty() && !manualLibraryPath.endsWith("\\") && !manualLibraryPath.endsWith("/"))
-			manualLibraryPath += "/";
+			manualLibraryPath += File.separator;
 
 		// Make sure to use appId to separate tmpdir directories if library is used by multiple modules so they don't erase each others' folders
-		tempFileDirectory += "jSerialComm/" + System.getProperty(tmpdirAppIdProperty, "");
-		userHomeDirectory += ".jSerialComm/" + System.getProperty(tmpdirAppIdProperty, "");
+		tempFileDirectory += "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, "");
+		userHomeDirectory += ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, "");
 		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
-			tempFileDirectory += "/";
+			tempFileDirectory += File.separator;
 		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
-			userHomeDirectory += "/";
-		deleteDirectory(new File(tempFileDirectory));
-		deleteDirectory(new File(userHomeDirectory));
+			userHomeDirectory += File.separator;
+		cleanUpDirectory(new File(tempFileDirectory));
+		cleanUpDirectory(new File(userHomeDirectory));
+		tempFileDirectory += versionString + File.separator;
+		userHomeDirectory += versionString + File.separator;
 
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
@@ -179,69 +180,83 @@ public final class SerialPort
 			System.exit(-1);
 		}
 
-			// Attempt to load from a manually-specified user location
-			boolean libraryLoaded = false;
-			if (!manualLibraryPath.isEmpty())
+		// Attempt to load from a manually-specified user location
+		boolean libraryLoaded = false;
+		Vector<String> errorMessages = new Vector<String>();
+		if (!manualLibraryPath.isEmpty())
+		{
+			for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+				libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryPath + File.separator + architectures[i] + File.separator + libraryFileName).getAbsolutePath(), errorMessages);
+			if (!libraryLoaded)
+				libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryFileName).getAbsolutePath(), errorMessages);
+		}
+
+		// Attempt to load from an existing extracted location
+		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+		{
+			File nativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + libraryFileName);
+			libraryLoaded = nativeLibrary.exists() && loadNativeLibrary(nativeLibrary.getAbsolutePath(), errorMessages);
+		}
+
+		// Attempt to load from the expected JAR location
+		String attempt1Library = "";
+		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+		{
+			// Create a temporary working directory with open permissions
+			File tempNativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + libraryFileName);
+			if (attempt == 0)
+				attempt1Library = tempNativeLibrary.getAbsolutePath();
+			if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
 			{
-				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryPath + "/" + architectures[i] + "/" + libraryFileName).getAbsolutePath());
-				if (!libraryLoaded)
-					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryFileName).getAbsolutePath());
+				tempNativeLibrary.getParentFile().setReadable(true, false);
+				tempNativeLibrary.getParentFile().setWritable(true, true);
+				tempNativeLibrary.getParentFile().setExecutable(true, false);
+			}
+			else
+				continue;
+
+			// Attempt to load the native jSerialComm library for any available architecture
+			for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+			{
+				InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
+				if (fileContents != null)
+					try
+					{
+						// Copy the native library to the temporary working directory
+						tempNativeLibrary.delete();
+						FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+						byte[] transferBuffer = new byte[4096];
+						int numBytesRead;
+						while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+							destinationFileContents.write(transferBuffer, 0, numBytesRead);
+						destinationFileContents.close();
+						fileContents.close();
+						tempNativeLibrary.setReadable(true, false);
+						tempNativeLibrary.setWritable(false, false);
+						tempNativeLibrary.setExecutable(true, false);
+
+						// Attempt to load the native library
+						errorMessages.add("Loading for arch: " + architectures[i]);
+						libraryLoaded = loadNativeLibrary(tempNativeLibrary.getAbsolutePath(), errorMessages);
+						if (libraryLoaded)
+							errorMessages.add("Successfully loaded!");
+					}
+					catch (Exception e) { e.printStackTrace(); }
 			}
 
-			// Attempt to load from the expected JAR location
-			String attempt1Library = "";
-			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+			// Throw an error if unable to load any native libraries
+			if (!libraryLoaded)
 			{
-				// Create a temporary working directory with open permissions
-				File tempNativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + (new Date()).getTime() + "-" + libraryFileName);
-				if (attempt == 0)
-					attempt1Library = tempNativeLibrary.getAbsolutePath();
-				if (tempNativeLibrary.getParentFile().mkdirs())
+				tempNativeLibrary.delete();
+				if (attempt > 0)
 				{
-					tempNativeLibrary.getParentFile().setReadable(true, true);
-					tempNativeLibrary.getParentFile().setWritable(true, true);
-					tempNativeLibrary.getParentFile().setExecutable(true, true);
-					tempNativeLibrary.deleteOnExit();
-				}
-				else
-					continue;
-
-				// Attempt to load the native jSerialComm library for any available architecture
-				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-				{
-					InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
-					if (fileContents != null)
-						try
-						{
-							// Copy the native library to the temporary working directory
-							tempNativeLibrary.delete();
-							FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-							byte[] transferBuffer = new byte[4096];
-							int numBytesRead;
-							while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-								destinationFileContents.write(transferBuffer, 0, numBytesRead);
-							destinationFileContents.close();
-							fileContents.close();
-							tempNativeLibrary.setReadable(true, true);
-							tempNativeLibrary.setWritable(false, true);
-							tempNativeLibrary.setExecutable(true, true);
-
-							// Attempt to load the native library
-							libraryLoaded = loadNativeLibrary(tempNativeLibrary.getAbsolutePath());
-						}
-						catch (Exception e) { e.printStackTrace(); }
-				}
-
-				// Throw an error if unable to load any native libraries
-				if (!libraryLoaded && (attempt > 0))
-				{
-					if (manualLibraryPath.isEmpty())
-						throw new UnsatisfiedLinkError("Cannot load " + libraryPath + " native library: " + attempt1Library + " or " + tempNativeLibrary.getAbsolutePath());
-					else
-						throw new UnsatisfiedLinkError("Cannot load " + libraryPath + " native library: " + attempt1Library + " or " + tempNativeLibrary.getAbsolutePath() + " or " + new File(manualLibraryPath + libraryFileName).getAbsolutePath());
+					StringBuilder errorMessage = new StringBuilder("Cannot load native library. Errors as follows:\n");
+					for (int i = 0; i < errorMessages.size(); ++i)
+						errorMessage.append('[').append(i+1).append("]: ").append(errorMessages.get(i)).append('\n');
+					throw new UnsatisfiedLinkError(errorMessage.toString());
 				}
 			}
+		}
 
 		// Add a shutdown hook to ensure that all ports get closed
 		Runtime.getRuntime().addShutdownHook(SerialPortThreadFactory.get().newThread(new Runnable()
@@ -273,25 +288,28 @@ public final class SerialPort
 		return !canonicalFile.getCanonicalFile().equals(canonicalFile.getAbsoluteFile());
 	}
 
-	// Static recursive directory deletion function
-	static private void deleteDirectory(File path)
+	// Static recursive directory cleanup function
+	static private void cleanUpDirectory(File path)
 	{
+		// Clean up all files that are not in a directory named after the current library version
 		if (path.isDirectory())
 		{
 			File[] files = path.listFiles();
 			if (files != null)
 				for (File file : files)
-					deleteDirectory(file);
+					if (!file.getName().equals(versionString))
+						cleanUpDirectory(file);
 		}
-		path.delete();
+		if (!path.getName().equals(versionString))
+			path.delete();
 	}
 
 	// Static native library loading function
-	static private boolean loadNativeLibrary(String absoluteLibraryPath)
+	static private boolean loadNativeLibrary(String absoluteLibraryPath, Vector<String> errorMessages)
 	{
 		try { System.load(absoluteLibraryPath); return true; }
-		catch (UnsatisfiedLinkError e) { return false; }
-		catch (Exception e) { return false; }
+		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); return false; }
+		catch (Exception e) { errorMessages.add(e.getMessage()); return false; }
 	}
 
 	/**
