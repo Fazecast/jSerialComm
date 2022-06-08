@@ -15,18 +15,20 @@ archivesBaseName = 'jSerialComm'
 version = '2.9.2'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
-if (hasProperty('manualBuild'))
+if (hasProperty('manualBuild') && manualBuild == 'true')
 {
   assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
   assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
+  javadoc.options.addBooleanOption('html4', true)
 }
+else
+  java9Home = org.gradle.internal.jvm.Jvm.current().getJavaHome()
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
 javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
-javadoc.options.addBooleanOption('html4', true)
 
-if (hasProperty('manualBuild'))
+if (hasProperty('manualBuild') && manualBuild == 'true')
 {
   def java6ExecutablesPath = new File(java6Home, 'bin')
   def java9ExecutablesPath = new File(java9Home, 'bin')
