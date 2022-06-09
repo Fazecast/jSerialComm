@@ -103,7 +103,7 @@ public final class SerialPort
 	static private volatile boolean isShuttingDown = false;
 	static
 	{
-		// Determine the temporary file directory for Java and remove any previous versions of this library
+		// Determine the temporary file directories for native library storage
 		String[] architectures = null;
 		String libraryPath = "", libraryFileName = "";
 		String OS = System.getProperty("os.name").toLowerCase();
@@ -172,7 +172,7 @@ public final class SerialPort
 		{
 			libraryPath = "Linux";
 			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "armv8_64", "armv8_32", "armv7hf", "armv7", "armv6hf", "armv6", "armv5", "ppc64le", "x86_64", "x86" };
+			architectures = new String[] { "armv8_64", "x86_64", "armv8_32", "armv7hf", "armv7", "armv6hf", "armv6", "armv5", "ppc64le", "x86" };
 		}
 		else
 		{

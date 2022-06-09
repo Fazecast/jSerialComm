@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Feb 23, 2022
+ *  Last Updated on:  Jun 08, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -788,9 +788,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		}
 		else
 		{
-			struct timespec timeoutTime;
-			clock_gettime(CLOCK_MONOTONIC, &timeoutTime);
-			timeoutTime.tv_sec += 1;
+			struct timeval currentTime;
+			gettimeofday(&currentTime, NULL);
+			struct timespec timeoutTime = { .tv_sec = 1 + currentTime.tv_sec, .tv_nsec = currentTime.tv_usec * 1000 };
 			pthread_cond_timedwait(&port->eventReceived, &port->eventMutex, &timeoutTime);
 			if (port->event)
 			{
