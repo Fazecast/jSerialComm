@@ -1,8 +1,8 @@
 # Windows specific library variables
 COMPILE         = cl
 LINK            = link
-CFLAGS          = /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TC
-LDFLAGS         = /DLL /LTCG /NOASSEMBLY /NOLOGO
+CFLAGS          = /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TC /Zi
+LDFLAGS         = /DLL /LTCG /NOASSEMBLY /NOLOGO /INCREMENTAL:NO /DEBUG /OPT:REF,ICF,LBR
 INCLUDES        = /I"$(JDK_HOME)\include" /I"$(JDK_HOME)\include\win32"
 LIBRARIES       = Advapi32.lib SetupAPI.lib Shell32.lib
 DELETE          = @del /q /f

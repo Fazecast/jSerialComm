@@ -356,9 +356,6 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserved)
 	for (int i = 0; i < serialPorts.length; ++i)
 		if (serialPorts.ports[i]->handle > 0)
 			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, jniErrorClass, (jlong)(intptr_t)serialPorts.ports[i]);
-
-	// Delete the critical section lock
-	pthread_mutex_destroy(&criticalSection);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
@@ -379,24 +376,22 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 	// Create a Java-based port listing
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialComm, 0);
-	char stopLooping = checkJniError(env, __LINE__ - 1) ? 1 : 0;
-	for (int i = 0; !stopLooping && (i < serialPorts.length); ++i)
+	for (int i = 0; !checkJniError(env, __LINE__ - 1) && (i < serialPorts.length); ++i)
 	{
 		// Create a new SerialComm object containing the enumerated values
 		jobject serialCommObject = (*env)->NewObject(env, serialComm, serialCommConstructor);
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portDescriptionField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portDescription));
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, friendlyNameField, (*env)->NewStringUTF(env, serialPorts.ports[i]->friendlyName));
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, comPortField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portPath));
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portLocation));
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
+		if (checkJniError(env, __LINE__ - 1)) break;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
-		if (checkJniError(env, __LINE__ - 1)) stopLooping = 1;
 	}
 
 	// Exit critical section and return the com port array
