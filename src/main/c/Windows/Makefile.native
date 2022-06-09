@@ -51,19 +51,19 @@ all :
 # Build architecture-specific Windows libraries
 win32 : $(BUILD_DIR)\x86 $(BUILD_DIR)\x86\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\x86\*.dll $(RESOURCE_DIR)\x86
-	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE) *.pdb
 	$(RMDIR) $(BUILD_DIR)
 win64 : $(BUILD_DIR)\x86_64 $(BUILD_DIR)\x86_64\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\x86_64\*.dll $(RESOURCE_DIR)\x86_64
-	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE) *.pdb
 	$(RMDIR) $(BUILD_DIR)
 winarm : $(BUILD_DIR)\armv7 $(BUILD_DIR)\armv7\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\armv7\*.dll $(RESOURCE_DIR)\armv7
-	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE) *.pdb
 	$(RMDIR) $(BUILD_DIR)
 winarm64 : $(BUILD_DIR)\aarch64 $(BUILD_DIR)\aarch64\$(LIBRARY_NAME)
 	$(COPY) $(BUILD_DIR)\aarch64\*.dll $(RESOURCE_DIR)\aarch64
-	$(DELETE) ..\*.h $(JNI_HEADER_FILE)
+	$(DELETE) ..\*.h $(JNI_HEADER_FILE) *.pdb
 	$(RMDIR) $(BUILD_DIR)
 	
 # Rule to create build directories
