@@ -19,6 +19,9 @@
 #undef termio
 #undef termios
 #undef winsize
+#ifndef SER_RS485_TERMINATE_BUS
+#define SER_RS485_TERMINATE_BUS (1 << 5)
+#endif
 #elif defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>

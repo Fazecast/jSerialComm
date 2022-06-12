@@ -4,10 +4,10 @@ COMPILE_WIN                 := x86_64-w64-mingw32-gcc
 BUILD_DIR                   := build
 JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
 INCLUDES                    := -I"../../main/c/Posix" -I"../../main/c/Windows" -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
-CFLAGS                      := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc -fuse-linker-plugin"; fi)
-CFLAGS_WIN                  := -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
-LDFLAGS                     := -Os -flto -fuse-linker-plugin $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc -s"; fi)
-LDFLAGS_WIN                 := -Os -flto -static-libgcc -fuse-linker-plugin -s
+CFLAGS                      := -fPIC -O0 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
+CFLAGS_WIN                  := -O0 -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+LDFLAGS                     := -O0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
+LDFLAGS_WIN                 := -O0 -static-libgcc
 LIBRARIES                   := $(shell if [ "`uname`" = "Darwin" ]; then echo "-framework Cocoa -framework IOKit"; else echo "-pthread"; fi)
 LIBRARIES_WIN               := -ladvapi32 -lsetupapi
 DELETE                      := @rm
