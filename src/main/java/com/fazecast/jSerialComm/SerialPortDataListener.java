@@ -78,7 +78,7 @@ public interface SerialPortDataListener extends EventListener
 	 * @see SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR
 	 * @see SerialPort#LISTENING_EVENT_PARITY_ERROR
 	 */
-	public abstract int getListeningEvents();
+	int getListeningEvents();
 	
 	/**
 	 * Called whenever one or more of the serial port events specified by the {@link #getListeningEvents()} method occurs.
@@ -88,5 +88,5 @@ public interface SerialPortDataListener extends EventListener
 	 * @param event A {@link SerialPortEvent} object containing information and/or data about the serial events that occurred.
 	 * @see SerialPortEvent
 	 */
-	public abstract void serialEvent(SerialPortEvent event);
+	void serialEvent(SerialPortEvent event);
 }

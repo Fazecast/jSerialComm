@@ -41,5 +41,5 @@ public interface SerialPortMessageListenerWithExceptions extends SerialPortMessa
 	 *
 	 * @param e An {@link Exception} object containing information about the exception that occurred.
 	 */
-	public abstract void catchException(Exception e);
+	void catchException(Exception e);
 }

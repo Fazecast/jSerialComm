@@ -55,10 +55,10 @@ public final class SerialPortInvalidPortException extends RuntimeException
 	/**
 	 * Constructs a {@link SerialPortInvalidPortException} with the specified detail message and cause.
 	 * <p>
-	 * Note that the detail message associated with {@link cause} is <i>not</i> automatically incorporated into this exception's detail message.
+	 * Note that the detail message associated with <b>cause</b> is <i>not</i> automatically incorporated into this exception's detail message.
 	 *
-	 * @param message message The detail message (which is saved for later retrieval by the {@link getMessage()} method).
-	 * @param cause The cause (which is saved for later retrieval by the {@link getCause()} method). (A null value is permitted, and indicates that the cause is nonexistent or unknown.)
+	 * @param message message The detail message (which is saved for later retrieval by the {@link SerialPortInvalidPortException#getMessage()} method).
+	 * @param cause The cause (which is saved for later retrieval by the {@link SerialPortInvalidPortException#getCause()} method). (A null value is permitted, and indicates that the cause is nonexistent or unknown.)
 	 */
 	public SerialPortInvalidPortException(String message, Throwable cause)
 	{

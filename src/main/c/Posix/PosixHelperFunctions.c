@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  May 31, 2022
+ *  Last Updated on:  Jun 09, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -37,7 +37,7 @@
 #include <unistd.h>
 #include "PosixHelperFunctions.h"
 
-// Common storage functionality
+// Common serial port storage functionality
 serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location)
 {
 	// Allocate memory for the new SerialPort storage structure
@@ -121,6 +121,55 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port);
 }
 
+void cleanUpVector(serialPortVector* vector)
+{
+	while (vector->length)
+		removePort(vector, vector->ports[0]);
+	if (vector->ports)
+		free(vector->ports);
+	vector->ports = NULL;
+	vector->length = vector->capacity = 0;
+}
+
+// Common string storage functionality
+typedef struct stringVector
+{
+   char **strings;
+   int length, capacity;
+} stringVector;
+
+static void pushBackString(stringVector* vector, const char* string)
+{
+	// Allocate memory for the new port path prefix storage structure
+	if (vector->capacity == vector->length)
+	{
+		char** newStringArray = (char**)realloc(vector->strings, ++vector->capacity * sizeof(const char*));
+		if (newStringArray)
+			vector->strings = newStringArray;
+		else
+		{
+			vector->capacity--;
+			return;
+		}
+	}
+	char* newString = (char*)malloc(strlen(string) + 1);
+	if (newString)
+	{
+		strcpy(newString, string);
+		vector->strings[vector->length++] = newString;
+	}
+}
+
+static void freeStringVector(stringVector* vector)
+{
+	for (int i = 0; i < vector->length; ++i)
+		free(vector->strings[i]);
+	if (vector->strings)
+		free(vector->strings);
+	vector->strings = NULL;
+	vector->length = vector->capacity = 0;
+}
+
 // Linux-specific functionality
 #if defined(__linux__)
 
@@ -128,135 +177,72 @@ void removePort(serialPortVector* vector, serialPort* port)
 #include <asm/termios.h>
 #include <asm/ioctls.h>
 
-void pushBackPrefix(portPathPrefixes* vector, const char* prefix, const char* driverPath)
+static void retrievePhysicalPortPrefixes(stringVector* prefixes)
 {
-	// Allocate memory for the new port path prefix storage structure
-	if (vector->capacity == vector->length)
-	{
-		++vector->capacity;
-		char** newPrefixArray = (char**)realloc(vector->prefixes, vector->capacity * sizeof(const char*));
-		char** newDriverArray = (char**)realloc(vector->driverPaths, vector->capacity * sizeof(const char*));
-		if (newPrefixArray && newDriverArray)
-		{
-			vector->prefixes = newPrefixArray;
-			vector->driverPaths = newDriverArray;
-		}
-		else
-		{
-			vector->capacity--;
-			if (newPrefixArray)
-				free(newPrefixArray);
-			if (newDriverArray)
-				free(newDriverArray);
-			return;
-		}
-	}
-	char* newPrefix = (char*)malloc(strlen(prefix) + 1);
-	char* newDriverPath = (char*)malloc(strlen(driverPath) + 1);
-	if (newPrefix && newDriverPath)
-	{
-		strcpy(newPrefix, prefix);
-		strcpy(newDriverPath, driverPath);
-		vector->prefixes[vector->length] = newPrefix;
-		vector->driverPaths[vector->length] = newDriverPath;
-		++vector->length;
-	}
-	else if (newPrefix)
-		free(newPrefix);
-	else if (newDriverPath)
-		free(newDriverPath);
-}
-
-void freePortPathPrefixes(portPathPrefixes* vector)
-{
-	for (int i = 0; i < vector->length; ++i)
-	{
-		free(vector->prefixes[i]);
-		free(vector->driverPaths[i]);
-	}
-	if (vector->prefixes)
-		free(vector->prefixes);
-	if (vector->driverPaths)
-		free(vector->driverPaths);
-	vector->length = vector->capacity = 0;
-}
-
-void getDriverName(const char* directoryToSearch, char* friendlyName)
-{
-	// Open the directory
-	friendlyName[0] = '\0';
-	DIR *directoryIterator = opendir(directoryToSearch);
-	if (!directoryIterator)
-		return;
-
-	// Read all sub-directories in the current directory
-	struct dirent *directoryEntry = readdir(directoryIterator);
-	while (directoryEntry)
-	{
-		// Check if entry is a valid sub-directory
-		if (directoryEntry->d_name[0] != '.')
-		{
-			// Get the readable part of the driver name
-			strcpy(friendlyName, "USB-to-Serial Port (");
-			char *startingPoint = strchr(directoryEntry->d_name, ':');
-			if (startingPoint != NULL)
-				strcat(friendlyName, startingPoint+1);
-			else
-				strcat(friendlyName, directoryEntry->d_name);
-			strcat(friendlyName, ")");
-			break;
-		}
-		directoryEntry = readdir(directoryIterator);
-	}
-
-	// Close the directory
-	closedir(directoryIterator);
-}
-
-void getFriendlyName(const char* productFile, char* friendlyName)
-{
-	friendlyName[0] = '\0';
-	FILE *input = fopen(productFile, "rb");
+	// Open the TTY drivers file
+	FILE *input = fopen("/proc/tty/drivers", "rb");
 	if (input)
 	{
-		int ch = getc(input), friendlyNameLength = 0;
-		while (((char)ch != '\n') && (ch != EOF))
+		// Read the file line by line
+		int maxLineSize = 256;
+		char *line = (char*)malloc(maxLineSize);
+		while (fgets(line, maxLineSize, input))
 		{
-			friendlyName[friendlyNameLength++] = (char)ch;
-			ch = getc(input);
+			// Parse the prefix, name, and type fields
+			int i = 0;
+			char *token, *remainder = line, *prefix = NULL, *name = NULL, *type = NULL;
+			while ((token = strtok_r(remainder, " \t\r\n", &remainder)))
+				if (++i == 1)
+					name = token;
+				else if (i == 2)
+					prefix = token;
+				else if (i == 5)
+					type = token;
+
+			// Add a new prefix to the vector if the driver type and name are both "serial"
+			if (prefix && type && name && (strcmp(type, "serial") == 0) && (strcmp(name, "serial") == 0))
+				pushBackString(prefixes, prefix);
 		}
-		friendlyName[friendlyNameLength] = '\0';
+
+		// Close the drivers file and clean up memory
+		free(line);
 		fclose(input);
 	}
 }
 
-void getInterfaceDescription(const char* interfaceFile, char* interfaceDescription)
+static char isUsbSerialSubsystem(const char *subsystemLink)
 {
-	interfaceDescription[0] = '\0';
-	FILE *input = fopen(interfaceFile, "rb");
-	if (input)
+	// Attempt to read the path that the subsystem link points to
+	struct stat fileInfo;
+	char *subsystem = NULL, isUsbSerial = 0;
+	if (lstat(subsystemLink, &fileInfo) == 0)
 	{
-		int ch = getc(input), interfaceDescriptionLength = 0;
-		while (((char)ch != '\n') && (ch != EOF))
+		ssize_t bufferSize = fileInfo.st_size ? (fileInfo.st_size + 1) : PATH_MAX;
+		subsystem = (char*)malloc(bufferSize);
+		if (subsystem)
 		{
-			interfaceDescription[interfaceDescriptionLength++] = (char)ch;
-			ch = getc(input);
+			ssize_t subsystemSize = readlink(subsystemLink, subsystem, bufferSize);
+			if (subsystemSize >= 0)
+			{
+				subsystem[subsystemSize] = '\0';
+				if (strcmp(1 + strrchr(subsystem, '/'), "usb-serial") == 0)
+					isUsbSerial = 1;
+			}
+			free(subsystem);
 		}
-		interfaceDescription[interfaceDescriptionLength] = '\0';
-		fclose(input);
 	}
+	return isUsbSerial;
 }
 
-char getPortLocation(const char* portDirectory, char* portLocation)
+static void getPortLocation(const char* portDirectory, char* portLocation, int physicalPortNumber)
 {
 	// Set location of busnum and devpath files
-	char isUSB = 1;
 	char* busnumFile = (char*)malloc(strlen(portDirectory) + 16);
 	strcpy(busnumFile, portDirectory);
-	strcat(busnumFile, "/busnum");
+	strcat(busnumFile, "busnum");
 	char* devpathFile = (char*)malloc(strlen(portDirectory) + 16);
 	strcpy(devpathFile, portDirectory);
-	strcat(devpathFile, "/devpath");
+	strcat(devpathFile, "devpath");
 	int portLocationLength = 0;
 	portLocation[0] = '\0';
 
@@ -275,7 +261,6 @@ char getPortLocation(const char* portDirectory, char* portLocation)
 	}
 	else
 	{
-		isUSB = 0;
 		portLocation[portLocationLength++] = '0';
 		portLocation[portLocationLength++] = '-';
 	}
@@ -295,489 +280,247 @@ char getPortLocation(const char* portDirectory, char* portLocation)
 	}
 	else
 	{
-		isUSB = 0;
 		portLocation[portLocationLength++] = '0';
 		portLocation[portLocationLength] = '\0';
 	}
 
+	// Append the physical port number if applicable
+	if (physicalPortNumber >= 0)
+		sprintf(portLocation + portLocationLength, ".%d", physicalPortNumber);
+
 	// Clean up the dynamic memory
 	free(devpathFile);
 	free(busnumFile);
-	return isUSB;
 }
 
-char driverGetPortLocation(char topLevel, const char *fullPathToSearch, const char *deviceName, char* portLocation, char searchBackwardIteration)
+static void assignFriendlyName(const char* portDevPath, char* friendlyName)
 {
-	// Open the linux USB device directory
-	char isUSB = 0;
-	DIR *directoryIterator = opendir(fullPathToSearch);
-	if (!directoryIterator)
-		return isUSB;
-
-	if (!searchBackwardIteration)
-	{
-		// Read all sub-directories in the current directory
-		struct dirent *directoryEntry = readdir(directoryIterator);
-		while (directoryEntry && !isUSB)
-		{
-			// Check if entry is a sub-directory
-			if ((topLevel || (directoryEntry->d_type == DT_DIR)) && (directoryEntry->d_name[0] != '.'))
-			{
-				// Set up the next directory to search
-				char* nextDirectory = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 5);
-				strcpy(nextDirectory, fullPathToSearch);
-				strcat(nextDirectory, directoryEntry->d_name);
-
-				// Only process directories that match the device name
-				if (strcmp(directoryEntry->d_name, deviceName) == 0)
-				{
-					strcat(nextDirectory, "/..");
-					isUSB = driverGetPortLocation(0, nextDirectory, deviceName, portLocation, 1);
-				}
-				else
-				{
-					// Search for more serial ports within the directory
-					strcat(nextDirectory, "/");
-					isUSB = driverGetPortLocation(0, nextDirectory, deviceName, portLocation, 0);
-				}
-				free(nextDirectory);
-			}
-			directoryEntry = readdir(directoryIterator);
-		}
-	}
+	// Manually assign a friendly name if the port type is known from its name
+	const char *portName = 1 + strrchr(portDevPath, '/');
+	if ((strlen(portName) >= 5) && (portName[3] == 'A') && (portName[4] == 'P'))
+		strcpy(friendlyName, "Advantech Extended Serial Port");
+	else if ((strlen(portName) >= 6) && (portName[0] == 'r') && (portName[1] == 'f') && (portName[2] == 'c') &&
+			(portName[3] == 'o') && (portName[4] == 'm') && (portName[5] == 'm'))
+		strcpy(friendlyName, "Bluetooth-Based Serial Port");
 	else
 	{
-		// Read all files in the current directory
-		char hasBusnum = 0, hasDevpath = 0;
+		// Assign a friendly name based on the serial port driver in use
+		char nameAssigned = 0;
+		FILE *input = fopen("/proc/tty/drivers", "rb");
+		if (input)
+		{
+			// Read the TTY drivers file line by line
+			int maxLineSize = 256;
+			char *line = (char*)malloc(maxLineSize);
+			while (!nameAssigned && fgets(line, maxLineSize, input))
+			{
+				// Parse the prefix, name, and type fields
+				int i = 0;
+				char *token, *remainder = line, *prefix = NULL, *name = NULL, *type = NULL;
+				while ((token = strtok_r(remainder, " \t\r\n", &remainder)))
+					if (++i == 1)
+						name = token;
+					else if (i == 2)
+						prefix = token;
+					else if (i == 5)
+						type = token;
+
+				// Assign a friendly name if a matching port prefix was found
+				if (prefix && name && type && (strcmp(type, "serial") == 0) && (strstr(portDevPath, prefix) == portDevPath))
+				{
+					strcpy(friendlyName, "Serial Device (");
+					strcat(friendlyName, name);
+					strcat(friendlyName, ")");
+					nameAssigned = 1;
+				}
+			}
+
+			// Close the drivers file and clean up memory
+			free(line);
+			fclose(input);
+		}
+
+		// If no driver prefix could be found, just assign a generic friendly name
+		if (!nameAssigned)
+			strcpy(friendlyName, "USB-Based Serial Port");
+	}
+}
+
+void searchForComPorts(serialPortVector* comPorts)
+{
+	// Set up the necessary local variables
+	struct stat pathInfo = { 0 };
+	stringVector physicalPortPrefixes = { NULL, 0, 0 };
+	int fileNameMaxLength = 0, portDevPathMaxLength = 128, maxLineSize = 256;
+	char *fileName = NULL, *portDevPath = (char*)malloc(portDevPathMaxLength);
+	char *line = (char*)malloc(maxLineSize), *friendlyName = (char*)malloc(256);
+	char *portLocation = (char*)malloc(128), *interfaceDescription = (char*)malloc(256);
+
+	// Retrieve the list of /dev/ prefixes for all physical serial ports
+	retrievePhysicalPortPrefixes(&physicalPortPrefixes);
+
+	// Iterate through the system TTY directory
+	DIR *directoryIterator = opendir("/sys/class/tty/");
+	if (directoryIterator)
+	{
 		struct dirent *directoryEntry = readdir(directoryIterator);
 		while (directoryEntry)
 		{
-			// Check if entry is a regular file with the expected name
-			if (directoryEntry->d_type == DT_REG)
+			// Ensure that the file name buffer is large enough
+			if ((64 + strlen(directoryEntry->d_name)) > fileNameMaxLength)
 			{
-				if (strcmp(directoryEntry->d_name, "busnum") == 0)
-					hasBusnum = 1;
-				else if (strcmp(directoryEntry->d_name, "devpath") == 0)
-					hasDevpath = 1;
+				fileNameMaxLength = 64 + strlen(directoryEntry->d_name);
+				fileName = (char*)realloc(fileName, fileNameMaxLength);
 			}
+
+			// Check if the entry represents a valid serial port
+			strcpy(fileName, "/sys/class/tty/");
+			strcat(fileName, directoryEntry->d_name);
+			char *basePathEnd = fileName + strlen(fileName);
+			sprintf(basePathEnd, "/device/driver");
+			char isSerialPort = (stat(fileName, &pathInfo) == 0) && S_ISDIR(pathInfo.st_mode);
+			sprintf(basePathEnd, "/dev");
+			isSerialPort = isSerialPort && (stat(fileName, &pathInfo) == 0) && S_ISREG(pathInfo.st_mode);
+			sprintf(basePathEnd, "/uevent");
+			isSerialPort = isSerialPort && (stat(fileName, &pathInfo) == 0) && S_ISREG(pathInfo.st_mode);
+			if (!isSerialPort)
+			{
+				directoryEntry = readdir(directoryIterator);
+				continue;
+			}
+
+			// Determine the /dev/ path to the device
+			isSerialPort = 0;
+			FILE *input = fopen(fileName, "r");
+			if (input)
+			{
+				while (fgets(line, maxLineSize, input))
+					if (strstr(line, "DEVNAME=") == line)
+					{
+						isSerialPort = 1;
+						strcpy(portDevPath, "/dev/");
+						strcat(portDevPath, line + 8);
+						portDevPath[strcspn(portDevPath, "\r\n")] = '\0';
+					}
+				fclose(input);
+			}
+			if (!isSerialPort)
+			{
+				directoryEntry = readdir(directoryIterator);
+				continue;
+			}
+
+			// Check if the device is a physical serial port
+			char isPhysical = 0;
+			int physicalPortNumber = 0;
+			for (int i = 0; !isPhysical && (i < physicalPortPrefixes.length); ++i)
+				if (strstr(portDevPath, physicalPortPrefixes.strings[i]) == portDevPath)
+				{
+					isPhysical = 1;
+					physicalPortNumber = atoi(portDevPath + strlen(physicalPortPrefixes.strings[i]));
+				}
+
+			// Determine the subsystem and bus location of the port
+			sprintf(basePathEnd, "/device/subsystem");
+			if (isUsbSerialSubsystem(fileName))
+			{
+				sprintf(basePathEnd, "/device/../");
+				basePathEnd += 11;
+			}
+			else
+			{
+				sprintf(basePathEnd, "/device/");
+				basePathEnd += 8;
+			}
+			sprintf(basePathEnd, "../");
+			getPortLocation(fileName, portLocation, isPhysical ? physicalPortNumber : -1);
+
+			// Check if the port has already been enumerated
+			serialPort *port = fetchPort(comPorts, portDevPath);
+			if (port)
+			{
+				// See if the device has changed locations
+				int oldLength = strlen(port->portLocation);
+				int newLength = strlen(portLocation);
+				if (oldLength != newLength)
+				{
+					port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
+					strcpy(port->portLocation, portLocation);
+				}
+				else if (memcmp(port->portLocation, portLocation, newLength))
+					strcpy(port->portLocation, portLocation);
+
+				// No need to re-enumerate if the port info was already parsed
+				directoryEntry = readdir(directoryIterator);
+				port->enumerated = 1;
+				continue;
+			}
+
+			// Retrieve all available port details based on its type
+			if (isPhysical)
+			{
+				// Probe the physical port to see if it actually exists
+				int fd = open(portDevPath, O_RDWR | O_NONBLOCK | O_NOCTTY);
+				if (fd >= 0)
+				{
+					struct serial_struct serialInfo = { 0 };
+					if ((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN))
+					{
+						// Add the port to the list of available ports
+						strcpy(friendlyName, "Physical Port ");
+						strcat(friendlyName, directoryEntry->d_name+3);
+						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation);
+					}
+					close(fd);
+				}
+			}
+			else		// Emulated serial port
+			{
+				// See if the device has a registered friendly name
+				friendlyName[0] = '\0';
+				sprintf(basePathEnd, "../product");
+				FILE *input = fopen(fileName, "rb");
+				if (input)
+				{
+					fgets(friendlyName, 256, input);
+					friendlyName[strcspn(friendlyName, "\r\n")] = '\0';
+					fclose(input);
+				}
+				if (friendlyName[0] == '\0')
+					assignFriendlyName(portDevPath, friendlyName);
+
+				// Attempt to read the bus-reported device description
+				interfaceDescription[0] = '\0';
+				sprintf(basePathEnd, "interface");
+				input = fopen(fileName, "rb");
+				if (input)
+				{
+					fgets(interfaceDescription, 256, input);
+					interfaceDescription[strcspn(interfaceDescription, "\r\n")] = '\0';
+					fclose(input);
+				}
+				if (interfaceDescription[0] == '\0')
+					strcpy(interfaceDescription, friendlyName);
+
+				// Add the port to the list of available ports
+				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation);
+			}
+
+			// Read next TTY directory entry
 			directoryEntry = readdir(directoryIterator);
 		}
-
-		// Check if the current directory has the required information files
-		if ((!hasBusnum || !hasDevpath || !(isUSB = getPortLocation(fullPathToSearch, portLocation))) && (searchBackwardIteration < 10))
-		{
-			char* nextDirectory = (char*)malloc(strlen(fullPathToSearch) + 5);
-			strcpy(nextDirectory, fullPathToSearch);
-			strcat(nextDirectory, "/..");
-			isUSB = driverGetPortLocation(0, nextDirectory, deviceName, portLocation, searchBackwardIteration + 1);
-			free(nextDirectory);
-		}
+		closedir(directoryIterator);
 	}
 
-	// Close the directory
-	closedir(directoryIterator);
-	return isUSB;
-}
-
-void retrievePortPathPrefixes(portPathPrefixes* prefixes)
-{
-	// Open the tty drivers file
-	FILE *input = fopen("/proc/tty/drivers", "r");
-	if (input)
-	{
-		// Read the file line by line
-		int maxLineSize = 255;
-		char *line = (char*)malloc(maxLineSize), *driverPath = (char*)malloc(maxLineSize);
-		while (fgets(line, maxLineSize, input))
-		{
-			// Parse the prefix, driver, and type fields
-			int i = 0;
-			char *token, *remainder = line, *prefix = NULL, *driver = NULL, *type = NULL;
-			while ((token = strtok_r(remainder, " \t\r\n", &remainder)))
-				if (++i == 1)
-					driver = token;
-				else if (i == 2)
-					prefix = token;
-				else if (i == 5)
-					type = token;
-
-			// Add a new prefix to the vector if the driver type is "serial"
-			if (prefix && driver && type && (strcmp(type, "serial") == 0))
-			{
-				strcpy(driverPath, "/proc/tty/driver/");
-				strcat(driverPath, driver);
-				pushBackPrefix(prefixes, prefix, driverPath);
-			}
-		}
-
-		// Close the drivers file and clean up memory
-		free(driverPath);
-		free(line);
-		fclose(input);
-	}
-}
-
-void recursiveSearchForComPorts(serialPortVector* comPorts, const char* fullPathToSearch)
-{
-	// Open the directory
-	DIR *directoryIterator = opendir(fullPathToSearch);
-	if (!directoryIterator)
-		return;
-
-	// Read all sub-directories in the current directory
-	struct dirent *directoryEntry = readdir(directoryIterator);
-	while (directoryEntry)
-	{
-		// Check if entry is a sub-directory
-		if (directoryEntry->d_type == DT_DIR)
-		{
-			// Only process non-dot, non-virtual directories
-			if ((directoryEntry->d_name[0] != '.') && (strcmp(directoryEntry->d_name, "virtual") != 0))
-			{
-				// See if the directory names a potential serial port
-				if ((strlen(directoryEntry->d_name) > 3) &&
-						(((directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y')) ||
-								((directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c'))))
-				{
-					// Determine system name of port
-					char* systemName = (char*)malloc(256);
-					strcpy(systemName, "/dev/");
-					strcat(systemName, directoryEntry->d_name);
-
-					// Determine location of port
-					char* portLocation = (char*)malloc(128);
-					char* productFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
-					strcpy(productFile, fullPathToSearch);
-					strcat(productFile, directoryEntry->d_name);
-					strcat(productFile, "/device/..");
-					char isUSB = getPortLocation(productFile, portLocation);
-					if (!isUSB)
-						isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
-
-					// Check if port is already enumerated
-					serialPort *port = fetchPort(comPorts, systemName);
-					if (port)
-					{
-						// See if device has changed locations
-						port->enumerated = 1;
-						if (isUSB)
-						{
-							int oldLength = strlen(port->portLocation);
-							int newLength = strlen(portLocation);
-							if (oldLength != newLength)
-							{
-								port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
-								strcpy(port->portLocation, portLocation);
-							}
-							else if (memcmp(port->portLocation, portLocation, newLength))
-								strcpy(port->portLocation, portLocation);
-						}
-					}
-					else
-					{
-						// See if device has a registered friendly name
-						char* friendlyName = (char*)malloc(256);
-						strcat(productFile, "/product");
-						getFriendlyName(productFile, friendlyName);
-						if (friendlyName[0] == '\0')		// Must be a physical (or emulated) port
-						{
-							// See if this is a USB-to-Serial converter based on the driver loaded
-							strcpy(productFile, fullPathToSearch);
-							strcat(productFile, directoryEntry->d_name);
-							strcat(productFile, "/driver/module/drivers");
-							getDriverName(productFile, friendlyName);
-							if (friendlyName[0] == '\0')	// Must be a physical port
-							{
-								// Ensure that the platform port is actually open
-								struct serial_struct serialInfo = { 0 };
-								int fd = open(systemName, O_RDWR | O_NONBLOCK | O_NOCTTY);
-								if (fd >= 0)
-								{
-									if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
-											(directoryEntry->d_name[3] == 'o') && (directoryEntry->d_name[4] == 'm') && (directoryEntry->d_name[5] == 'm'))
-									{
-										strcpy(friendlyName, "Bluetooth Port ");
-										strcat(friendlyName, directoryEntry->d_name);
-										pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
-									}
-									else if (((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
-											((ioctl(fd, TIOCGSERIAL, &serialInfo) == 0) && (serialInfo.type != PORT_UNKNOWN)))
-									{
-										strcpy(friendlyName, "Physical Port ");
-										strcat(friendlyName, directoryEntry->d_name+3);
-										pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
-									}
-									close(fd);
-								}
-							}
-							else
-							{
-								// Attempt to read from the device interface file
-								char* interfaceDescription = (char*)malloc(256);
-								char* interfaceFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
-								strcpy(interfaceFile, fullPathToSearch);
-								strcat(interfaceFile, directoryEntry->d_name);
-								strcat(interfaceFile, "/../interface");
-								getInterfaceDescription(interfaceFile, interfaceDescription);
-								if (interfaceDescription[0] == '\0')
-								{
-									strcpy(interfaceFile, fullPathToSearch);
-									strcat(interfaceFile, directoryEntry->d_name);
-									strcat(interfaceFile, "/device/../interface");
-									getInterfaceDescription(interfaceFile, interfaceDescription);
-								}
-								if (interfaceDescription[0] == '\0')
-									strcpy(interfaceDescription, friendlyName);
-								pushBack(comPorts, systemName, friendlyName, interfaceDescription, portLocation);
-
-								// Clean up memory
-								free(interfaceFile);
-								free(interfaceDescription);
-							}
-						}
-						else
-						{
-							// Attempt to read from the device interface file
-							char* interfaceDescription = (char*)malloc(256);
-							char* interfaceFile = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 30);
-							strcpy(interfaceFile, fullPathToSearch);
-							strcat(interfaceFile, directoryEntry->d_name);
-							strcat(interfaceFile, "/../interface");
-							getInterfaceDescription(interfaceFile, interfaceDescription);
-							if (interfaceDescription[0] == '\0')
-							{
-								strcpy(interfaceFile, fullPathToSearch);
-								strcat(interfaceFile, directoryEntry->d_name);
-								strcat(interfaceFile, "/device/../interface");
-								getInterfaceDescription(interfaceFile, interfaceDescription);
-							}
-							if (interfaceDescription[0] == '\0')
-								strcpy(interfaceDescription, friendlyName);
-							pushBack(comPorts, systemName, friendlyName, interfaceDescription, portLocation);
-
-							// Clean up memory
-							free(interfaceFile);
-							free(interfaceDescription);
-						}
-
-						// Clean up memory
-						free(friendlyName);
-					}
-
-					// Clean up memory
-					free(portLocation);
-					free(productFile);
-					free(systemName);
-				}
-				else
-				{
-					// Search for more serial ports within the directory
-					char* nextDirectory = (char*)malloc(strlen(fullPathToSearch) + strlen(directoryEntry->d_name) + 5);
-					strcpy(nextDirectory, fullPathToSearch);
-					strcat(nextDirectory, directoryEntry->d_name);
-					strcat(nextDirectory, "/");
-					recursiveSearchForComPorts(comPorts, nextDirectory);
-					free(nextDirectory);
-				}
-			}
-		}
-		directoryEntry = readdir(directoryIterator);
-	}
-
-	// Close the directory
-	closedir(directoryIterator);
-}
-
-void driverBasedSearchForComPorts(serialPortVector* comPorts, const char* fullPathToDriver, const char* fullBasePathToPort)
-{
-	// Search for unidentified physical serial ports
-	FILE *serialDriverFile = fopen(fullPathToDriver, "rb");
-	if (serialDriverFile)
-	{
-		char* serialLine = (char*)malloc(128);
-		while (fgets(serialLine, 128, serialDriverFile))
-			if (strstr(serialLine, "uart:") && (strstr(serialLine, "uart:unknown") == NULL))
-			{
-				// Determine system name of port
-				*strchr(serialLine, ':') = '\0';
-				char* systemName = (char*)malloc(256);
-				strcpy(systemName, fullBasePathToPort);
-				strcat(systemName, serialLine);
-
-				// Check if port is already enumerated
-				serialPort *port = fetchPort(comPorts, systemName);
-				if (port)
-					port->enumerated = 1;
-				else
-				{
-					// Ensure that the port is valid and not a symlink
-					struct stat fileStats;
-					if ((access(systemName, F_OK) == 0) && (lstat(systemName, &fileStats) == 0) && !S_ISLNK(fileStats.st_mode))
-					{
-						// Set static friendly name
-						char* friendlyName = (char*)malloc(256);
-						strcpy(friendlyName, "Physical Port ");
-						strcat(friendlyName, serialLine);
-
-						// Add the port to the list
-						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0");
-
-						// Clean up memory
-						free(friendlyName);
-					}
-				}
-
-				// Clean up memory
-				free(systemName);
-			}
-		free(serialLine);
-		fclose(serialDriverFile);
-	}
-}
-
-void lastDitchSearchForComPorts(serialPortVector* comPorts)
-{
-	// Open the linux dev directory
-	DIR *directoryIterator = opendir("/dev/");
-	if (!directoryIterator)
-		return;
-
-	// Read all files in the current directory
-	struct dirent *directoryEntry = readdir(directoryIterator);
-	while (directoryEntry)
-	{
-		// See if the file names a potential serial port
-		if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
-				(((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'M') && (directoryEntry->d_name[5] == 'A')) ||
-						((directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'C') && (directoryEntry->d_name[5] == 'M')) ||
-						((directoryEntry->d_name[3] == 'U') && (directoryEntry->d_name[4] == 'S') && (directoryEntry->d_name[5] == 'B'))))
-		{
-			// Determine system name of port
-			char* systemName = (char*)malloc(256);
-			strcpy(systemName, "/dev/");
-			strcat(systemName, directoryEntry->d_name);
-
-			// Determine location of port
-			char* portLocation = (char*)malloc(128);
-			char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
-
-			// Check if port is already enumerated
-			serialPort *port = fetchPort(comPorts, systemName);
-			if (port)
-			{
-				// See if device has changed locations
-				port->enumerated = 1;
-				if (isUSB)
-				{
-					int oldLength = strlen(port->portLocation);
-					int newLength = strlen(portLocation);
-					if (oldLength != newLength)
-					{
-						port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
-						strcpy(port->portLocation, portLocation);
-					}
-					else if (memcmp(port->portLocation, portLocation, newLength))
-						strcpy(port->portLocation, portLocation);
-				}
-			}
-			else
-			{
-				// Set static friendly name
-				char* friendlyName = (char*)malloc(256);
-				strcpy(friendlyName, "USB-Based Serial Port");
-
-				// Add the port to the list
-				pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
-
-				// Clean up memory
-				free(friendlyName);
-			}
-
-			// Clean up memory
-			free(portLocation);
-			free(systemName);
-		}
-		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 't') && (directoryEntry->d_name[1] == 't') && (directoryEntry->d_name[2] == 'y') &&
-				(directoryEntry->d_name[3] == 'A') && (directoryEntry->d_name[4] == 'P'))
-		{
-			// Determine system name of port
-			char* systemName = (char*)malloc(256);
-			strcpy(systemName, "/dev/");
-			strcat(systemName, directoryEntry->d_name);
-
-			// Determine location of port
-			char* portLocation = (char*)malloc(128);
-			char isUSB = driverGetPortLocation(1, "/sys/bus/usb/devices/", directoryEntry->d_name, portLocation, 0);
-
-			// Check if port is already enumerated
-			serialPort *port = fetchPort(comPorts, systemName);
-			if (port)
-			{
-				// See if device has changed locations
-				port->enumerated = 1;
-				if (isUSB)
-				{
-					int oldLength = strlen(port->portLocation);
-					int newLength = strlen(portLocation);
-					if (oldLength != newLength)
-					{
-						port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
-						strcpy(port->portLocation, portLocation);
-					}
-					else if (memcmp(port->portLocation, portLocation, newLength))
-						strcpy(port->portLocation, portLocation);
-				}
-			}
-			else
-			{
-				// Set static friendly name
-				char* friendlyName = (char*)malloc(256);
-				strcpy(friendlyName, "Advantech Extended Serial Port");
-
-				// Add the port to the list
-				pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
-
-				// Clean up memory
-				free(friendlyName);
-			}
-
-			// Clean up memory
-			free(portLocation);
-			free(systemName);
-		}
-		else if ((strlen(directoryEntry->d_name) >= 6) && (directoryEntry->d_name[0] == 'r') && (directoryEntry->d_name[1] == 'f') && (directoryEntry->d_name[2] == 'c') &&
-				(directoryEntry->d_name[3] == 'o') && (directoryEntry->d_name[4] == 'm') && (directoryEntry->d_name[5] == 'm'))
-		{
-			// Determine system name of port
-			char* systemName = (char*)malloc(256);
-			strcpy(systemName, "/dev/");
-			strcat(systemName, directoryEntry->d_name);
-
-			// Check if port is already enumerated
-			serialPort *port = fetchPort(comPorts, systemName);
-			if (port)
-				port->enumerated = 1;
-			else
-			{
-				// Set static friendly name
-				char* friendlyName = (char*)malloc(256);
-				strcpy(friendlyName, "Bluetooth-Based Serial Port");
-
-				// Add the port to the list
-				pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0");
-
-				// Clean up memory
-				free(friendlyName);
-			}
-
-			// Clean up memory
-			free(systemName);
-		}
-		directoryEntry = readdir(directoryIterator);
-	}
-
-	// Close the directory
-	closedir(directoryIterator);
+	// Clean up dynamically allocated memory
+	freeStringVector(&physicalPortPrefixes);
+	if (fileName)
+		free(fileName);
+	free(interfaceDescription);
+	free(portLocation);
+	free(friendlyName);
+	free(portDevPath);
+	free(line);
 }
 
 baud_rate getBaudRateCode(baud_rate baudRate)

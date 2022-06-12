@@ -40,5 +40,5 @@ public interface SerialPortPacketListener extends SerialPortDataListener
 	 * 
 	 * @return The number of bytes that must be read before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
 	 */
-	public abstract int getPacketSize();
+	int getPacketSize();
 }

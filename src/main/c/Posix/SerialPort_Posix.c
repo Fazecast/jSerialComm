@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 08, 2022
+ *  Last Updated on:  Jun 11, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -109,21 +109,7 @@ static void enumeratePorts(void)
 		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle > 0);
 
 	// Enumerate serial ports on this machine
-#if defined(__linux__)
-
-	portPathPrefixes portPrefixes = { NULL, NULL, 0, 0 };
-	retrievePortPathPrefixes(&portPrefixes);
-	recursiveSearchForComPorts(&serialPorts, "/sys/devices/");
-	for (int i = 0; i < portPrefixes.length; ++i)
-		driverBasedSearchForComPorts(&serialPorts, portPrefixes.driverPaths[i], portPrefixes.prefixes[i]);
-	lastDitchSearchForComPorts(&serialPorts);
-	freePortPathPrefixes(&portPrefixes);
-
-#elif defined(__sun__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-
 	searchForComPorts(&serialPorts);
-
-#endif
 
 	// Remove all non-enumerated ports from the serial port listing
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -408,13 +394,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (checkJniError(env, __LINE__ - 1)) return;
 
 	// Ensure that the serial port exists
-	char continueRetrieval = 1;
 	pthread_mutex_lock(&criticalSection);
 	if (!portsEnumerated)
 		enumeratePorts();
 	serialPort *port = fetchPort(&serialPorts, portName);
-	if (!port)
-		continueRetrieval = 0;
+	char continueRetrieval = (port != NULL);
 
 	// Fill in the Java-side port details
 	if (continueRetrieval)
@@ -1098,6 +1082,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JN
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+
+	// Fix user permissions so that they can access the port, if allowed
+	int userCanAccess = (faccessat(0, portName, R_OK | W_OK, AT_EACCESS) == 0);
+	if (!userCanAccess && requestElevatedPermissions)
+		verifyAndSetUserPortGroup(portName);
 
 	// Send a system command to preset the RTS mode of the serial port
 	char commandString[128];
@@ -1119,8 +1110,15 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
-	// Send a system command to preset the RTS mode of the serial port
+	// Fix user permissions so that they can access the port, if allowed
+	int userCanAccess = (faccessat(0, portName, R_OK | W_OK, AT_EACCESS) == 0);
+	if (!userCanAccess && requestElevatedPermissions)
+		verifyAndSetUserPortGroup(portName);
+
+	// Send a system command to preclear the RTS mode of the serial port
 	char commandString[128];
 #if defined(__linux__)
 	sprintf(commandString, "stty -F %s -hupcl >>/dev/null 2>&1", portName);
@@ -1166,6 +1164,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JN
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+
+	// Fix user permissions so that they can access the port, if allowed
+	int userCanAccess = (faccessat(0, portName, R_OK | W_OK, AT_EACCESS) == 0);
+	if (!userCanAccess && requestElevatedPermissions)
+		verifyAndSetUserPortGroup(portName);
 
 	// Send a system command to preset the DTR mode of the serial port
 	char commandString[128];
@@ -1187,6 +1192,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+
+	// Fix user permissions so that they can access the port, if allowed
+	int userCanAccess = (faccessat(0, portName, R_OK | W_OK, AT_EACCESS) == 0);
+	if (!userCanAccess && requestElevatedPermissions)
+		verifyAndSetUserPortGroup(portName);
 
 	// Send a system command to preclear the DTR mode of the serial port
 	char commandString[128];

@@ -47,7 +47,7 @@ public final class SerialPortIOException extends IOException
 	/**
 	 * Constructs a {@link SerialPortIOException} with the specified detail message.
 	 * 
-	 * @param message The detail message (which is saved for later retrieval by the {@link getMessage()} method).
+	 * @param message The detail message (which is saved for later retrieval by the {@link SerialPortIOException#getMessage()} method).
 	 */
 	public SerialPortIOException(String message)
 	{

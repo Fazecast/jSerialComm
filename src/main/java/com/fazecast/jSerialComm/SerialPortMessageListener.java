@@ -40,12 +40,12 @@ public interface SerialPortMessageListener extends SerialPortDataListener
 	 * 
 	 * @return A byte array containing the expected message delimiters that must be encountered before the {@link #serialEvent(SerialPortEvent)} callback is triggered.
 	 */
-	public abstract byte[] getMessageDelimiter();
+	byte[] getMessageDelimiter();
 
 	/**
 	 * Must be overridden to return whether the message delimiter indicates the end or the beginning of a message.
 	 * 
 	 * @return A boolean indicating whether the message delimiter indicates the end or the beginning of a message.
 	 */
-	public abstract boolean delimiterIndicatesEndOfMessage();
+	boolean delimiterIndicatesEndOfMessage();
 }

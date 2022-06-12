@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Feb 17, 2022
+ *  Last Updated on:  Jun 09, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -49,6 +49,7 @@ typedef struct serialPortVector
 serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
+void cleanUpVector(serialPortVector* vector);
 
 // Windows-specific functionality
 void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevatedPermissions);

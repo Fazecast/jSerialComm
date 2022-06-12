@@ -48,7 +48,7 @@ public final class SerialPortTimeoutException extends InterruptedIOException
 	/**
 	 * Constructs a {@link SerialPortTimeoutException} with the specified detail message.
 	 * 
-	 * @param message The detail message (which is saved for later retrieval by the {@link getMessage()} method).
+	 * @param message The detail message (which is saved for later retrieval by the {@link SerialPortTimeoutException#getMessage()} method).
 	 */
 	public SerialPortTimeoutException(String message)
 	{

@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Feb 17, 2022
+ *  Last Updated on:  Jun 09, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -130,6 +130,16 @@ void removePort(serialPortVector* vector, serialPort* port)
 
 	// Free the serial port structure memory
 	free(port);
+}
+
+void cleanUpVector(serialPortVector* vector)
+{
+	while (vector->length)
+		removePort(vector, vector->ports[0]);
+	if (vector->ports)
+		free(vector->ports);
+	vector->ports = NULL;
+	vector->length = vector->capacity = 0;
 }
 
 // Windows-specific functionality
