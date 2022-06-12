@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jun 09, 2022
+ *  Last Updated on:  Jun 12, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -64,7 +64,7 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	pthread_condattr_t conditionVariableAttributes;
 	pthread_condattr_init(&conditionVariableAttributes);
 #if !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__ANDROID__)
-	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_MONOTONIC);
+	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_REALTIME);
 #endif
 	pthread_cond_init(&port->eventReceived, &conditionVariableAttributes);
 	pthread_condattr_destroy(&conditionVariableAttributes);

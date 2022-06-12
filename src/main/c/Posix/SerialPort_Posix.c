@@ -154,6 +154,7 @@ void* eventReadingThread1(void *serialPortPointer)
 		// Return the detected port events
 		if (isSupported)
 		{
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldValue);
 			pthread_mutex_lock(&port->eventMutex);
 			if (newSerialLineInterrupts.dcd != oldSerialLineInterrupts.dcd)
 				port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_CARRIER_DETECT;
@@ -167,6 +168,7 @@ void* eventReadingThread1(void *serialPortPointer)
 			if (port->event)
 				pthread_cond_signal(&port->eventReceived);
 			pthread_mutex_unlock(&port->eventMutex);
+			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 		}
 	}
 	return NULL;
@@ -199,6 +201,7 @@ void* eventReadingThread2(void *serialPortPointer)
 		while ((pollResult == 0) && port->eventListenerRunning && port->eventListenerUsesThreads);
 
 		// Return the detected port events
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldValue);
 		pthread_mutex_lock(&port->eventMutex);
 		if (waitingSet.revents & POLLHUP)
 			port->event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
@@ -222,6 +225,7 @@ void* eventReadingThread2(void *serialPortPointer)
 		if (port->event)
 			pthread_cond_signal(&port->eventReceived);
 		pthread_mutex_unlock(&port->eventMutex);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 	}
 	return NULL;
 }
