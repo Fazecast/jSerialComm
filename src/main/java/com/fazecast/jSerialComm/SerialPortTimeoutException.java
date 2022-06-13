@@ -37,15 +37,6 @@ public final class SerialPortTimeoutException extends InterruptedIOException
 	private static final long serialVersionUID = 3209035213903386044L;
 
 	/**
-	 * Constructs a {@link SerialPortTimeoutException} with {@code null} as its error detail message.
-	 */
-	public SerialPortTimeoutException()
-	{
-		super();
-		bytesTransferred = 0;
-	}
-
-	/**
 	 * Constructs a {@link SerialPortTimeoutException} with the specified detail message.
 	 * 
 	 * @param message The detail message (which is saved for later retrieval by the {@link SerialPortTimeoutException#getMessage()} method).

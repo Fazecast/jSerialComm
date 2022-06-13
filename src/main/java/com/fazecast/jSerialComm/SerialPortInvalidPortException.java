@@ -35,24 +35,6 @@ public final class SerialPortInvalidPortException extends RuntimeException
 	private static final long serialVersionUID = 3420177672598538224L;
 
 	/**
-	 * Constructs a {@link SerialPortInvalidPortException} with {@code null} as its error detail message.
-	 */
-	public SerialPortInvalidPortException()
-	{
-		super();
-	}
-
-	/**
-	 * Constructs a {@link SerialPortInvalidPortException} with the specified detail message.
-	 *
-	 * @param message The detail message (which is saved for later retrieval by the {@link getMessage()} method).
-	 */
-	public SerialPortInvalidPortException(String message)
-	{
-		super(message);
-	}
-
-	/**
 	 * Constructs a {@link SerialPortInvalidPortException} with the specified detail message and cause.
 	 * <p>
 	 * Note that the detail message associated with <b>cause</b> is <i>not</i> automatically incorporated into this exception's detail message.
@@ -63,17 +45,5 @@ public final class SerialPortInvalidPortException extends RuntimeException
 	public SerialPortInvalidPortException(String message, Throwable cause)
 	{
 		super(message, cause);
-	}
-
-	/**
-	 * Constructs a {@link SerialPortInvalidPortException} with the specified cause and a detail message of {@code (cause==null ? null : cause.toString()) }
-	 * (which typically contains the class and detail message of {@code cause}). This constructor is useful for exceptions that are little more
-	 * than wrappers for other throwables.
-	 *
-	 * @param cause The cause (which is saved for later retrieval by the {@link getCause()} method). (A null value is permitted, and indicates that the cause is nonexistent or unknown.)
-	 */
-	public SerialPortInvalidPortException(Throwable cause)
-	{
-		super(cause);
 	}
 }
