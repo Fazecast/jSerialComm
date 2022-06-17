@@ -74,6 +74,8 @@ libraryDependencies += "com.fazecast" % "jSerialComm" % "[2.0.0,3.0.0)"
 [com.fazecast/jSerialComm "[2.0.0,3.0.0)"]
 ```
 
+Finally, if you are working on a device that provides no other means of allowing temporary native files to run, jSerialComm supports loading a pre-extracted version of its native library from a user-defined location using the startup flag: `-DjSerialComm.library.path="<LIB_PATH>"`, where `LIB_PATH` can either be a directory containing the single native jSerialComm library for your correct architecture or the entire extracted arch-specific directory structure from inside the jSerialComm JAR file; however, this should be used as a last resort as it makes versioning and upgrading much more difficult and error-prone.
+
 
 ## Troubleshooting
 
