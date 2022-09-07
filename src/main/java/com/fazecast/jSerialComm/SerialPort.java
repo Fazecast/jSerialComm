@@ -49,7 +49,7 @@ import java.util.Vector;
  * @see java.io.OutputStream
  */
 @SuppressWarnings("unused")
-public final class SerialPort
+public class SerialPort
 {
 	// Parity Values
 	static final public int NO_PARITY = 0;
