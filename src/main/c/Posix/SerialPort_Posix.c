@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 11, 2022
+ *  Last Updated on:  Oct 24, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -440,6 +440,10 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 
@@ -474,6 +478,16 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		pthread_mutex_lock(&criticalSection);
 		port->handle = portHandle;
 		pthread_mutex_unlock(&criticalSection);
+
+		// Quickly set the desired RTS/DTR line status immediately upon opening
+		if (isDtrEnabled)
+			Java_com_fazecast_jSerialComm_SerialPort_setDTR(env, obj, (jlong)(intptr_t)port);
+		else
+			Java_com_fazecast_jSerialComm_SerialPort_clearDTR(env, obj, (jlong)(intptr_t)port);
+		if (isRtsEnabled)
+			Java_com_fazecast_jSerialComm_SerialPort_setRTS(env, obj, (jlong)(intptr_t)port);
+		else
+			Java_com_fazecast_jSerialComm_SerialPort_clearRTS(env, obj, (jlong)(intptr_t)port);
 
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (!disableExclusiveLock && flock(port->handle, LOCK_EX | LOCK_NB))

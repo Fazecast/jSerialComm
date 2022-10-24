@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  May 31, 2022
+ *  Last Updated on:  Oct 24, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -597,6 +597,10 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
+	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 
@@ -630,6 +634,16 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		EnterCriticalSection(&criticalSection);
 		port->handle = portHandle;
 		LeaveCriticalSection(&criticalSection);
+
+		// Quickly set the desired RTS/DTR line status immediately upon opening
+		if (isDtrEnabled)
+			Java_com_fazecast_jSerialComm_SerialPort_setDTR(env, obj, (jlong)(intptr_t)port);
+		else
+			Java_com_fazecast_jSerialComm_SerialPort_clearDTR(env, obj, (jlong)(intptr_t)port);
+		if (isRtsEnabled)
+			Java_com_fazecast_jSerialComm_SerialPort_setRTS(env, obj, (jlong)(intptr_t)port);
+		else
+			Java_com_fazecast_jSerialComm_SerialPort_clearRTS(env, obj, (jlong)(intptr_t)port);
 
 		// Configure the port parameters and timeouts
 		if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
