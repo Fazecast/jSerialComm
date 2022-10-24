@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jun 12, 2022
+ *  Last Updated on:  Oct 24, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -450,7 +450,55 @@ void searchForComPorts(serialPortVector* comPorts)
 				else if (memcmp(port->portLocation, portLocation, newLength))
 					strcpy(port->portLocation, portLocation);
 
-				// No need to re-enumerate if the port info was already parsed
+				// Update descriptors if this is not a physical port
+				if (!isPhysical)
+				{
+					// Update the device's registered friendly name
+					friendlyName[0] = '\0';
+					sprintf(basePathEnd, "../product");
+					FILE *input = fopen(fileName, "rb");
+					if (input)
+					{
+						fgets(friendlyName, 256, input);
+						friendlyName[strcspn(friendlyName, "\r\n")] = '\0';
+						fclose(input);
+					}
+					if (friendlyName[0] == '\0')
+						assignFriendlyName(portDevPath, friendlyName);
+					oldLength = strlen(port->friendlyName);
+					newLength = strlen(friendlyName);
+					if (oldLength != newLength)
+					{
+						port->friendlyName = (char*)realloc(port->friendlyName, newLength + 1);
+						strcpy(port->friendlyName, friendlyName);
+					}
+					else if (memcmp(port->friendlyName, friendlyName, newLength))
+						strcpy(port->friendlyName, friendlyName);
+
+					// Attempt to read the bus-reported device description
+					interfaceDescription[0] = '\0';
+					sprintf(basePathEnd, "interface");
+					input = fopen(fileName, "rb");
+					if (input)
+					{
+						fgets(interfaceDescription, 256, input);
+						interfaceDescription[strcspn(interfaceDescription, "\r\n")] = '\0';
+						fclose(input);
+					}
+					if (interfaceDescription[0] == '\0')
+						strcpy(interfaceDescription, friendlyName);
+					oldLength = strlen(port->portDescription);
+					newLength = strlen(interfaceDescription);
+					if (oldLength != newLength)
+					{
+						port->portDescription = (char*)realloc(port->portDescription, newLength + 1);
+						strcpy(port->portDescription, interfaceDescription);
+					}
+					else if (memcmp(port->portDescription, interfaceDescription, newLength))
+						strcpy(port->portDescription, interfaceDescription);
+				}
+
+				// Continue port enumeration
 				directoryEntry = readdir(directoryIterator);
 				port->enumerated = 1;
 				continue;
