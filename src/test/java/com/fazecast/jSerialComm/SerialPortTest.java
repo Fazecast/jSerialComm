@@ -272,17 +272,13 @@ public class SerialPortTest
 			@Override
 			public void serialEvent(SerialPortEvent event)
 			{
+				System.out.println("Received event type: " + event.toString());
 				if (event.getEventType() == SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
 				{
-					System.out.println("Received event type: LISTENING_EVENT_DATA_AVAILABLE");
 					byte[] buffer = new byte[event.getSerialPort().bytesAvailable()];
 					event.getSerialPort().readBytes(buffer, buffer.length);
 					System.out.println("   Reading " + buffer.length + " bytes");
 				}
-				else if (event.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
-					System.out.println("Received event type: LISTENING_EVENT_PORT_DISCONNECTED");
-				else
-					System.out.println("Received event type: " + event.getEventType());
 			}
 		});
 		try { Thread.sleep(5000); } catch (Exception e) {}

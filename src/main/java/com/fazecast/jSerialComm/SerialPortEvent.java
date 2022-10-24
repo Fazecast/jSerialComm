@@ -136,7 +136,32 @@ public class SerialPortEvent extends EventObject
 		eventType = serialEventType;
 		serialData = data;
 	}
-	
+
+	/**
+	 * Returns a string representation of the type of event represented by this object.
+	 *
+	 * @return A string representation of the type of event represented by this object.
+	 */
+	@Override
+	public final String toString() {
+		switch(eventType) {
+			case SerialPort.LISTENING_EVENT_DATA_AVAILABLE: return "LISTENING_EVENT_DATA_AVAILABLE";
+			case SerialPort.LISTENING_EVENT_DATA_RECEIVED: return "LISTENING_EVENT_DATA_RECEIVED";
+			case SerialPort.LISTENING_EVENT_DATA_WRITTEN: return "LISTENING_EVENT_DATA_WRITTEN";
+			case SerialPort.LISTENING_EVENT_PORT_DISCONNECTED: return "LISTENING_EVENT_PORT_DISCONNECTED";
+			case SerialPort.LISTENING_EVENT_BREAK_INTERRUPT: return "LISTENING_EVENT_BREAK_INTERRUPT";
+			case SerialPort.LISTENING_EVENT_CARRIER_DETECT: return "LISTENING_EVENT_CARRIER_DETECT";
+			case SerialPort.LISTENING_EVENT_CTS: return "LISTENING_EVENT_CTS";
+			case SerialPort.LISTENING_EVENT_DSR: return "LISTENING_EVENT_DSR";
+			case SerialPort.LISTENING_EVENT_RING_INDICATOR: return "LISTENING_EVENT_RING_INDICATOR";
+			case SerialPort.LISTENING_EVENT_FRAMING_ERROR: return "LISTENING_EVENT_FRAMING_ERROR";
+			case SerialPort.LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR: return "LISTENING_EVENT_FIRMWARE_OVERRUN_ERROR";
+			case SerialPort.LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR: return "LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR";
+			case SerialPort.LISTENING_EVENT_PARITY_ERROR: return "LISTENING_EVENT_PARITY_ERROR";
+			default: return "LISTENING_EVENT_UNKNOWN_TYPE";
+		}
+	}
+
 	/**
 	 * Returns the {@link SerialPort} that triggered this event.
 	 * 
