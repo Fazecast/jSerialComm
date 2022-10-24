@@ -172,7 +172,10 @@ public class SerialPort
 		{
 			libraryPath = "Linux";
 			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "armv8_64", "x86_64", "armv8_32", "armv7hf", "armv7", "armv6hf", "armv6", "armv5", "ppc64le", "x86" };
+			if (!System.getProperty("os.arch_full", "").isEmpty())
+				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
+			else
+				architectures = new String[] { "armv5", "armv6", "armv6hf", "armv7", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
 		}
 		else
 		{
