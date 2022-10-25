@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jun 09, 2022
+ *  Last Updated on:  Oct 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -23,10 +23,18 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
+//#define _FORCE_EARLY_WIN_COMPAT
+
 #ifdef _WIN32
+#ifdef _FORCE_EARLY_WIN_COMPAT
+#define WINVER _WIN32_WINNT_WINXP
+#define _WIN32_WINNT _WIN32_WINNT_WINXP
+#define NTDDI_VERSION NTDDI_WINXP
+#else
 #define WINVER _WIN32_WINNT_VISTA
 #define _WIN32_WINNT _WIN32_WINNT_VISTA
 #define NTDDI_VERSION NTDDI_VISTA
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <direct.h>
@@ -170,8 +178,8 @@ void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevat
 					if (RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS)
 					{
 						DWORD oldLatencySize = sizeof(DWORD), portNameSize = maxPortNameSize * sizeof(wchar_t);
-						if ((RegGetValueW(paramKey, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS) && (wcscmp(portName, portPath) == 0))
-							RegGetValueW(paramKey, NULL, L"LatencyTimer", RRF_RT_REG_DWORD, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
+						if ((RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS) && (wcscmp(portName, portPath) == 0))
+							RegQueryValueExW(paramKey, L"LatencyTimer", NULL, NULL, (LPBYTE)&oldLatency, &oldLatencySize);
 						RegCloseKey(paramKey);
 					}
 				}
@@ -267,7 +275,7 @@ int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* ser
 					{
 						DWORD portNameSize = portPathLength;
 						if ((RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS) &&
-								(RegGetValueW(paramKey, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS))
+								(RegQueryValueExW(paramKey, L"PortName", NULL, NULL, (LPBYTE)portPath, &portNameSize) == ERROR_SUCCESS))
 						{
 							found = 1;
 							RegCloseKey(paramKey);

@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 24, 2022
+ *  Last Updated on:  Oct 25, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -23,10 +23,18 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
+//#define _FORCE_EARLY_WIN_COMPAT
+
 #ifdef _WIN32
+#ifdef _FORCE_EARLY_WIN_COMPAT
+#define WINVER _WIN32_WINNT_WINXP
+#define _WIN32_WINNT _WIN32_WINNT_WINXP
+#define NTDDI_VERSION NTDDI_WINXP
+#else
 #define WINVER _WIN32_WINNT_VISTA
 #define _WIN32_WINNT _WIN32_WINNT_VISTA
 #define NTDDI_VERSION NTDDI_VISTA
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <initguid.h>
 #include <windows.h>
@@ -41,6 +49,11 @@
 #include <devguid.h>
 #include "ftdi/ftd2xx.h"
 #include "WindowsHelperFunctions.h"
+
+#ifdef _FORCE_EARLY_WIN_COMPAT
+#define SetupDiGetDevicePropertyW(...) 0
+#define CancelIoEx(...) 0
+#endif
 
 // Cached class, method, and field IDs
 jclass jniErrorClass;
@@ -138,7 +151,7 @@ static void enumeratePorts(void)
 					{
 						comPortLength += sizeof(wchar_t);
 						comPort = (wchar_t*)malloc(comPortLength);
-						if (comPort && (RegGetValueW(key, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)comPort, &comPortLength) == ERROR_SUCCESS))
+						if (comPort && (RegQueryValueExW(key, L"PortName", NULL, NULL, (LPBYTE)comPort, &comPortLength) == ERROR_SUCCESS))
 							comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
 					}
 					RegCloseKey(key);
