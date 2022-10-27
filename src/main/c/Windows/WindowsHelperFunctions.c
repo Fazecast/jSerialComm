@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Oct 25, 2022
+ *  Last Updated on:  Oct 27, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -23,18 +23,10 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
-//#define _FORCE_EARLY_WIN_COMPAT
-
 #ifdef _WIN32
-#ifdef _FORCE_EARLY_WIN_COMPAT
 #define WINVER _WIN32_WINNT_WINXP
 #define _WIN32_WINNT _WIN32_WINNT_WINXP
 #define NTDDI_VERSION NTDDI_WINXP
-#else
-#define WINVER _WIN32_WINNT_VISTA
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-#define NTDDI_VERSION NTDDI_VISTA
-#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <direct.h>

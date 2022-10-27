@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 25, 2022
+ *  Last Updated on:  Oct 27, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -23,18 +23,10 @@
  * see <http://www.gnu.org/licenses/> and <http://www.apache.org/licenses/>.
  */
 
-//#define _FORCE_EARLY_WIN_COMPAT
-
 #ifdef _WIN32
-#ifdef _FORCE_EARLY_WIN_COMPAT
 #define WINVER _WIN32_WINNT_WINXP
 #define _WIN32_WINNT _WIN32_WINNT_WINXP
 #define NTDDI_VERSION NTDDI_WINXP
-#else
-#define WINVER _WIN32_WINNT_VISTA
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-#define NTDDI_VERSION NTDDI_VISTA
-#endif
 #define WIN32_LEAN_AND_MEAN
 #include <initguid.h>
 #include <windows.h>
@@ -49,11 +41,6 @@
 #include <devguid.h>
 #include "ftdi/ftd2xx.h"
 #include "WindowsHelperFunctions.h"
-
-#ifdef _FORCE_EARLY_WIN_COMPAT
-#define SetupDiGetDevicePropertyW(...) 0
-#define CancelIoEx(...) 0
-#endif
 
 // Cached class, method, and field IDs
 jclass jniErrorClass;
@@ -89,6 +76,10 @@ jfieldID eventFlagsField;
 // Runtime-loadable DLL functions
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
+typedef BOOL (__stdcall *SetupDiGetDevicePropertyWFunction)(HDEVINFO, PSP_DEVINFO_DATA, const DEVPROPKEY*, DEVPROPTYPE*, PBYTE, DWORD, PDWORD, DWORD);
+typedef BOOL (__stdcall *CancelIoExFunction)(HANDLE, LPOVERLAPPED);
+SetupDiGetDevicePropertyWFunction SetupDiGetDevicePropertyW = NULL;
+CancelIoExFunction CancelIoEx = NULL;
 
 // Global list of available serial ports
 char portsEnumerated = 0;
@@ -166,14 +157,12 @@ static void enumeratePorts(void)
 				// Fetch the friendly name for this device
 				DWORD friendlyNameLength = 0;
 				wchar_t *friendlyNameString = NULL;
-				if ((!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, NULL, 0, &friendlyNameLength, 0) && (GetLastError() != ERROR_INSUFFICIENT_BUFFER)) || !friendlyNameLength)
-					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
 				if (friendlyNameLength && (friendlyNameLength < 256))
 				{
 					friendlyNameLength += sizeof(wchar_t);
 					friendlyNameString = (wchar_t*)malloc(friendlyNameLength);
-					if (!friendlyNameString || (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
-							!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL)))
+					if (!friendlyNameString || !SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
 					{
 						if (friendlyNameString)
 							free(friendlyNameString);
@@ -195,7 +184,7 @@ static void enumeratePorts(void)
 				// Fetch the bus-reported device description
 				DWORD portDescriptionLength = 0;
 				wchar_t *portDescriptionString = NULL;
-				if ((SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0) || (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) && portDescriptionLength && (portDescriptionLength < 256))
+				if (SetupDiGetDevicePropertyW && (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0) || (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) && portDescriptionLength && (portDescriptionLength < 256))
 				{
 					portDescriptionLength += sizeof(wchar_t);
 					portDescriptionString = (wchar_t*)malloc(portDescriptionLength);
@@ -221,20 +210,16 @@ static void enumeratePorts(void)
 				// Fetch the physical location for this device
 				wchar_t *locationString = NULL;
 				DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusNumber, &devInfoPropType, (BYTE*)&busNumber, sizeof(busNumber), NULL, 0) &&
-						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
+				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
 					busNumber = -1;
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_Address, &devInfoPropType, (BYTE*)&portNumber, sizeof(portNumber), NULL, 0) &&
-						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
+				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
 					portNumber = -1;
-				if ((!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, NULL, 0, &locationLength, 0) && (GetLastError() != ERROR_INSUFFICIENT_BUFFER)) || !locationLength)
-					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
 				if (locationLength && (locationLength < 256))
 				{
 					locationLength += sizeof(wchar_t);
 					locationString = (wchar_t*)malloc(locationLength);
-					if (locationString && (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, (BYTE*)locationString, locationLength, NULL, 0) ||
-							SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL)))
+					if (locationString && SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
 					{
 						locationString[(locationLength / sizeof(wchar_t)) - 1] = 0;
 						if (wcsstr(locationString, L"Hub"))
@@ -494,6 +479,14 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	eventFlagsField = (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 
+	// Attempt to load Windows functions that may or may not be present on every PC
+	HINSTANCE setupApiInstance = LoadLibrary(TEXT("SetupAPI.dll"));
+	HINSTANCE kernelInstance = LoadLibrary(TEXT("Kernel32.dll"));
+	if (setupApiInstance != NULL)
+		SetupDiGetDevicePropertyW = (SetupDiGetDevicePropertyWFunction)GetProcAddress(setupApiInstance, "SetupDiGetDevicePropertyW");
+	if (kernelInstance != NULL)
+		CancelIoEx = (CancelIoExFunction)GetProcAddress(kernelInstance, "CancelIoEx");
+
 	// Initialize the critical section lock
 	InitializeCriticalSection(&criticalSection);
 	classInitialized = 1;
@@ -663,7 +656,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		{
 			// Close the port if there was a problem setting the parameters
 			PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-			CancelIoEx(port->handle, NULL);
+			if (CancelIoEx)
+				CancelIoEx(port->handle, NULL);
 			SetCommMask(port->handle, 0);
 			CloseHandle(port->handle);
 			EnterCriticalSection(&criticalSection);
@@ -951,7 +945,8 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative
 
 	// Purge any outstanding port operations
 	PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-	CancelIoEx(port->handle, NULL);
+	if (CancelIoEx)
+		CancelIoEx(port->handle, NULL);
 	SetCommMask(port->handle, 0);
 
 	// Close the port
