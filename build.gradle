@@ -22,7 +22,7 @@ if (hasProperty('productionBuild') && productionBuild == 'true')
   javadoc.options.addBooleanOption('html4', true)
 }
 else
-  java9Home = org.gradle.internal.jvm.Jvm.current().getJavaHome()
+  project.ext.java9Home = org.gradle.internal.jvm.Jvm.current().getJavaHome()
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
