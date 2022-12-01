@@ -96,7 +96,7 @@ public class SerialPort
 	static final public int LISTENING_EVENT_PORT_DISCONNECTED = 0x10000000;
 
 	// Static initializer loads correct native library for this machine
-	static private final String versionString = "2.9.3";
+	static private final String versionString = "2.10.0-beta1";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false;

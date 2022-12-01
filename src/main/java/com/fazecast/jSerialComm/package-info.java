@@ -2,7 +2,7 @@
  * package-info.java
  *
  *       Created on:  Jun 08, 2022
- *  Last Updated on:  Jun 17, 2022
+ *  Last Updated on:  Dec 01, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -28,6 +28,6 @@
  * Java serial communications library.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.9.3
+ * @version 2.10.0
  */
 package com.fazecast.jSerialComm;
