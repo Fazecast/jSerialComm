@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 01, 2022
+ *  Last Updated on:  Dec 02, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -1180,70 +1180,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 	return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS(JNIEnv *env, jobject obj)
-{
-	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char* comPort = strrchr(portName, '\\');
-
-	// Try to preset the RTS mode of the COM port using a Windows command
-	int result = 0;
-	if (comPort != NULL)
-	{
-		STARTUPINFO si;
-		PROCESS_INFORMATION pi;
-		char commandString[64];
-		ZeroMemory(&si, sizeof(si));
-		ZeroMemory(&pi, sizeof(pi));
-		si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-		si.wShowWindow = SW_HIDE;
-		sprintf(commandString, "mode.com %s rts=on", comPort + 1);
-		result = CreateProcess(NULL, commandString, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
-
-	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	checkJniError(env, __LINE__ - 1);
-	return (result != 0);
-}
-
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS(JNIEnv *env, jobject obj)
-{
-	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char* comPort = strrchr(portName, '\\');
-
-	// Try to preset the RTS mode of the COM port using a Windows command
-	int result = 0;
-	if (comPort != NULL)
-	{
-		STARTUPINFO si;
-		PROCESS_INFORMATION pi;
-		char commandString[64];
-		ZeroMemory(&si, sizeof(si));
-		ZeroMemory(&pi, sizeof(pi));
-		si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-		si.wShowWindow = SW_HIDE;
-		sprintf(commandString, "mode.com %s rts=off", comPort + 1);
-		result = CreateProcess(NULL, commandString, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
-
-	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	checkJniError(env, __LINE__ - 1);
-	return (result != 0);
-}
-
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
@@ -1266,70 +1202,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 		return JNI_FALSE;
 	}
 	return JNI_TRUE;
-}
-
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR(JNIEnv *env, jobject obj)
-{
-	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char* comPort = strrchr(portName, '\\');
-
-	// Try to preset the DTR mode of the COM port using a Windows command
-	int result = 0;
-	if (comPort != NULL)
-	{
-		STARTUPINFO si;
-		PROCESS_INFORMATION pi;
-		char commandString[64];
-		ZeroMemory(&si, sizeof(si));
-		ZeroMemory(&pi, sizeof(pi));
-		si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-		si.wShowWindow = SW_HIDE;
-		sprintf(commandString, "mode.com %s dtr=on", comPort + 1);
-		result = CreateProcess(NULL, commandString, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
-
-	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	checkJniError(env, __LINE__ - 1);
-	return (result != 0);
-}
-
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR(JNIEnv *env, jobject obj)
-{
-	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char *portName = (*env)->GetStringUTFChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	const char* comPort = strrchr(portName, '\\');
-
-	// Try to preset the DTR mode of the COM port using a Windows command
-	int result = 0;
-	if (comPort != NULL)
-	{
-		STARTUPINFO si;
-		PROCESS_INFORMATION pi;
-		char commandString[64];
-		ZeroMemory(&si, sizeof(si));
-		ZeroMemory(&pi, sizeof(pi));
-		si.cb = sizeof(si);
-		si.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-		si.wShowWindow = SW_HIDE;
-		sprintf(commandString, "mode.com %s dtr=off", comPort + 1);
-		result = CreateProcess(NULL, commandString, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
-
-	(*env)->ReleaseStringUTFChars(env, portNameJString, portName);
-	checkJniError(env, __LINE__ - 1);
-	return (result != 0);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
