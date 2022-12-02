@@ -412,6 +412,7 @@ public class SerialPort
 		// Create the SerialPort object
 		SerialPort serialPort = new SerialPort();
 		serialPort.comPort = portDescriptor;
+		serialPort.vendorID = serialPort.productID = -1;
 		serialPort.friendlyName = "User-Specified Port";
 		serialPort.portDescription = "User-Specified Port";
 		serialPort.portLocation = "0-0";
@@ -423,7 +424,7 @@ public class SerialPort
 	private volatile long portHandle = 0;
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = SerialPort.ONE_STOP_BIT, parity = SerialPort.NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = SerialPort.TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
-	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096;
+	private volatile int sendDeviceQueueSize = 4096, receiveDeviceQueueSize = 4096, vendorID, productID;
 	private volatile int safetySleepTimeMS = 200, rs485DelayBefore = 0, rs485DelayAfter = 0;
 	private volatile byte xonStartChar = 17, xoffStopChar = 19;
 	private volatile SerialPortDataListener userDataListener = null;
@@ -1460,7 +1461,21 @@ public class SerialPort
 	 * @return The physical port location in the form "BUS-[HUB1.HUB2.etc]PORT_NUMBER".
 	 */
 	public final String getPortLocation() { return portLocation; }
-	
+
+	/**
+	 * Gets the 16-bit Vendor Identification number for the serial port, assuming it is USB-based.
+	 *
+	 * @return The VID of this serial port, or -1 if it is not USB-based.
+	 */
+	public final int getVendorID() { return vendorID; }
+
+	/**
+	 * Gets the 16-bit Product Identification number for the serial port, assuming it is USB-based.
+	 *
+	 * @return The PID of this serial port, or -1 if it is not USB-based.
+	 */
+	public final int getProductID() { return productID; }
+
 	/**
 	 * Gets the current baud rate of the serial port.
 	 *

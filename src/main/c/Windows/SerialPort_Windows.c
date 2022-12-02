@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 27, 2022
+ *  Last Updated on:  Dec 01, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -49,6 +49,8 @@ jfieldID serialPortHandleField;
 jfieldID comPortField;
 jfieldID friendlyNameField;
 jfieldID portDescriptionField;
+jfieldID vendorIdField;
+jfieldID productIdField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -112,6 +114,8 @@ static void enumeratePorts(void)
 		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE);
 
 	// Enumerate all serial ports present on the current system
+	wchar_t *deviceID = NULL;
+	DWORD deviceIdLength = 0;
 	const struct { GUID guid; DWORD flags; } setupClasses[] = {
 			{ .guid = GUID_DEVCLASS_PORTS, .flags = DIGCF_PRESENT },
 			{ .guid = GUID_DEVCLASS_MODEM, .flags = DIGCF_PRESENT },
@@ -131,6 +135,29 @@ static void enumeratePorts(void)
 			devInfoData.cbSize = sizeof(devInfoData);
 			while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
 			{
+				// Attempt to determine the device's Vendor ID and Product ID
+				DWORD deviceIdRequiredLength;
+				int vendorID = -1, productID = -1;
+				if (!SetupDiGetDeviceInstanceIdW(devList, &devInfoData, NULL, 0, &deviceIdRequiredLength) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER) && (deviceIdRequiredLength > deviceIdLength))
+				{
+					wchar_t *newMemory = (wchar_t*)realloc(deviceID, deviceIdRequiredLength * sizeof(wchar_t));
+					if (newMemory)
+					{
+						deviceID = newMemory;
+						deviceIdLength = deviceIdRequiredLength;
+					}
+				}
+				if (SetupDiGetDeviceInstanceIdW(devList, &devInfoData, deviceID, deviceIdLength, NULL))
+				{
+					wchar_t *vendorIdString = wcsstr(deviceID, L"VID_"), *productIdString = wcsstr(deviceID, L"PID_");
+					if (vendorIdString && productIdString)
+					{
+						*wcschr(vendorIdString, L'&') = L'\0';
+						vendorID = _wtoi(vendorIdString + 4);
+						productID = _wtoi(productIdString + 4);
+					}
+				}
+
 				// Fetch the corresponding COM port for this device
 				DWORD comPortLength = 0;
 				wchar_t *comPort = NULL, *comPortString = NULL;
@@ -281,7 +308,7 @@ static void enumeratePorts(void)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
@@ -389,7 +416,7 @@ static void enumeratePorts(void)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X");
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", -1, -1);
 			}
 		}
 
@@ -398,6 +425,10 @@ static void enumeratePorts(void)
 		free(comPort);
 		RegCloseKey(key);
 	}
+
+	// Clean up memory
+	if (deviceID)
+		free(deviceID);
 
 	// Remove all non-enumerated ports from the serial port listing
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -431,6 +462,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	friendlyNameField = (*env)->GetFieldID(env, serialCommClass, "friendlyName", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portDescriptionField = (*env)->GetFieldID(env, serialCommClass, "portDescription", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	vendorIdField = (*env)->GetFieldID(env, serialCommClass, "vendorID", "I");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	productIdField = (*env)->GetFieldID(env, serialCommClass, "productID", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
@@ -542,6 +577,10 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portLocation, wcslen(serialPorts.ports[i]->portLocation)));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
+		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
+		if (checkJniError(env, __LINE__ - 1)) break;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
@@ -583,7 +622,17 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	if (continueRetrieval)
 	{
 		(*env)->SetObjectField(env, obj, portLocationField, (*env)->NewString(env, (jchar*)port->portLocation, wcslen(port->portLocation)));
-		checkJniError(env, __LINE__ - 1);
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
+		(*env)->SetIntField(env, obj, productIdField, port->productID);
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
 
 	// Release all JNI structures
@@ -604,9 +653,9 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	if (checkJniError(env, __LINE__ - 1)) return 0;
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 
@@ -616,7 +665,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0");
+		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", -1, -1);
 	}
 	LeaveCriticalSection(&criticalSection);
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))

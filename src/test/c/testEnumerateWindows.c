@@ -32,6 +32,8 @@ static void enumeratePorts(void)
 		serialPorts.ports[i]->enumerated = (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE);
 
 	// Enumerate all serial ports present on the current system
+	wchar_t *deviceID = NULL;
+	DWORD deviceIdLength = 0;
 	const struct { GUID guid; DWORD flags; } setupClasses[] = {
 			{ .guid = GUID_DEVCLASS_PORTS, .flags = DIGCF_PRESENT },
 			{ .guid = GUID_DEVCLASS_MODEM, .flags = DIGCF_PRESENT },
@@ -51,6 +53,29 @@ static void enumeratePorts(void)
 			devInfoData.cbSize = sizeof(devInfoData);
 			while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
 			{
+				// Attempt to determine the device's Vendor ID and Product ID
+				DWORD deviceIdRequiredLength;
+				int vendorID = -1, productID = -1;
+				if (!SetupDiGetDeviceInstanceIdW(devList, &devInfoData, NULL, 0, &deviceIdRequiredLength) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER) && (deviceIdRequiredLength > deviceIdLength))
+				{
+					wchar_t *newMemory = (wchar_t*)realloc(deviceID, deviceIdRequiredLength * sizeof(wchar_t));
+					if (newMemory)
+					{
+						deviceID = newMemory;
+						deviceIdLength = deviceIdRequiredLength;
+					}
+				}
+				if (SetupDiGetDeviceInstanceIdW(devList, &devInfoData, deviceID, deviceIdLength, NULL))
+				{
+					wchar_t *vendorIdString = wcsstr(deviceID, L"VID_"), *productIdString = wcsstr(deviceID, L"PID_");
+					if (vendorIdString && productIdString)
+					{
+						*wcschr(vendorIdString, L'&') = L'\0';
+						vendorID = _wtoi(vendorIdString + 4);
+						productID = _wtoi(productIdString + 4);
+					}
+				}
+
 				// Fetch the corresponding COM port for this device
 				DWORD comPortLength = 0;
 				wchar_t *comPort = NULL, *comPortString = NULL;
@@ -207,7 +232,7 @@ static void enumeratePorts(void)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
@@ -315,7 +340,7 @@ static void enumeratePorts(void)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X");
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", -1, -1);
 			}
 		}
 
@@ -324,6 +349,10 @@ static void enumeratePorts(void)
 		free(comPort);
 		RegCloseKey(key);
 	}
+
+	// Clean up memory
+	if (deviceID)
+		free(deviceID);
 
 	// Remove all non-enumerated ports from the serial port listing
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -342,25 +371,25 @@ int main(void)
 	enumeratePorts();
 
 	// Output all enumerated ports
-	printf("Initial enumeration:\n\n");
+	wprintf(L"Initial enumeration:\n\n");
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		serialPort *port = serialPorts.ports[i];
-		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation);
+		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %d/%d\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID);
 	}
 
 	// Re-enumerate all serial ports
 	enumeratePorts();
 
 	// Output all enumerated ports once again
-	printf("\nSecond enumeration:\n\n");
+	wprintf(L"\nSecond enumeration:\n\n");
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		serialPort *port = serialPorts.ports[i];
-		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation);
+		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %d/%d\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID);
 	}
 
 	// Clean up all memory and return
-	cleanUpVector(&comPorts);
+	cleanUpVector(&serialPorts);
 	return 0;
 }

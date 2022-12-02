@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jun 09, 2022
+ *  Last Updated on:  Dec 01, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -35,7 +35,7 @@ typedef struct serialPort
 	void *handle;
 	char *readBuffer;
 	wchar_t *portPath, *friendlyName, *portDescription, *portLocation;
-	int errorLineNumber, errorNumber, readBufferLength;
+	int errorLineNumber, errorNumber, readBufferLength, vendorID, productID;
 	volatile char enumerated, eventListenerRunning;
 	char serialNumber[16];
 } serialPort;
@@ -46,7 +46,7 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location);
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, int vid, int pid);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);

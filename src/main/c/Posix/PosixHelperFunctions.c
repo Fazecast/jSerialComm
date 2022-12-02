@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Oct 24, 2022
+ *  Last Updated on:  Dec 01, 2022
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2022 Fazecast, Inc.
@@ -38,7 +38,7 @@
 #include "PosixHelperFunctions.h"
 
 // Common serial port storage functionality
-serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location)
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, int vid, int pid)
 {
 	// Allocate memory for the new SerialPort storage structure
 	if (vector->capacity == vector->length)
@@ -72,6 +72,8 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	// Initialize the storage structure
 	port->handle = -1;
 	port->enumerated = 1;
+	port->vendorID = vid;
+	port->productID = pid;
 	port->portPath = (char*)malloc(strlen(key) + 1);
 	port->portLocation = (char*)malloc(strlen(location) + 1);
 	port->friendlyName = (char*)malloc(strlen(friendlyName) + 1);
@@ -346,6 +348,31 @@ static void assignFriendlyName(const char* portDevPath, char* friendlyName)
 	}
 }
 
+static void getUsbDetails(const char* fileName, char* basePathEnd, int* vendorID, int* productID)
+{
+	// Attempt to read the Vendor ID
+	char *temp = (char*)malloc(8);
+	sprintf(basePathEnd, "../idVendor");
+	FILE *input = fopen(fileName, "rb");
+	if (input)
+	{
+		fgets(temp, 8, input);
+		*vendorID = (int)strtol(temp, NULL, 16);
+		fclose(input);
+	}
+
+	// Attempt to read the Product ID
+	sprintf(basePathEnd, "../idProduct");
+	input = fopen(fileName, "rb");
+	if (input)
+	{
+		fgets(temp, 8, input);
+		*productID = (int)strtol(temp, NULL, 16);
+		fclose(input);
+	}
+	free(temp);
+}
+
 void searchForComPorts(serialPortVector* comPorts)
 {
 	// Set up the necessary local variables
@@ -421,6 +448,7 @@ void searchForComPorts(serialPortVector* comPorts)
 				}
 
 			// Determine the subsystem and bus location of the port
+			int vendorID = -1, productID = -1;
 			sprintf(basePathEnd, "/device/subsystem");
 			if (isUsbSerialSubsystem(fileName))
 			{
@@ -432,6 +460,7 @@ void searchForComPorts(serialPortVector* comPorts)
 				sprintf(basePathEnd, "/device/");
 				basePathEnd += 8;
 			}
+			getUsbDetails(fileName, basePathEnd, &vendorID, &productID);
 			sprintf(basePathEnd, "../");
 			getPortLocation(fileName, portLocation, isPhysical ? physicalPortNumber : -1);
 
@@ -517,7 +546,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						// Add the port to the list of available ports
 						strcpy(friendlyName, "Physical Port ");
 						strcat(friendlyName, directoryEntry->d_name+3);
-						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation);
+						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation, -1, -1);
 					}
 					close(fd);
 				}
@@ -551,7 +580,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					strcpy(interfaceDescription, friendlyName);
 
 				// Add the port to the list of available ports
-				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation);
+				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, vendorID, productID);
 			}
 
 			// Read next TTY directory entry
@@ -790,7 +819,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode))
-						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0");
+						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", -1, -1);
 
 					// Clean up memory
 					free(friendlyName);
@@ -836,7 +865,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode))
-						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0");
+						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", -1, -1);
 
 					// Clean up memory
 					free(friendlyName);
@@ -948,29 +977,32 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 // FreeBSD-specific functionality
 #elif defined(__FreeBSD__)
 
-char getPortLocation(const char *deviceName, char* portLocation)
+char getPortDetails(const char *deviceName, char* portLocation, int* vendorID, int* productID)
 {
 	// Attempt to locate the device in sysctl
 	size_t bufferSize = 1024;
-	char *stdOutResult = (char*)malloc(bufferSize), *device = NULL;
+	char *stdOutResult = (char*)malloc(bufferSize), *deviceLocation = NULL, *deviceInfo = NULL;
 	snprintf(stdOutResult, bufferSize, "sysctl -a | grep \"ttyname: %s\"", deviceName);
 	FILE *pipe = popen(stdOutResult, "r");
 	if (pipe)
 	{
-		while (!device && fgets(stdOutResult, bufferSize, pipe))
+		while (!deviceLocation && fgets(stdOutResult, bufferSize, pipe))
 		{
-			device = stdOutResult;
-			*(strstr(device, "ttyname:") - 1) = '\0';
-			strcat(device, ".%location");
+			deviceLocation = stdOutResult;
+			*(strstr(deviceLocation, "ttyname:") - 1) = '\0';
+			deviceInfo = (char*)malloc(strlen(deviceLocation) + 12);
+			strcpy(deviceInfo, deviceLocation);
+			strcat(deviceLocation, ".%location");
+			strcat(deviceInfo, ".%pnpinfo");
 		}
 		pclose(pipe);
 	}
 
 	// Parse port location
-	if (device)
+	if (deviceLocation)
 	{
 		char *temp = (char*)malloc(64);
-		sprintf(portLocation, "sysctl -a | grep \"%s\"", device);
+		sprintf(portLocation, "sysctl -a | grep \"%s\"", deviceLocation);
 		pipe = popen(portLocation, "r");
 		strcpy(portLocation, "0-0");
 		if (pipe)
@@ -1003,9 +1035,39 @@ char getPortLocation(const char *deviceName, char* portLocation)
 	else
 		strcpy(portLocation, "0-0");
 
+	// Parse port VID and PID
+	if (deviceInfo)
+	{
+		char *temp = (char*)malloc(64);
+		sprintf(temp, "sysctl -a | grep \"%s\"", deviceInfo);
+		pipe = popen(temp, "r");
+		if (pipe)
+		{
+			while (fgets(stdOutResult, bufferSize, pipe))
+				if (strstr(stdOutResult, "vendor") && strstr(stdOutResult, "product"))// && strstr(stdOutResult, "sernum"))
+				{
+					char *cursor = strstr(stdOutResult, "vendor=") + 7;
+					size_t length = (size_t)(strchr(cursor, ' ') - cursor);
+					memcpy(temp, cursor, length);
+					temp[length] = '\0';
+					*vendorID = atoi(temp);
+					cursor = strstr(stdOutResult, "product=") + 8;
+					length = (size_t)(strchr(cursor, ' ') - cursor);
+					memcpy(temp, cursor, length);
+					temp[length] = '\0';
+					*productID = atoi(temp);
+					break;
+				}
+			pclose(pipe);
+		}
+		free(temp);
+	}
+
 	// Clean up memory and return result
 	free(stdOutResult);
-	return (device ? 1 : 0);
+	if (deviceInfo)
+		free(deviceInfo);
+	return (deviceLocation ? 1 : 0);
 }
 
 void searchForComPorts(serialPortVector* comPorts)
@@ -1034,8 +1096,9 @@ void searchForComPorts(serialPortVector* comPorts)
 					strcat(systemName, directoryEntry->d_name);
 
 					// Determine location of port
+					int vendorID = -1, productID = -1;
 					char* portLocation = (char*)malloc(256);
-					char isUSB = getPortLocation(directoryEntry->d_name + 3, portLocation);
+					char isUSB = getPortDetails(directoryEntry->d_name + 3, portLocation, &vendorID, &productID);
 
 					// Check if port is already enumerated
 					serialPort *port = fetchPort(comPorts, systemName);
@@ -1069,7 +1132,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						struct stat fileStats;
 						stat(systemName, &fileStats);
 						if (!S_ISDIR(fileStats.st_mode))
-							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation);
+							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation, vendorID, productID);
 
 						// Clean up memory
 						free(friendlyName);
@@ -1102,7 +1165,7 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 // OpenBSD-specific functionality
 #elif defined(__OpenBSD__)
 
-char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* friendlyName, char** description)
+char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* friendlyName, char** description, int* vendorID, int* productID)
 {
 	// Only continue if this is a USB device
 	char found = 0;
@@ -1159,10 +1222,16 @@ char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* frie
 					if (strstr(stdOutResult, "addr "))
 					{
 						address = strstr(stdOutResult, "addr ") + 5;
+						char *vid = strstr(stdOutResult, ": ") + 2;
+						char *pid = strchr(vid, ':');
+						*pid = '\0';
+						*(strchr(pid+1, ' ')) = '\0';
 						while (address[0] == '0')
 							address = address + 1;
 						*(strchr(address, ':')) = '\0';
 						sprintf(portLocation, "%d-%s", bus, address);
+						*vendorID = (int)strtol(vid, NULL, 16);
+						*productID = (int)strtol(pid + 1, NULL, 16);
 					}
 				}
 				pclose(pipe);
@@ -1221,8 +1290,9 @@ void searchForComPorts(serialPortVector* comPorts)
 				strcpy(description, "Serial Port");
 
 				// Determine location and description of port
+				int vendorID = -1, productID = -1;
 				char* portLocation = (char*)malloc(256);
-				char isUSB = getUsbPortDetails(directoryEntry->d_name + 3, portLocation, friendlyName, &description);
+				char isUSB = getUsbPortDetails(directoryEntry->d_name + 3, portLocation, friendlyName, &description, &vendorID, &productID);
 
 				// Update friendly name
 				if ((directoryEntry->d_name[0] != 'c') && (directoryEntry->d_name[0] != 'd'))
@@ -1253,7 +1323,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode) && isUSB)
-						pushBack(comPorts, systemName, friendlyName, description, portLocation);
+						pushBack(comPorts, systemName, friendlyName, description, portLocation, vendorID, productID);
 				}
 
 				// Clean up memory
@@ -1305,6 +1375,7 @@ void searchForComPorts(serialPortVector* comPorts)
 		// Get serial port information
 		char isUSB = 0;
 		friendlyName[0] = '\0';
+		int vendorID = -1, productID = -1;
 		io_registry_entry_t parent = 0, service = serialPort;
 		while (service)
 		{
@@ -1359,6 +1430,18 @@ void searchForComPorts(serialPortVector* comPorts)
 					multiHub = 1;
 				}
 			}
+			propertyRef = IORegistryEntrySearchCFProperty(serialPort, kIOServicePlane, CFSTR("idVendor"), kCFAllocatorDefault, kIORegistryIterateRecursively | kIORegistryIterateParents);
+			if (propertyRef)
+			{
+				CFNumberGetValue(propertyRef, kCFNumberIntType, &vendorID);
+				CFRelease(propertyRef);
+			}
+			propertyRef = IORegistryEntrySearchCFProperty(serialPort, kIOServicePlane, CFSTR("idProduct"), kCFAllocatorDefault, kIORegistryIterateRecursively | kIORegistryIterateParents);
+			if (propertyRef)
+			{
+				CFNumberGetValue(propertyRef, kCFNumberIntType, &productID);
+				CFRelease(propertyRef);
+			}
 		}
 		else
 			strcpy(portLocation, "0-0");
@@ -1383,7 +1466,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation);
+			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation, vendorID, productID);
 
 		// Check if dialin port is already enumerated
 		port = fetchPort(comPorts, comPortTty);
@@ -1406,7 +1489,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation);
+			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation, vendorID, productID);
 		IOObjectRelease(serialPort);
 	}
 	IOObjectRelease(serialPortIterator);
