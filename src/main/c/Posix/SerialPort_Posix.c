@@ -103,6 +103,22 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 	return JNI_FALSE;
 }
 
+static jboolean configFlowControl(JNIEnv *env, jobject obj, struct termios *options)
+{
+	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+
+	if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
+		options->c_cflag |= CRTSCTS;
+
+	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
+		options->c_iflag |= IXOFF;
+	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
+		options->c_iflag |= IXON;
+
+	return JNI_TRUE;
+}
+
 // Generalized port enumeration function
 static void enumeratePorts(void)
 {
@@ -559,8 +575,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
@@ -616,16 +630,11 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_iflag |= BRKINT;
 	if (stopBitsInt == com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS)
 		options.c_cflag |= CSTOPB;
-	if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
-		options.c_cflag |= CRTSCTS;
+	if (!configFlowControl(env, obj, &options)) return JNI_FALSE;
 	if (byteSizeInt < 8)
 		options.c_iflag |= ISTRIP;
 	if (parityInt != 0)
 		options.c_iflag |= (INPCK | IGNPAR);
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
-		options.c_iflag |= IXOFF;
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
-		options.c_iflag |= IXON;
 
 	// Set the baud rate and apply all changes
 	baud_rate baudRateCode = getBaudRateCode(baudRate);
@@ -756,6 +765,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 0;
 	}
+
+#ifdef __APPLE__
+	// On macOS tcgetattr does not return the CRTSCTS flag when it has been
+	// set beforehand. Setting it here again works around this issue. See
+	// issue #453 for more details.
+	if (!configFlowControl(env, obj, &options)) return JNI_FALSE;
+#endif
 
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
