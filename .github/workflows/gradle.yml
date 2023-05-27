@@ -1,0 +1,122 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
+
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 9
+      uses: actions/setup-java@v3
+      with:
+        java-version: '9'
+    - name: Set up JDK 6
+      uses: actions/setup-java@v3
+      with:
+        java-version: '1.6'
+    - run: sudo apt-get install -y lld
+
+    - name: Install crosstool-ng
+      run: |
+        wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.25.0.tar.bz2
+        tar xjf crosstool-ng-1.25.0.tar.bz2
+        cd crosstool-ng-1.25.0
+        ./configure --prefix=/usr
+        make
+        sudo make install
+        cd ..
+        rm -rf crosstool-ng-1.25.0 crosstool-ng-1.25.0.tar.bz2
+    - name: Configure crosstool-ng
+      run: |
+        wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
+        tar -xf CrosstoolNgConfigFiles.tgz
+        rm -rf CrosstoolNgConfigFiles.tgz
+        export CONFIG_SUBDIR="$( pwd )/CrosstoolNgConfigFiles"
+        mkdir build
+        cd build
+        export ARCHS=("32" "32HF" "64" "PPC64LE" "x86" "x86_64")
+        for arch in ${ARCHS[@]}; do
+          cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
+          ct-ng build
+        done
+        echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabi/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabihf/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/aarch64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/powerpc64le-unknown-linux-gnu/bin" >> $GITHUB_PATH
+
+    - name: Prepare Solaris compilers
+      run: |
+        mkdir ~/buildcc && cd ~/buildcc
+        wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
+        mkdir ~/x-tools && cd ~/x-tools
+        tar xvhf ../buildcc/SolarisSystemHeaders.tgz
+        rm -rf ../buildcc/SolarisSystemHeaders.tgz
+        cd ~
+        wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
+        wget https://ftp.gnu.org/gnu/binutils/binutils-2.30.tar.gz
+        tar xvhf gcc-7.3.0.tar.gz
+        tar xvhf binutils-2.30.tar.gz
+        rm -rf gcc-7.3.0.tar.gz binutils-2.30.tar.gz
+    - name: Build x86 Solaris
+      run: |
+        cd ~/buildcc
+        export TARGET=x86_64-sun-solaris2.10
+        export PREFIX="$HOME/x-tools/$TARGET"
+        export SYSROOT="$PREFIX/sysroot"
+        export PATH="$PREFIX/bin:$PATH"
+        
+        mkdir build-binutils && cd build-binutils
+        ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
+        make && make install
+        cd .. && rm -rf build-binutils
+        
+        mkdir build-gcc && cd build-gcc
+        ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
+        make all-gcc all-target-libgcc
+        make install-gcc install-target-libgcc
+        cd .. && rm -rf build-gcc
+
+        echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
+    - name: Build SPARC Solaris
+      run: |
+        export TARGET=sparc-sun-solaris2.10
+        export PREFIX="$HOME/x-tools/$TARGET"
+        export SYSROOT="$PREFIX/sysroot"
+        export PATH="$PREFIX/bin:$PATH"
+        
+        mkdir build-binutils && cd build-binutils
+        ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
+        make && make install
+        cd .. && rm -rf build-binutils
+        
+        mkdir build-gcc && cd build-gcc
+        ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
+        make all-gcc all-target-libgcc
+        make install-gcc install-target-libgcc
+        cd .. && rm -rf build-gcc
+
+        echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
+      
+    - name: Build with Gradle
+      uses: gradle/gradle-build-action@v2.4.2
+      with:
+        arguments: build
