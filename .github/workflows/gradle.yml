@@ -90,6 +90,7 @@ jobs:
         mkdir -p ~/x-tools && cd ~/x-tools
         wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
         tar xvhf SolarisSystemHeaders.tgz
+        mv SolarisSystemHeaders.tgz $GITHUB_WORKSPACE/
         cd ~/buildcc
         wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
         wget https://ftp.gnu.org/gnu/binutils/binutils-2.30.tar.gz
@@ -100,7 +101,7 @@ jobs:
       id: solaris-cache
       with:
         path: '~/x-tools/*-sun-solaris2.10'
-        key: ${{ runner.os }}-solaris-${{ hashFiles('~/x-tools/SolarisSystemHeaders.tgz') }}
+        key: ${{ runner.os }}-solaris-${{ hashFiles('SolarisSystemHeaders.tgz') }}
     - name: Build x86 Solaris
       run: |
         cd ~/buildcc
