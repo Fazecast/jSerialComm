@@ -33,7 +33,8 @@ jobs:
       with:
         java-version: '6'
         distribution: 'zulu'
-    - run: sudo apt-get install -y lld
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man gawk libtool-bin libtool-doc ibncurses5-dev python3-distutils'
 
     - name: Install crosstool-ng
       run: |
