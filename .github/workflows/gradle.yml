@@ -91,6 +91,7 @@ jobs:
         wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
         tar xvhf SolarisSystemHeaders.tgz
         rm -rf SolarisSystemHeaders.tgz
+        ls ~/x-tools
         ls ~/x-tools/x86_64-sun-solaris2.10/sysroot/usr/include
         cd ~/buildcc
         wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
