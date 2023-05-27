@@ -38,14 +38,14 @@ jobs:
 
     - name: Install crosstool-ng
       run: |
-        wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.24.0.tar.bz2
-        tar xjf crosstool-ng-1.24.0.tar.bz2
-        cd crosstool-ng-1.24.0
+        wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.25.0.tar.bz2
+        tar xjf crosstool-ng-1.25.0.tar.bz2
+        cd crosstool-ng-1.25.0
         ./configure --prefix=/usr
         make
         sudo make install
         cd ..
-        rm -rf crosstool-ng-1.24.0 crosstool-ng-1.24.0.tar.bz2
+        rm -rf crosstool-ng-1.25.0 crosstool-ng-1.25.0.tar.bz2
     - name: Configure crosstool-ng
       run: |
         wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
@@ -58,6 +58,7 @@ jobs:
         export ARCHS=("32" "32HF" "64" "PPC64LE" "x86" "x86_64")
         for arch in ${ARCHS[@]}; do
           cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
+          ct-ng upgradeconfig
           ct-ng build
         done
         cd ..
