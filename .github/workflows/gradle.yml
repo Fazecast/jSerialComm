@@ -87,7 +87,7 @@ jobs:
     - name: Prepare Solaris compilers
       run: |
         mkdir ~/buildcc
-        mkdir ~/x-tools && cd ~/x-tools
+        mkdir -p ~/x-tools && cd ~/x-tools
         wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
         tar xvhf SolarisSystemHeaders.tgz
         rm -rf SolarisSystemHeaders.tgz
@@ -107,12 +107,12 @@ jobs:
         export SYSROOT="$PREFIX/sysroot"
         export PATH="$PREFIX/bin:$PATH"
         
-        mkdir build-binutils && cd build-binutils
+        mkdir -p build-binutils && cd build-binutils
         ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
         make && make install
         cd .. && rm -rf build-binutils
         
-        mkdir build-gcc && cd build-gcc
+        mkdir -p build-gcc && cd build-gcc
         ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
         make all-gcc all-target-libgcc
         make install-gcc install-target-libgcc
@@ -127,12 +127,12 @@ jobs:
         export SYSROOT="$PREFIX/sysroot"
         export PATH="$PREFIX/bin:$PATH"
         
-        mkdir build-binutils && cd build-binutils
+        mkdir -p build-binutils && cd build-binutils
         ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
         make && make install
         cd .. && rm -rf build-binutils
         
-        mkdir build-gcc && cd build-gcc
+        mkdir -p build-gcc && cd build-gcc
         ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
         make all-gcc all-target-libgcc
         make install-gcc install-target-libgcc
