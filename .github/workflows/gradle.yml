@@ -61,7 +61,7 @@ jobs:
         export CONFIG_SUBDIR="$( pwd )/CrosstoolNgConfigFiles"
         mkdir build
         cd build
-        export ARCHS=("32")
+        export ARCHS=("32" "32HF" "64" "PPC64LE" "x86" "x86_64")
         for arch in ${ARCHS[@]}; do
           cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
           ct-ng upgradeconfig
@@ -91,7 +91,7 @@ jobs:
         mkdir ~/x-tools && cd ~/x-tools
         tar xvhf ../buildcc/SolarisSystemHeaders.tgz
         rm -rf ../buildcc/SolarisSystemHeaders.tgz
-        cd ~
+        cd ~/buildcc
         wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
         wget https://ftp.gnu.org/gnu/binutils/binutils-2.30.tar.gz
         tar xvhf gcc-7.3.0.tar.gz
@@ -119,6 +119,7 @@ jobs:
         echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
     - name: Build SPARC Solaris
       run: |
+        cd ~/buildcc
         export TARGET=sparc-sun-solaris2.10
         export PREFIX="$HOME/x-tools/$TARGET"
         export SYSROOT="$PREFIX/sysroot"
@@ -136,6 +137,29 @@ jobs:
         cd .. && rm -rf build-gcc
 
         echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
+    
+    - name: Install FreeBSD build tools
+      run: |
+        export ARCHS=("x86_64" "arm64" "i386")
+        for arch in ${ARCHS[@]}; do
+          mkdir -p "$HOME/x-tools/${arch}-unknown-freebsd12.4" && cd "$HOME/x-tools/${arch}-unknown-freebsd12.4"
+          wget "http://ftp.plusline.de/FreeBSD/releases/${arch}/12.4-RELEASE/base.txz"
+          tar -xf base.txz ./lib/ ./usr/lib/ ./usr/include/
+          rm base.txz
+          echo "$HOME/x-tools/${arch}-unknown-freebsd12.4" >> $GITHUB_PATH
+        done
+    - name: Install OpenBSD build tools
+      run: |
+        export ARCHS=("amd64" "i386")
+        for arch in ${ARCHS[@]}; do
+          mkdir -p "$HOME/x-tools/${arch}-unknown-openbsd7.3" && cd "$HOME/x-tools/${arch}-unknown-openbsd7.3"
+          wget "https://ftp.nluug.nl/pub/OpenBSD/7.3/${arch}/base73.tgz"
+          wget https://ftp.nluug.nl/pub/OpenBSD/7.3/${arch}/comp73.tgz
+          tar -xf base73.tgz ./usr/lib/ ./usr/include/
+          tar -xf comp73.tgz ./usr/lib/ ./usr/include/
+          rm base73.tgz comp73.tgz
+          echo "$HOME/x-tools/${arch}-unknown-openbsd7.3" >> $GITHUB_PATH
+        done
       
     - name: Build with Gradle
       uses: gradle/gradle-build-action@v2.4.2
