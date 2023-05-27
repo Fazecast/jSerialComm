@@ -90,15 +90,17 @@ jobs:
         mkdir -p ~/x-tools && cd ~/x-tools
         wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
         tar xvhf SolarisSystemHeaders.tgz
-        rm -rf SolarisSystemHeaders.tgz
-        ls ~/x-tools
-        ls ~/x-tools/x86_64-sun-solaris2.10/sysroot/usr/include
         cd ~/buildcc
         wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
         wget https://ftp.gnu.org/gnu/binutils/binutils-2.30.tar.gz
         tar xvhf gcc-7.3.0.tar.gz
         tar xvhf binutils-2.30.tar.gz
         rm -rf gcc-7.3.0.tar.gz binutils-2.30.tar.gz
+    - uses: actions/cache/restore@v3
+      id: solaris-cache
+      with:
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ runner.os }}-solaris-${{ hashFiles('~/x-tools/SolarisSystemHeaders.tgz') }}
     - name: Build x86 Solaris
       run: |
         cd ~/buildcc
@@ -139,10 +141,14 @@ jobs:
         cd .. && rm -rf build-gcc
 
         echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
+    - uses: actions/cache/restore@v3
+      with:
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
     
     - name: Install FreeBSD build tools
       run: |
-        export ARCHS=("x86_64" "arm64" "i386")
+        export ARCHS=("amd64" "arm64" "i386")
         for arch in ${ARCHS[@]}; do
           mkdir -p "$HOME/x-tools/${arch}-unknown-freebsd12.4" && cd "$HOME/x-tools/${arch}-unknown-freebsd12.4"
           wget "http://ftp.plusline.de/FreeBSD/releases/${arch}/12.4-RELEASE/base.txz"
