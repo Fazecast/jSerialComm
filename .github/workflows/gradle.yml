@@ -183,7 +183,7 @@ jobs:
         cd osxcross
         sudo tools/get_dependencies.sh
         cp -f ~/mac-headers/MacOSX10.13.sdk.tar.xz tarballs/
-        TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
         rm -rf $HOME/x-tools/osx32/bin/o64*
         cd .. && rm -rf osxcross
         echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
@@ -192,7 +192,7 @@ jobs:
         git clone https://github.com/tpoechtrager/osxcross.git
         cd osxcross
         cp -f ~/mac-headers/MacOSX12.0.sdk.tar.xz tarballs/
-        TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
         cd .. && rm -rf osxcross
         echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
     
