@@ -103,6 +103,7 @@ jobs:
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ runner.os }}-solaris-${{ hashFiles('SolarisSystemHeaders.tgz') }}
     - name: Build x86 Solaris
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
       run: |
         cd ~/buildcc
         export TARGET=x86_64-sun-solaris2.10
@@ -123,6 +124,7 @@ jobs:
 
         echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
     - name: Build SPARC Solaris
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
       run: |
         cd ~/buildcc
         export TARGET=sparc-sun-solaris2.10
@@ -142,7 +144,7 @@ jobs:
         cd .. && rm -rf build-gcc
 
         echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
-    - uses: actions/cache/restore@v3
+    - uses: actions/cache/save@v3
       with:
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
