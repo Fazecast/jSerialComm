@@ -49,7 +49,7 @@ jobs:
     - uses: actions/cache/restore@v3
       id: crosstool-cache
       with:
-        path: '$HOME/x-tools/'
+        path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool # This should hash the crosstool config files
     - name: Build linux compilers
       if: steps.crosstool-cache.outputs.cache-hit != 'true'
@@ -73,7 +73,7 @@ jobs:
         rm -rf build CrosstoolNgConfigFiles
     - uses: actions/cache/save@v3
       with:
-          path: '$HOME/x-tools/'
+          path: '~/x-tools/'
           key: ${{ steps.crosstool-cache.outputs.cache-primary-key }}
     - name: Add linux compilers to PATH
       run: |
