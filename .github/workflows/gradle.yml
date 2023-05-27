@@ -46,7 +46,13 @@ jobs:
         sudo make install
         cd ..
         rm -rf crosstool-ng-1.25.0 crosstool-ng-1.25.0.tar.bz2
-    - name: Configure crosstool-ng
+    - uses: actions/cache/restore@v3
+      id: crosstool-cache
+      with:
+        path: '$HOME/x-tools/'
+        key: ${{ runner.os }}-crosstool # This should hash the crosstool config files
+    - name: Build linux compilers
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
       run: |
         wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
         mkdir CrosstoolNgConfigFiles
@@ -55,7 +61,7 @@ jobs:
         export CONFIG_SUBDIR="$( pwd )/CrosstoolNgConfigFiles"
         mkdir build
         cd build
-        export ARCHS=("32" "32HF" "64" "PPC64LE" "x86" "x86_64")
+        export ARCHS=("32")
         for arch in ${ARCHS[@]}; do
           cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
           ct-ng upgradeconfig
@@ -65,6 +71,12 @@ jobs:
         done
         cd ..
         rm -rf build CrosstoolNgConfigFiles
+    - uses: actions/cache/save@v3
+      with:
+          path: '$HOME/x-tools/'
+          key: ${{ steps.crosstool-cache.outputs.cache-primary-key }}
+    - name: Add linux compilers to PATH
+      run: |
         echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
         echo "$HOME/x-tools/x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
         echo "$HOME/x-tools/arm-unknown-linux-gnueabi/bin" >> $GITHUB_PATH
