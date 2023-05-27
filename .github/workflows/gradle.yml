@@ -59,6 +59,7 @@ jobs:
         for arch in ${ARCHS[@]}; do
           cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
           ct-ng upgradeconfig
+          sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/' .config
           ct-ng build
         done
         cd ..
