@@ -34,7 +34,7 @@ jobs:
         java-version: '6'
         distribution: 'zulu'
     - name: Install apt dependencies
-      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev'
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
 
     - name: Install crosstool-ng
       run: |
