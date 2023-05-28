@@ -17,26 +17,24 @@ permissions:
   contents: read
 
 jobs:
-  build:
 
+  linux:
+    strategy:
+      matrix:
+        arch: ["32", "32HF", "64", "PPC64LE", "x86", "x86_64"]
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 6
-      uses: actions/setup-java@v3
-      with:
-        java-version: '6'
-        distribution: 'zulu'
-    - name: Set up JDK 9
-      uses: oracle-actions/setup-java@v1.3.1
-      with:
-        install-as-version: '9'
-        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_linux-x64_bin.tar.gz'
     - name: Install apt dependencies
-      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
-
+      run: |
+        sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev
+        wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
+    - uses: actions/cache/restore@v3
+      id: crosstool-cache
+      with:
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-${{ matrix.arch }}-${{ hashFiles('CrosstoolNgConfigFiles.tgz') }}
     - name: Install crosstool-ng
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
       run: |
         wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.25.0.tar.bz2
         tar xjf crosstool-ng-1.25.0.tar.bz2
@@ -46,11 +44,6 @@ jobs:
         sudo make install
         cd ..
         rm -rf crosstool-ng-1.25.0 crosstool-ng-1.25.0.tar.bz2
-    - uses: actions/cache/restore@v3
-      id: crosstool-cache
-      with:
-        path: '~/x-tools/'
-        key: ${{ runner.os }}-crosstool # This should hash the crosstool config files
     - name: Build linux compilers
       if: steps.crosstool-cache.outputs.cache-hit != 'true'
       run: |
@@ -61,30 +54,23 @@ jobs:
         export CONFIG_SUBDIR="$( pwd )/CrosstoolNgConfigFiles"
         mkdir build
         cd build
-        export ARCHS=("32" "32HF" "64" "PPC64LE" "x86" "x86_64")
-        for arch in ${ARCHS[@]}; do
-          cp -f "${CONFIG_SUBDIR}/jSerialComm${arch}.config" .config
-          ct-ng upgradeconfig
-          sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/' .config
-          sed -i 's/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/' .config
-          ct-ng build
-          ct-ng clean
-        done
+        cp -f "${CONFIG_SUBDIR}/jSerialComm${{ matrix.arch }}.config" .config
+        ct-ng upgradeconfig
+        sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/' .config
+        sed -i 's/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/' .config
+        ct-ng build
         cd ..
         rm -rf build CrosstoolNgConfigFiles
     - uses: actions/cache/save@v3
       with:
           path: '~/x-tools/'
           key: ${{ steps.crosstool-cache.outputs.cache-primary-key }}
-    - name: Add linux compilers to PATH
-      run: |
-        echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
-        echo "$HOME/x-tools/x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
-        echo "$HOME/x-tools/arm-unknown-linux-gnueabi/bin" >> $GITHUB_PATH
-        echo "$HOME/x-tools/arm-unknown-linux-gnueabihf/bin" >> $GITHUB_PATH
-        echo "$HOME/x-tools/aarch64-unknown-linux-gnu/bin" >> $GITHUB_PATH
-        echo "$HOME/x-tools/powerpc64le-unknown-linux-gnu/bin" >> $GITHUB_PATH
 
+  solaris:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
     - name: Prepare Solaris compilers
       run: |
         mkdir ~/buildcc
@@ -145,11 +131,166 @@ jobs:
       with:
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
+  
+  macos32:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare MacOS compilers
+      run: |
+        mkdir -p ~/mac-headers && cd ~/mac-headers
+        wget http://fazecast.github.io/jSerialComm/external/MacOSX10.13.sdk.tar.xz
+        cp *.tar.xz $GITHUB_WORKSPACE/
+    - uses: actions/cache/restore@v3
+      id: mac32-cache
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ runner.os }}-mac32-${{ hashFiles('MacOSX10.13.sdk.tar.xz') }}
+    - name: Install MacOS 32-bit compiler
+      if: steps.mac32-cache.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/tpoechtrager/osxcross.git
+        cd osxcross
+        sudo tools/get_dependencies.sh
+        cp -f ~/mac-headers/MacOSX10.13.sdk.tar.xz tarballs/
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
+        rm -rf $HOME/x-tools/osx32/bin/o64*
+        cd .. && rm -rf osxcross
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
+
+  macos64:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare MacOS compilers
+      run: |
+        mkdir -p ~/mac-headers && cd ~/mac-headers
+        wget http://fazecast.github.io/jSerialComm/external/MacOSX12.0.sdk.tar.xz
+        cp *.tar.xz $GITHUB_WORKSPACE/
+    - uses: actions/cache/restore@v3
+      id: mac64-cache
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ runner.os }}-mac64-${{ hashFiles('MacOSX12.0.sdk.tar.xz') }}
+    - name: Install MacOS 64-bit compiler
+      if: steps.mac64-cache.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/tpoechtrager/osxcross.git
+        cd osxcross
+        sudo tools/get_dependencies.sh
+        cp -f ~/mac-headers/MacOSX12.0.sdk.tar.xz tarballs/
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
+        cd .. && rm -rf osxcross
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
+  
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
+    - uses: actions/cache/restore@v3
+      id: windows-cache
+      with:
+        path: '~/x-tools/windows/'
+        key: ${{ runner.os }}-windows
+    - name: Install Windows compiler
+      if: steps.windows-cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
+        git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
+        sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
+        ./build-all.sh $HOME/x-tools/windows/
+        ./strip-llvm.sh $HOME/x-tools/windows/
+        cd .. && rm -rf llvm-mingw
+        echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/windows/'
+        key: ${{ steps.windows-cache.outputs.cache-primary-key }}
+
+
+  build:
+    needs: [linux, solaris, macos32, macos64, windows]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 6
+      uses: actions/setup-java@v3
+      with:
+        java-version: '6'
+        distribution: 'zulu'
+    - name: Set up JDK 9
+      uses: oracle-actions/setup-java@v1.3.1
+      with:
+        install-as-version: '9'
+        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_linux-x64_bin.tar.gz'
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
+
+    ## Restore Linux
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-32"]
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-32HF"]
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-64"]
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-PPC64LE"]
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-x86"]
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool
+        restore-keys: ["${{ runner.os }}-crosstool-x86_64"]
+    - name: Add linux compilers to PATH${{ runner.os }}-crosstool
+      run: |
+        echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabi/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabihf/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/aarch64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/powerpc64le-unknown-linux-gnu/bin" >> $GITHUB_PATH
+
+    ## Restore Solaris
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ runner.os }}-solaris
+        restore-keys: ["${{ runner.os }}-solaris"]
     - name: Add Solaris tools to PATH
       run: |
         echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
         echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
 
+    ## Download BSD
     - name: Install FreeBSD build tools
       run: |
         export ARCHS=("amd64" "arm64" "i386")
@@ -173,76 +314,30 @@ jobs:
           echo "$HOME/x-tools/${arch}-unknown-openbsd7.3" >> $GITHUB_PATH
         done
     
-    - name: Prepare MacOS compilers
-      run: |
-        mkdir -p ~/mac-headers && cd ~/mac-headers
-        wget http://fazecast.github.io/jSerialComm/external/MacOSX10.13.sdk.tar.xz
-        wget http://fazecast.github.io/jSerialComm/external/MacOSX12.0.sdk.tar.xz
-        cp *.tar.xz $GITHUB_WORKSPACE/
-
+    ## Restore macOS
     - uses: actions/cache/restore@v3
-      id: mac32-cache
       with:
+        fail-on-cache-miss: true
         path: '~/x-tools/osx32/'
-        key: ${{ runner.os }}-mac32-${{ hashFiles('MacOSX10.13.sdk.tar.xz') }}
-    - name: Install MacOS 32-bit compiler
-      if: steps.mac32-cache.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/tpoechtrager/osxcross.git
-        cd osxcross
-        sudo tools/get_dependencies.sh
-        cp -f ~/mac-headers/MacOSX10.13.sdk.tar.xz tarballs/
-        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
-        rm -rf $HOME/x-tools/osx32/bin/o64*
-        cd .. && rm -rf osxcross
-    - uses: actions/cache/save@v3
+        key: ${{ runner.os }}-mac32
+        restore-keys: ["${{ runner.os }}-mac32"]
+    - uses: actions/cache/restore@v3
       with:
-        path: '~/x-tools/osx32/'
-        key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
-    - name: Add OS X 32 tools to PATH
+        fail-on-cache-miss: true
+        path: '~/x-tools/osxcross/'
+        key: ${{ runner.os }}-mac64
+        restore-keys: ["${{ runner.os }}-mac64"]
+    - name: Add macOS tools to PATH
       run: |
         echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
-
-    - uses: actions/cache/restore@v3
-      id: mac64-cache
-      with:
-        path: '~/x-tools/osxcross/'
-        key: ${{ runner.os }}-mac64-${{ hashFiles('MacOSX12.0.sdk.tar.xz') }}
-    - name: Install MacOS 64-bit compiler
-      if: steps.mac64-cache.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/tpoechtrager/osxcross.git
-        cd osxcross
-        cp -f ~/mac-headers/MacOSX12.0.sdk.tar.xz tarballs/
-        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
-        cd .. && rm -rf osxcross
-    - uses: actions/cache/save@v3
-      with:
-        path: '~/x-tools/osxcross/'
-        key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
-    - name: Add OS X 64 tools to PATH
-      run: |
         echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
     
+    ## Restore Windows
     - uses: actions/cache/restore@v3
-      id: windows-cache
       with:
+        fail-on-cache-miss: true
         path: '~/x-tools/windows/'
         key: ${{ runner.os }}-windows
-    - name: Install Windows compiler
-      if: steps.windows-cache.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
-        git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
-        sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
-        ./build-all.sh $HOME/x-tools/windows/
-        ./strip-llvm.sh $HOME/x-tools/windows/
-        cd .. && rm -rf llvm-mingw
-        echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
-    - uses: actions/cache/save@v3
-      with:
-        path: '~/x-tools/windows/'
-        key: ${{ steps.windows-cache.outputs.cache-primary-key }}
     - name: Add Windows tools to PATH
       run: |
         echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
