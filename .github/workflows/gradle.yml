@@ -177,7 +177,15 @@ jobs:
         mkdir -p ~/mac-headers && cd ~/mac-headers
         wget http://fazecast.github.io/jSerialComm/external/MacOSX10.13.sdk.tar.xz
         wget http://fazecast.github.io/jSerialComm/external/MacOSX12.0.sdk.tar.xz
+        cp *.tar.xz $GITHUB_WORKSPACE/
+
+    - uses: actions/cache/restore@v3
+      id: mac32-cache
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ runner.os }}-mac32-${{ hashFiles('MacOSX10.13.sdk.tar.xz') }}
     - name: Install MacOS 32-bit compiler
+      if: steps.mac32-cache.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/tpoechtrager/osxcross.git
         cd osxcross
@@ -187,7 +195,18 @@ jobs:
         rm -rf $HOME/x-tools/osx32/bin/o64*
         cd .. && rm -rf osxcross
         echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
+
+    - uses: actions/cache/restore@v3
+      id: mac64-cache
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ runner.os }}-mac64-${{ hashFiles('MacOSX12.0.sdk.tar.xz') }}
     - name: Install MacOS 64-bit compiler
+      if: steps.mac64-cache.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/tpoechtrager/osxcross.git
         cd osxcross
@@ -195,9 +214,19 @@ jobs:
         UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
         cd .. && rm -rf osxcross
         echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
     
+    - uses: actions/cache/restore@v3
+      id: windows-cache
+      with:
+        path: '~/x-tools/windows/'
+        key: ${{ runner.os }}-windows
     - name: Install Windows compiler
-      run: |
+      if: steps.windows-cache.outputs.cache-hit != 'true'
+      run: 
         sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
         git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
         sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
@@ -205,6 +234,24 @@ jobs:
         ./strip-llvm.sh $HOME/x-tools/windows/
         cd .. && rm -rf llvm-mingw
         echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
+    - uses: actions/cache/save@v3
+      with:
+        path: '~/x-tools/windows/'
+        key: ${{ steps.windows-cache.outputs.cache-primary-key }}
+    
+    - name: Build libraries
+      run: |
+        cd src/main/c/Windows
+        make
+        cd ../Posix
+        make linux
+        make arm
+        make powerpc
+        make solaris
+        make freebsd
+        make openbsd
+        make osx
+        make android
       
     - name: Build with Gradle
       uses: gradle/gradle-build-action@v2.4.2
