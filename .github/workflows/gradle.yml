@@ -68,6 +68,7 @@ jobs:
           sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/' .config
           sed -i 's/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/' .config
           ct-ng build
+          ct-ng clean
         done
         cd ..
         rm -rf build CrosstoolNgConfigFiles
@@ -121,8 +122,6 @@ jobs:
         make all-gcc all-target-libgcc
         make install-gcc install-target-libgcc
         cd .. && rm -rf build-gcc
-
-        echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
     - name: Build SPARC Solaris
       if: steps.solaris-cache.outputs.cache-hit != 'true'
       run: |
@@ -142,13 +141,15 @@ jobs:
         make all-gcc all-target-libgcc
         make install-gcc install-target-libgcc
         cd .. && rm -rf build-gcc
-
-        echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
     - uses: actions/cache/save@v3
       with:
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
-    
+    - name: Add Solaris tools to PATH
+      run: |
+        echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
+        echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
+
     - name: Install FreeBSD build tools
       run: |
         export ARCHS=("amd64" "arm64" "i386")
@@ -194,11 +195,13 @@ jobs:
         UNATTENDED=y TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
         rm -rf $HOME/x-tools/osx32/bin/o64*
         cd .. && rm -rf osxcross
-        echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
     - uses: actions/cache/save@v3
       with:
         path: '~/x-tools/osx32/'
         key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
+    - name: Add OS X 32 tools to PATH
+      run: |
+        echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
 
     - uses: actions/cache/restore@v3
       id: mac64-cache
@@ -213,11 +216,13 @@ jobs:
         cp -f ~/mac-headers/MacOSX12.0.sdk.tar.xz tarballs/
         UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
         cd .. && rm -rf osxcross
-        echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
     - uses: actions/cache/save@v3
       with:
         path: '~/x-tools/osxcross/'
         key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
+    - name: Add OS X 64 tools to PATH
+      run: |
+        echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
     
     - uses: actions/cache/restore@v3
       id: windows-cache
@@ -226,7 +231,7 @@ jobs:
         key: ${{ runner.os }}-windows
     - name: Install Windows compiler
       if: steps.windows-cache.outputs.cache-hit != 'true'
-      run: 
+      run: |
         sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
         git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
         sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
@@ -238,6 +243,9 @@ jobs:
       with:
         path: '~/x-tools/windows/'
         key: ${{ steps.windows-cache.outputs.cache-primary-key }}
+    - name: Add Windows tools to PATH
+      run: |
+        echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
     
     - name: Build libraries
       run: |
