@@ -203,7 +203,7 @@ jobs:
         sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
         git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
         sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
-        ./build-all.sh $HOME/x-tools/windows/
+        ./build-all.sh --with-default-msvcrt=msvcrt $HOME/x-tools/windows/
         ./strip-llvm.sh $HOME/x-tools/windows/
         cd .. && rm -rf llvm-mingw
         echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
