@@ -1,13 +1,13 @@
 # Compiler tools, commands, and flags
-COMPILE_X86         := i686-w64-mingw32-clang
-COMPILE_X64         := x86_64-w64-mingw32-clang 
-COMPILE_ARM         := armv7-w64-mingw32-clang
-COMPILE_ARM64       := aarch64-w64-mingw32-clang
+COMPILE_X86         := i686-w64-mingw32-clang --driver-mode=cl
+COMPILE_X64         := x86_64-w64-mingw32-clang --driver-mode=cl
+COMPILE_ARM         := armv7-w64-mingw32-clang --driver-mode=cl
+COMPILE_ARM64       := aarch64-w64-mingw32-clang --driver-mode=cl
 LINK_X86            := ~/x-tools/windows/bin/lld-link
 LINK_X64            := ~/x-tools/windows/bin/lld-link
 LINK_ARM            := ~/x-tools/windows/bin/lld-link
 LINK_ARM64          := ~/x-tools/windows/bin/lld-link
-CFLAGS              := --driver-mode=cl /c /O2 /GF /MT /EHsc /J /nologo /TC
+CFLAGS              := /c /O2 /GF /MT /EHsc /J /nologo /TC
 LDFLAGS             := /DLL /NOLOGO
 INCLUDES            := /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32" /I"$(JDK_HOME)/include/linux" /I"$(JDK_HOME)/include/darwin" /I"$(JDK_HOME)/include/solaris"
 LIBRARIES           := advapi32.lib setupapi.lib shell32.lib
