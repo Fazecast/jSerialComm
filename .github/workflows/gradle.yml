@@ -341,6 +341,7 @@ jobs:
     - name: Add Windows tools to PATH
       run: |
         echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
+        ls $HOME/x-tools/windows/bin
     
     - name: Build libraries
       run: |
