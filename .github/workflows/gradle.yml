@@ -238,37 +238,37 @@ jobs:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-32
-        restore-keys: "${{ runner.os }}-crosstool-32"
+        restore-keys: "${{ runner.os }}-crosstool-32-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-32HF
-        restore-keys: "${{ runner.os }}-crosstool-32HF"
+        restore-keys: "${{ runner.os }}-crosstool-32HF-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-64
-        restore-keys: "${{ runner.os }}-crosstool-64"
+        restore-keys: "${{ runner.os }}-crosstool-64-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-PPC64LE
-        restore-keys: "${{ runner.os }}-crosstool-PPC64LE"
+        restore-keys: "${{ runner.os }}-crosstool-PPC64LE-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-x86
-        restore-keys: "${{ runner.os }}-crosstool-x86"
+        restore-keys: "${{ runner.os }}-crosstool-x86-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/'
         key: ${{ runner.os }}-crosstool-x86_64
-        restore-keys: "${{ runner.os }}-crosstool-x86_64"
+        restore-keys: "${{ runner.os }}-crosstool-x86_64-"
     - name: Add linux compilers to PATH${{ runner.os }}-crosstool
       run: |
         echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
@@ -284,7 +284,7 @@ jobs:
         fail-on-cache-miss: true
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ runner.os }}-solaris
-        restore-keys: "${{ runner.os }}-solaris"
+        restore-keys: "${{ runner.os }}-solaris-"
     - name: Add Solaris tools to PATH
       run: |
         echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
@@ -320,13 +320,13 @@ jobs:
         fail-on-cache-miss: true
         path: '~/x-tools/osx32/'
         key: ${{ runner.os }}-mac32
-        restore-keys: "${{ runner.os }}-mac32"
+        restore-keys: "${{ runner.os }}-mac32-"
     - uses: actions/cache/restore@v3
       with:
         fail-on-cache-miss: true
         path: '~/x-tools/osxcross/'
         key: ${{ runner.os }}-mac64
-        restore-keys: "${{ runner.os }}-mac64"
+        restore-keys: "${{ runner.os }}-mac64-"
     - name: Add macOS tools to PATH
       run: |
         echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
