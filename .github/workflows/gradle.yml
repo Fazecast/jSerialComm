@@ -345,6 +345,7 @@ jobs:
     
     - name: Build libraries
       run: |
+        export JDK_HOME=${JAVA_HOME}
         cd src/main/c/Windows
         make
         cd ../Posix
