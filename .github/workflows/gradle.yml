@@ -229,7 +229,7 @@ jobs:
       uses: actions/upload-artifact@v3.1.2
       with:
         name: jSerialComm-Windows
-        path: src/resources/Windows/*
+        path: src/main/resources/Windows/*
 
   build:
     needs: [linux, solaris, macos32, macos64, windows]
@@ -362,15 +362,11 @@ jobs:
         echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
     
     ## Restore Windows
-    - uses: actions/cache/restore@v3
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v2.1.1
       with:
-        fail-on-cache-miss: true
-        path: '~/x-tools/windows/'
-        key: ${{ runner.os }}-windows
-    - name: Add Windows tools to PATH
-      run: |
-        echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
-        ls $HOME/x-tools/windows/bin
+        name: jSerialComm-Windows
+        path: src/main/resources/Windows
     
     - name: Build libraries
       run: |
