@@ -91,8 +91,8 @@ FLAGSfreebsd64              := -m64
 FLAGSfreebsdArm64           := -m64
 FLAGSopenbsd32              := -m32
 FLAGSopenbsd64              := -m64
-FLAGSosx86                  := -arch i386 -m32 -opaque-pointers
-FLAGSosx64                  := -arch x86_64 -m64 -opaque-pointers
+FLAGSosx86                  := -arch i386 -m32 -Xlinker -opaque-pointers
+FLAGSosx64                  := -arch x86_64 -m64 -Xlinker -opaque-pointers
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
