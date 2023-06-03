@@ -62,6 +62,7 @@ jobs:
         cd ..
         rm -rf build CrosstoolNgConfigFiles
     - uses: actions/cache/save@v3
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
       with:
           path: '~/x-tools/'
           key: ${{ steps.crosstool-cache.outputs.cache-primary-key }}
@@ -128,6 +129,7 @@ jobs:
         make install-gcc install-target-libgcc
         cd .. && rm -rf build-gcc
     - uses: actions/cache/save@v3
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
       with:
         path: '~/x-tools/*-sun-solaris2.10'
         key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
@@ -156,6 +158,7 @@ jobs:
         rm -rf $HOME/x-tools/osx32/bin/o64*
         cd .. && rm -rf osxcross
     - uses: actions/cache/save@v3
+      if: steps.mac32-cache.outputs.cache-hit != 'true'
       with:
         path: '~/x-tools/osx32/'
         key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
@@ -183,6 +186,7 @@ jobs:
         UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
         cd .. && rm -rf osxcross
     - uses: actions/cache/save@v3
+      if: steps.mac64-cache.outputs.cache-hit != 'true'
       with:
         path: '~/x-tools/osxcross/'
         key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
@@ -296,26 +300,34 @@ jobs:
     ## Download BSD
     - name: Install FreeBSD build tools
       run: |
-        export ARCHS=("amd64" "arm64" "i386")
-        for arch in ${ARCHS[@]}; do
-          mkdir -p "$HOME/x-tools/${arch}-unknown-freebsd12.4" && cd "$HOME/x-tools/${arch}-unknown-freebsd12.4"
-          wget "http://ftp.plusline.de/FreeBSD/releases/${arch}/12.4-RELEASE/base.txz"
+        do_wget() {
+          mkdir -p "$HOME/x-tools/${1}-unknown-freebsd12.4" && cd "$HOME/x-tools/${1}-unknown-freebsd12.4"
+          wget "http://ftp.plusline.de/FreeBSD/releases/${1}/12.4-RELEASE/base.txz"
           tar -xf base.txz ./lib/ ./usr/lib/ ./usr/include/
           rm base.txz
-          echo "$HOME/x-tools/${arch}-unknown-freebsd12.4" >> $GITHUB_PATH
+          echo "$HOME/x-tools/${1}-unknown-freebsd12.4" >> $GITHUB_PATH
+        }
+        export ARCHS=("amd64" "arm64" "i386")
+        for arch in ${ARCHS[@]}; do
+          do_wget $arch &
         done
+        wait
     - name: Install OpenBSD build tools
       run: |
-        export ARCHS=("amd64" "i386")
-        for arch in ${ARCHS[@]}; do
-          mkdir -p "$HOME/x-tools/${arch}-unknown-openbsd7.3" && cd "$HOME/x-tools/${arch}-unknown-openbsd7.3"
-          wget "https://ftp.nluug.nl/pub/OpenBSD/7.3/${arch}/base73.tgz"
-          wget https://ftp.nluug.nl/pub/OpenBSD/7.3/${arch}/comp73.tgz
+        do_wget() {
+          mkdir -p "$HOME/x-tools/${1}-unknown-openbsd7.3" && cd "$HOME/x-tools/${1}-unknown-openbsd7.3"
+          wget "https://ftp.nluug.nl/pub/OpenBSD/7.3/${1}/base73.tgz"
+          wget https://ftp.nluug.nl/pub/OpenBSD/7.3/${1}/comp73.tgz
           tar -xf base73.tgz ./usr/lib/ ./usr/include/
           tar -xf comp73.tgz ./usr/lib/ ./usr/include/
           rm base73.tgz comp73.tgz
-          echo "$HOME/x-tools/${arch}-unknown-openbsd7.3" >> $GITHUB_PATH
+          echo "$HOME/x-tools/${1}-unknown-openbsd7.3" >> $GITHUB_PATH
+        }
+        export ARCHS=("amd64" "i386")
+        for arch in ${ARCHS[@]}; do
+          do_wget $arch &
         done
+        wait
     
     ## Restore macOS
     - uses: actions/cache/restore@v3
@@ -363,3 +375,12 @@ jobs:
       uses: gradle/gradle-build-action@v2.4.2
       with:
         arguments: build
+    
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        # Artifact name
+        name: jSerialComm
+        # A file, directory or wildcard pattern that describes what to upload
+        path: build/libs/*
+        # The desired behavior if no files are found using the provided path.
