@@ -194,6 +194,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
+    - uses: actions/checkout@v3
     - name: Set up JDK 6
       uses: actions/setup-java@v3
       with:
@@ -203,27 +204,18 @@ jobs:
       uses: oracle-actions/setup-java@v1.3.1
       with:
         install-as-version: '9'
-        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_linux-x64_bin.tar.gz'
-    - uses: actions/cache/restore@v3
-      id: windows-cache
-      with:
-        path: '~/x-tools/windows/'
-        key: ${{ runner.os }}-windows
-    - name: Install Windows compiler
-      if: steps.windows-cache.outputs.cache-hit != 'true'
+        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_windows-x64_bin.tar.gz'
+    - name: Build Windows lib
       run: |
-        sudo apt-get install -y doxygen liblzma-dev zlib1g-dev libxml2-dev python3-yaml git libedit-dev swig
-        git clone https://github.com/mstorsjo/llvm-mingw.git && cd llvm-mingw
-        sed -i 's/DEFAULT_MSVCRT:=ucrt/DEFAULT_MSVCRT:=msvcrt/' build-mingw-w64.sh
-        ./build-all.sh --with-default-msvcrt=msvcrt $HOME/x-tools/windows/
-        ./strip-llvm.sh $HOME/x-tools/windows/
-        cd .. && rm -rf llvm-mingw
-        echo "$HOME/x-tools/windows/bin" >> $GITHUB_PATH
-    - uses: actions/cache/save@v3
+        $Env:JDK_HOME = $Env:JAVA_HOME
+        cd src/main/c/Windows
+        mv Makefile.native Makefile
+        make
+    - name: Upload Windows lib
+      uses: actions/upload-artifact@v3.1.2
       with:
-        path: '~/x-tools/windows/'
-        key: ${{ steps.windows-cache.outputs.cache-primary-key }}
-
+        name: jSerialComm-Windows
+        path: src/resources/Windows/*
 
   build:
     needs: [linux, solaris, macos32, macos64, windows]
@@ -387,8 +379,5 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        # Artifact name
         name: jSerialComm
-        # A file, directory or wildcard pattern that describes what to upload
         path: build/libs/*
-        # The desired behavior if no files are found using the provided path.
