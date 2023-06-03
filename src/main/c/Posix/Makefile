@@ -12,7 +12,7 @@ COMPILE_OSX_X86_64          := o64-clang
 COMPILE_OSX_ARM64           := oa64-clang
 COMPILE_ANDROID             := ndk-build
 COMPILE_FREEBSD_X86         := clang -target i386-unknown-freebsd12.4 --sysroot=$(HOME)/x-tools/i386-unknown-freebsd12.4
-COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd12.4 --sysroot=$(HOME)/x-tools/x86_64-unknown-freebsd12.4
+COMPILE_FREEBSD_X86_64      := clang -target amd64-unknown-freebsd12.4 --sysroot=$(HOME)/x-tools/amd64-unknown-freebsd12.4
 COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd12.4 --sysroot=$(HOME)/x-tools/arm64-unknown-freebsd12.4
 COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd7.3 --sysroot=$(HOME)/x-tools/i386-unknown-openbsd7.3
 COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd7.3 --sysroot=$(HOME)/x-tools/amd64-unknown-openbsd7.3
