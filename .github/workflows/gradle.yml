@@ -206,19 +206,20 @@ jobs:
         install-as-version: '9'
         uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_windows-x64_bin.tar.gz'
     - name: Build Windows lib
+      shell: cmd
       run: |
-        $Env:JDK_HOME = $Env:JAVA_HOME
-        cd src/main/c/Windows
-        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64
+        set JDK_HOME=%JAVA_HOME%
+        cd src\main\c\Windows
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
         nmake.exe -f Makefile.native win64
 
-        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_x86
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_x86
         nmake.exe -f Makefile.native win32
 
-        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_arm
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm
         nmake.exe -f Makefile.native winarm
 
-        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_arm64
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64
         nmake.exe -f Makefile.native winarm64
     - name: Upload Windows lib
       uses: actions/upload-artifact@v3.1.2
