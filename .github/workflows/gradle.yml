@@ -219,6 +219,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25c
     - name: Set up JDK 6
       uses: actions/setup-java@v3
       with:
