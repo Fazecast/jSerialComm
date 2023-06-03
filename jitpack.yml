@@ -1,4 +1,4 @@
 before_install:
-   - sdk install java 6.0.119+119-zulu
+   - sdk install java 6.22.0-zulu
    - sdk install java 9.0.4-open
    - sdk use java 9.0.4-open
