@@ -209,16 +209,17 @@ jobs:
       run: |
         $Env:JDK_HOME = $Env:JAVA_HOME
         cd src/main/c/Windows
-        & "\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
+        ls 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build'
+        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64
         nmake -f Makefile.native win64
 
-        & "\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_x86
+        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_x86
         nmake -f Makefile.native win32
 
-        & "\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm
+        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_arm
         nmake -f Makefile.native winarm
 
-        & "\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64
+        & 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat' amd64_arm64
         nmake -f Makefile.native winarm64
     - name: Upload Windows lib
       uses: actions/upload-artifact@v3.1.2
