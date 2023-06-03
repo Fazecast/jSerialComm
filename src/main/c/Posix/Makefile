@@ -21,7 +21,7 @@ CFLAGS_APPLE                := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOUR
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
 LDFLAGS_FREEBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
 LDFLAGS_OPENBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
-LDFLAGS_APPLE               := -Os -dynamiclib -flto -shared -fuse-linker-plugin
+LDFLAGS_APPLE               := -fuse-ld=lld -Os -dynamiclib -flto -shared -fuse-linker-plugin
 JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
 INCLUDES                    := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
 LIBRARIES_POSIX             := 
@@ -91,8 +91,8 @@ FLAGSfreebsd64              := -m64
 FLAGSfreebsdArm64           := -m64
 FLAGSopenbsd32              := -m32
 FLAGSopenbsd64              := -m64
-FLAGSosx86                  := -arch i386 -m32 -Xlinker -opaque-pointers
-FLAGSosx64                  := -arch x86_64 -m64 -Xlinker -opaque-pointers
+FLAGSosx86                  := -arch i386 -m32
+FLAGSosx64                  := -arch x86_64 -m64
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
