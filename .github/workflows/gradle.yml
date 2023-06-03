@@ -192,10 +192,18 @@ jobs:
         key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
   
   windows:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-    - name: Install apt dependencies
-      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
+    - name: Set up JDK 6
+      uses: actions/setup-java@v3
+      with:
+        java-version: '6'
+        distribution: 'zulu'
+    - name: Set up JDK 9
+      uses: oracle-actions/setup-java@v1.3.1
+      with:
+        install-as-version: '9'
+        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_linux-x64_bin.tar.gz'
     - uses: actions/cache/restore@v3
       id: windows-cache
       with:
