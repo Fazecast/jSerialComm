@@ -219,7 +219,7 @@ jobs:
         call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm
         nmake.exe -f Makefile.native winarm
 
-        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86_arm64
         nmake.exe -f Makefile.native winarm64
     - name: Upload Windows lib
       uses: actions/upload-artifact@v3.1.2
