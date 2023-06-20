@@ -98,7 +98,7 @@ public class SerialPort
 
 	// Static initializer loads correct native library for this machine
 	static private final ReentrantLock lock = new ReentrantLock(true);
-	static private final String versionString = "2.10.0-beta1";
+	static private final String versionString = "2.10.0-beta2";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false;
@@ -1938,7 +1938,7 @@ public class SerialPort
 			byte[] buffer = new byte[bufferSize];
 			for (long i = 0L, bytesRead = 1L; (bytesRead > 0L) && (i < n); i += bufferSize)
 			{
-				bytesRead = readBytes(buffer, (int)Long.min(n-i, bufferSize));
+				bytesRead = readBytes(buffer, (int)Math.min(n-i, bufferSize));
 				if (bytesRead > 0L)
 					bytesSkipped += bytesRead;
 			}

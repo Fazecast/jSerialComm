@@ -56,6 +56,7 @@ static void enumeratePorts(void)
 				// Attempt to determine the device's Vendor ID and Product ID
 				DWORD deviceIdRequiredLength;
 				int vendorID = -1, productID = -1;
+				wchar_t *serialNumberString = NULL;
 				if (!SetupDiGetDeviceInstanceIdW(devList, &devInfoData, NULL, 0, &deviceIdRequiredLength) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER) && (deviceIdRequiredLength > deviceIdLength))
 				{
 					wchar_t *newMemory = (wchar_t*)realloc(deviceID, deviceIdRequiredLength * sizeof(wchar_t));
@@ -70,9 +71,13 @@ static void enumeratePorts(void)
 					wchar_t *vendorIdString = wcsstr(deviceID, L"VID_"), *productIdString = wcsstr(deviceID, L"PID_");
 					if (vendorIdString && productIdString)
 					{
-						*wcschr(vendorIdString, L'&') = L'\0';
-						vendorID = _wtoi(vendorIdString + 4);
-						productID = _wtoi(productIdString + 4);
+						serialNumberString = (wchar_t*)malloc(128*sizeof(wchar_t));
+						vendorID = wcstoul(vendorIdString + 4, NULL, 16);
+						productID = wcstoul(productIdString + 4, NULL, 16);
+						wchar_t *serialEnd = wcspbrk(productIdString + 9, L"\\\r\n");
+						if (serialEnd)
+							*serialEnd = L'\0';
+						wcscpy_s(serialNumberString, 128, productIdString + 9);
 					}
 				}
 
@@ -96,6 +101,8 @@ static void enumeratePorts(void)
 				{
 					if (comPort)
 						free(comPort);
+					if (serialNumberString)
+						free(serialNumberString);
 					continue;
 				}
 
@@ -202,6 +209,8 @@ static void enumeratePorts(void)
 				else
 				{
 					free(comPort);
+					if (serialNumberString)
+						free(serialNumberString);
 					if (friendlyNameMemory)
 						free(friendlyNameString);
 					if (portDescriptionMemory)
@@ -232,11 +241,13 @@ static void enumeratePorts(void)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, vendorID, productID);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
 				free(locationString);
+				if (serialNumberString)
+					free(serialNumberString);
 				if (friendlyNameMemory)
 					free(friendlyNameString);
 				if (portDescriptionMemory)
@@ -267,7 +278,7 @@ static void enumeratePorts(void)
 						char isOpen = ((devInfo[i].Flags & FT_FLAGS_OPENED) || (devInfo[i].SerialNumber[0] == 0)) ? 1 : 0;
 						if (!isOpen)
 							for (int j = 0; j < serialPorts.length; ++j)
-								if ((memcmp(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
+								if ((memcmp(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
 								{
 									serialPorts.ports[j]->enumerated = 1;
 									isOpen = 1;
@@ -294,7 +305,7 @@ static void enumeratePorts(void)
 										serialPorts.ports[j]->portDescription = newMemory;
 										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
 									}
-									memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
+									memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
 									break;
 								}
 						}
@@ -340,7 +351,7 @@ static void enumeratePorts(void)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", -1, -1);
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", -1, -1);
 			}
 		}
 
@@ -375,7 +386,7 @@ int main(void)
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		serialPort *port = serialPorts.ports[i];
-		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %d/%d\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID);
+		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %04X/%04X, Serial = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID, port->serialNumber);
 	}
 
 	// Re-enumerate all serial ports
@@ -386,7 +397,7 @@ int main(void)
 	for (int i = 0; i < serialPorts.length; ++i)
 	{
 		serialPort *port = serialPorts.ports[i];
-		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %d/%d\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID);
+		wprintf(L"\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %04X/%04X, Serial = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID, port->serialNumber);
 	}
 
 	// Clean up all memory and return

@@ -12,7 +12,7 @@ int main(void)
 	for (int i = 0; i < comPorts.length; ++i)
 	{
 		serialPort *port = comPorts.ports[i];
-		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation);
+		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %04X/%04X, Serial = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID, port->serialNumber);
 	}
 
 	// Reset the enumerated flag on all non-open serial ports
@@ -35,7 +35,7 @@ int main(void)
 	for (int i = 0; i < comPorts.length; ++i)
 	{
 		serialPort *port = comPorts.ports[i];
-		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation);
+		printf("\t%s: Friendly Name = %s, Description = %s, Location = %s, VID/PID = %04X/%04X, Serial = %s\n", port->portPath, port->friendlyName, port->portDescription, port->portLocation, port->vendorID, port->productID, port->serialNumber);
 	}
 
 	// Clean up all memory and return

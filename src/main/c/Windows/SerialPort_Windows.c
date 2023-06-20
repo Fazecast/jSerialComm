@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 19, 2023
+ *  Last Updated on:  Jun 20, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -139,6 +139,7 @@ static void enumeratePorts(void)
 				// Attempt to determine the device's Vendor ID and Product ID
 				DWORD deviceIdRequiredLength;
 				int vendorID = -1, productID = -1;
+				wchar_t *serialNumberString = NULL;
 				if (!SetupDiGetDeviceInstanceIdW(devList, &devInfoData, NULL, 0, &deviceIdRequiredLength) && (GetLastError() == ERROR_INSUFFICIENT_BUFFER) && (deviceIdRequiredLength > deviceIdLength))
 				{
 					wchar_t *newMemory = (wchar_t*)realloc(deviceID, deviceIdRequiredLength * sizeof(wchar_t));
@@ -153,9 +154,13 @@ static void enumeratePorts(void)
 					wchar_t *vendorIdString = wcsstr(deviceID, L"VID_"), *productIdString = wcsstr(deviceID, L"PID_");
 					if (vendorIdString && productIdString)
 					{
-						*wcschr(vendorIdString, L'&') = L'\0';
-						vendorID = _wtoi(vendorIdString + 4);
-						productID = _wtoi(productIdString + 4);
+						serialNumberString = (wchar_t*)malloc(128*sizeof(wchar_t));
+						vendorID = wcstoul(vendorIdString + 4, NULL, 16);
+						productID = wcstoul(productIdString + 4, NULL, 16);
+						wchar_t *serialEnd = wcspbrk(productIdString + 9, L"\\\r\n");
+						if (serialEnd)
+							*serialEnd = L'\0';
+						wcscpy_s(serialNumberString, 128, productIdString + 9);
 					}
 				}
 
@@ -179,6 +184,8 @@ static void enumeratePorts(void)
 				{
 					if (comPort)
 						free(comPort);
+					if (serialNumberString)
+						free(serialNumberString);
 					continue;
 				}
 
@@ -279,6 +286,8 @@ static void enumeratePorts(void)
 				else
 				{
 					free(comPort);
+					if (serialNumberString)
+						free(serialNumberString);
 					if (friendlyNameMemory)
 						free(friendlyNameString);
 					if (portDescriptionMemory)
@@ -309,11 +318,13 @@ static void enumeratePorts(void)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, vendorID, productID);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
 				free(locationString);
+				if (serialNumberString)
+					free(serialNumberString);
 				if (friendlyNameMemory)
 					free(friendlyNameString);
 				if (portDescriptionMemory)
@@ -580,7 +591,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portLocation, wcslen(serialPorts.ports[i]->portLocation)));
 		if (checkJniError(env, __LINE__ - 1)) break;
-		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewStringUTF(env, serialPorts.ports[i]->serialNumber));
+		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->serialNumber, wcslen(serialPorts.ports[i]->serialNumber)));
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;

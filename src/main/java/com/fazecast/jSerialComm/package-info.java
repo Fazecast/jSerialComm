@@ -2,10 +2,10 @@
  * package-info.java
  *
  *       Created on:  Jun 08, 2022
- *  Last Updated on:  Dec 01, 2022
+ *  Last Updated on:  Jun 20, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
