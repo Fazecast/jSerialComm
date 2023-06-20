@@ -95,12 +95,17 @@ public class SerialPortTest
 			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation() + " (VID = " + ports[i].getVendorID() + ", PID = " + ports[i].getProductID() + ", Serial = " + ports[i].getSerialNumber() + ")");
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
-		int serialPortChoice = 0;
+		int serialPortChoice = -2;
 		Scanner inputScanner = new Scanner(System.in);
 		try {
 			serialPortChoice = inputScanner.nextInt();
 		} catch (Exception e) {}
-		if (serialPortChoice == -1)
+		if (serialPortChoice == -2)
+		{
+			inputScanner.close();
+			return;
+		}
+		else if (serialPortChoice == -1)
 		{
 			String serialPortDescriptor = "";
 			System.out.print("\nSpecify your desired serial port descriptor: ");
