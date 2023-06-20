@@ -937,6 +937,11 @@ void searchForComPorts(serialPortVector* comPorts)
 	}
 }
 
+uint32_t __stack_chk_fail_local()
+{
+	return 0;
+}
+
 int flock(int fd, int op)
 {
 	int rc = 0;

@@ -16,7 +16,7 @@ COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroo
 COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/arm64-unknown-freebsd11.2
 COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/i386-unknown-openbsd6.2
 COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/amd64-unknown-openbsd6.2
-CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
+CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -fstack-protector-all -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
 CFLAGS_APPLE                := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
 LDFLAGS_FREEBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
