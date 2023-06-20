@@ -2,10 +2,10 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 02, 2022
+ *  Last Updated on:  Jun 19, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -52,6 +52,7 @@ jfieldID friendlyNameField;
 jfieldID portDescriptionField;
 jfieldID vendorIdField;
 jfieldID productIdField;
+jfieldID serialNumberField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -101,6 +102,24 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 		return JNI_TRUE;
 	}
 	return JNI_FALSE;
+}
+
+// Flow control setter (separated out due to MacOS kernel bug)
+static jboolean configFlowControl(JNIEnv *env, jobject obj, struct termios *options)
+{
+	// Retrieve port parameters from the Java class
+	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
+	if (checkJniError(env, __LINE__ - 1))
+		return JNI_FALSE;
+
+	// Update the user-specified flow control parameters
+	if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
+		options->c_cflag |= CRTSCTS;
+	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
+		options->c_iflag |= IXOFF;
+	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
+		options->c_iflag |= IXON;
+	return JNI_TRUE;
 }
 
 // Generalized port enumeration function
@@ -261,6 +280,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	productIdField = (*env)->GetFieldID(env, serialCommClass, "productID", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	serialNumberField = (*env)->GetFieldID(env, serialCommClass, "serialNumber", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
@@ -385,6 +406,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewStringUTF(env, serialPorts.ports[i]->portLocation));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewStringUTF(env, serialPorts.ports[i]->serialNumber));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -432,6 +455,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, serialNumberField, (*env)->NewStringUTF(env, port->serialNumber));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -473,7 +501,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", -1, -1);
+		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", -1, -1);
 	}
 	pthread_mutex_unlock(&criticalSection);
 	if (!port || (port->handle > 0))
@@ -559,8 +587,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int parityInt = (*env)->GetIntField(env, obj, parityField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int flowControl = (*env)->GetIntField(env, obj, flowControlField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int timeoutMode = (*env)->GetIntField(env, obj, timeoutModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
@@ -622,10 +648,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_iflag |= ISTRIP;
 	if (parityInt != 0)
 		options.c_iflag |= (INPCK | IGNPAR);
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
-		options.c_iflag |= IXOFF;
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
-		options.c_iflag |= IXON;
+	if (!configFlowControl(env, obj, &options))
+		return JNI_FALSE;
 
 	// Set the baud rate and apply all changes
 	baud_rate baudRateCode = getBaudRateCode(baudRate);
@@ -756,6 +780,13 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeou
 		options.c_cc[VMIN] = 0;
 		options.c_cc[VTIME] = 0;
 	}
+
+#ifdef __APPLE__
+	// On macOS, tcgetattr does not return the CRTSCTS flag when it has been set beforehand.
+	// Setting it here again works around this issue. See issue #453 for more details.
+	if (!configFlowControl(env, obj, &options))
+		return JNI_FALSE;
+#endif
 
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
@@ -911,7 +942,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	return numBytesToWrite;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jlong bytesToRead, jlong offset, jint timeoutMode, jint readTimeout)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
 {
 	// Ensure that the allocated read buffer is large enough
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
@@ -1000,7 +1031,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	return (numBytesRead == -1) ? -1 : numBytesReadTotal;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jlong bytesToWrite, jlong offset, jint timeoutMode)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToWrite, jint offset, jint timeoutMode)
 {
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
