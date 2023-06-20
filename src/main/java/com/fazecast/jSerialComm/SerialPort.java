@@ -978,6 +978,20 @@ public class SerialPort
 	}
 
 	/**
+	 * Flushes any already-received data from the registered {@link SerialPortDataListener} that has not yet triggered an event.
+	 */
+	public final void flushDataListener()
+	{
+		lock.lock();
+		try
+		{
+			if (serialEventListener != null)
+				serialEventListener.resetBuffers();
+		}
+		finally { lock.unlock(); }
+	}
+
+	/**
 	 * Removes the associated {@link SerialPortDataListener} from the serial port interface.
 	 */
 	public final void removeDataListener()
@@ -1720,7 +1734,7 @@ public class SerialPort
 				return;
 			eventListenerRunning = true;
 
-			dataPacketIndex = 0;
+			resetBuffers();
 			setEventListeningStatus(portHandle, true);
 			serialEventThread = SerialPortThreadFactory.get().newThread(new Runnable()
 			{
@@ -1768,6 +1782,12 @@ public class SerialPort
 			serialEventThread = null;
 		}
 		
+		public final void resetBuffers()
+		{
+			messageBytes.reset();
+			delimiterIndex = dataPacketIndex = 0;
+		}
+
 		public final void waitForSerialEvent() throws Exception
 		{
 			int event = waitForEvent(portHandle) & eventFlags;
