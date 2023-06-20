@@ -132,3 +132,11 @@ task sourcesJar(type: Jar) {
 artifacts {
   archives jar, javadocJar, sourcesJar, testJar
 }
+
+publishing {
+  publications {
+    maven(MavenPublication) {
+      from components.java
+    }
+  }
+}

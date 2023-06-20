@@ -1,0 +1,393 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
+
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+
+  linux:
+    strategy:
+      matrix:
+        arch: ["32", "32HF", "64", "PPC64LE", "x86", "x86_64"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install apt dependencies
+      run: |
+        sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev
+        wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
+    - uses: actions/cache/restore@v3
+      id: crosstool-cache
+      with:
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-${{ matrix.arch }}-${{ hashFiles('CrosstoolNgConfigFiles.tgz') }}
+    - name: Install crosstool-ng
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
+      run: |
+        wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.25.0.tar.bz2
+        tar xjf crosstool-ng-1.25.0.tar.bz2
+        cd crosstool-ng-1.25.0
+        ./configure --prefix=/usr
+        make
+        sudo make install
+        cd ..
+        rm -rf crosstool-ng-1.25.0 crosstool-ng-1.25.0.tar.bz2
+    - name: Build linux compilers
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
+      run: |
+        wget http://fazecast.github.io/jSerialComm/external/CrosstoolNgConfigFiles.tgz
+        mkdir CrosstoolNgConfigFiles
+        tar -xvhf CrosstoolNgConfigFiles.tgz -C ./CrosstoolNgConfigFiles
+        rm -rf CrosstoolNgConfigFiles.tgz
+        export CONFIG_SUBDIR="$( pwd )/CrosstoolNgConfigFiles"
+        mkdir build
+        cd build
+        cp -f "${CONFIG_SUBDIR}/jSerialComm${{ matrix.arch }}.config" .config
+        ct-ng upgradeconfig
+        sed -i 's/CT_ZLIB_VERSION="1.2.12"/CT_ZLIB_VERSION="1.2.13"/' .config
+        sed -i 's/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/' .config
+        ct-ng build
+        cd ..
+        rm -rf build CrosstoolNgConfigFiles
+    - uses: actions/cache/save@v3
+      if: steps.crosstool-cache.outputs.cache-hit != 'true'
+      with:
+          path: '~/x-tools/'
+          key: ${{ steps.crosstool-cache.outputs.cache-primary-key }}
+
+  solaris:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
+    - name: Prepare Solaris compilers
+      run: |
+        mkdir ~/buildcc
+        mkdir -p ~/x-tools && cd ~/x-tools
+        wget http://fazecast.github.io/jSerialComm/external/SolarisSystemHeaders.tgz
+        tar xvhf SolarisSystemHeaders.tgz
+        mv SolarisSystemHeaders.tgz $GITHUB_WORKSPACE/
+        cd ~/buildcc
+        wget https://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz
+        wget https://ftp.gnu.org/gnu/binutils/binutils-2.30.tar.gz
+        tar xvhf gcc-7.3.0.tar.gz
+        tar xvhf binutils-2.30.tar.gz
+        rm -rf gcc-7.3.0.tar.gz binutils-2.30.tar.gz
+    - uses: actions/cache/restore@v3
+      id: solaris-cache
+      with:
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ runner.os }}-solaris-${{ hashFiles('SolarisSystemHeaders.tgz') }}
+    - name: Build x86 Solaris
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
+      run: |
+        cd ~/buildcc
+        export TARGET=x86_64-sun-solaris2.10
+        export PREFIX="$HOME/x-tools/$TARGET"
+        export SYSROOT="$PREFIX/sysroot"
+        export PATH="$PREFIX/bin:$PATH"
+        
+        mkdir -p build-binutils && cd build-binutils
+        ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
+        make && make install
+        cd .. && rm -rf build-binutils
+        
+        mkdir -p build-gcc && cd build-gcc
+        ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
+        make all-gcc all-target-libgcc
+        make install-gcc install-target-libgcc
+        cd .. && rm -rf build-gcc
+    - name: Build SPARC Solaris
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
+      run: |
+        cd ~/buildcc
+        export TARGET=sparc-sun-solaris2.10
+        export PREFIX="$HOME/x-tools/$TARGET"
+        export SYSROOT="$PREFIX/sysroot"
+        export PATH="$PREFIX/bin:$PATH"
+        
+        mkdir -p build-binutils && cd build-binutils
+        ../binutils-2.30/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --disable-werror
+        make && make install
+        cd .. && rm -rf build-binutils
+        
+        mkdir -p build-gcc && cd build-gcc
+        ../gcc-7.3.0/configure --prefix="$PREFIX" --target="$TARGET" --with-sysroot="$SYSROOT" --disable-nls --enable-languages=c --with-gnu-as --with-gnu-ld
+        make all-gcc all-target-libgcc
+        make install-gcc install-target-libgcc
+        cd .. && rm -rf build-gcc
+    - uses: actions/cache/save@v3
+      if: steps.solaris-cache.outputs.cache-hit != 'true'
+      with:
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ steps.solaris-cache.outputs.cache-primary-key }}
+  
+  macos32:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare MacOS compilers
+      run: |
+        mkdir -p ~/mac-headers && cd ~/mac-headers
+        wget http://fazecast.github.io/jSerialComm/external/MacOSX10.13.sdk.tar.xz
+        cp *.tar.xz $GITHUB_WORKSPACE/
+    - uses: actions/cache/restore@v3
+      id: mac32-cache
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ runner.os }}-mac32-${{ hashFiles('MacOSX10.13.sdk.tar.xz') }}
+    - name: Install MacOS 32-bit compiler
+      if: steps.mac32-cache.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/tpoechtrager/osxcross.git
+        cd osxcross
+        sudo tools/get_dependencies.sh
+        cp -f ~/mac-headers/MacOSX10.13.sdk.tar.xz tarballs/
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osx32 OSX_VERSION_MIN=10.6 ./build.sh
+        rm -rf $HOME/x-tools/osx32/bin/o64*
+        cd .. && rm -rf osxcross
+    - uses: actions/cache/save@v3
+      if: steps.mac32-cache.outputs.cache-hit != 'true'
+      with:
+        path: '~/x-tools/osx32/'
+        key: ${{ steps.mac32-cache.outputs.cache-primary-key }}
+
+  macos64:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare MacOS compilers
+      run: |
+        mkdir -p ~/mac-headers && cd ~/mac-headers
+        wget http://fazecast.github.io/jSerialComm/external/MacOSX12.0.sdk.tar.xz
+        cp *.tar.xz $GITHUB_WORKSPACE/
+    - uses: actions/cache/restore@v3
+      id: mac64-cache
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ runner.os }}-mac64-${{ hashFiles('MacOSX12.0.sdk.tar.xz') }}
+    - name: Install MacOS 64-bit compiler
+      if: steps.mac64-cache.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/tpoechtrager/osxcross.git
+        cd osxcross
+        sudo tools/get_dependencies.sh
+        cp -f ~/mac-headers/MacOSX12.0.sdk.tar.xz tarballs/
+        UNATTENDED=y TARGET_DIR=$HOME/x-tools/osxcross OSX_VERSION_MIN=10.9 ./build.sh
+        cd .. && rm -rf osxcross
+    - uses: actions/cache/save@v3
+      if: steps.mac64-cache.outputs.cache-hit != 'true'
+      with:
+        path: '~/x-tools/osxcross/'
+        key: ${{ steps.mac64-cache.outputs.cache-primary-key }}
+  
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 6
+      uses: actions/setup-java@v3
+      with:
+        java-version: '6'
+        distribution: 'zulu'
+    - name: Set up JDK 9
+      uses: oracle-actions/setup-java@v1.3.1
+      with:
+        install-as-version: '9'
+        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_windows-x64_bin.tar.gz'
+    - name: Build Windows lib
+      shell: cmd
+      run: |
+        set JDK_HOME=%JAVA_HOME%
+        cd src\main\c\Windows
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
+        nmake.exe -f Makefile.native win64
+
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_x86
+        nmake.exe -f Makefile.native win32
+
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm
+        nmake.exe -f Makefile.native winarm
+    - name: Second Build Windows lib
+      shell: cmd
+      run: |
+        set JDK_HOME=%JAVA_HOME%
+        cd src\main\c\Windows
+        call "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86_arm64
+        nmake.exe -f Makefile.native winarm64
+    - name: Upload Windows lib
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: jSerialComm-Windows
+        path: src/main/resources/Windows/*
+
+  build:
+    needs: [linux, solaris, macos32, macos64, windows]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25c
+    - name: Set up JDK 6
+      uses: actions/setup-java@v3
+      with:
+        java-version: '6'
+        distribution: 'zulu'
+    - name: Set up JDK 9
+      uses: oracle-actions/setup-java@v1.3.1
+      with:
+        install-as-version: '9'
+        uri: 'https://download.java.net/java/GA/jdk9/9.0.4/binaries/openjdk-9.0.4_linux-x64_bin.tar.gz'
+    - name: Install apt dependencies
+      run: 'sudo apt-get install -y lld help2man libtool-bin libtool-doc libncurses5-dev libmpfr-dev libmpc-dev'
+
+    ## Restore Linux
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-32-
+        restore-keys: "${{ runner.os }}-crosstool-32-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-32HF-
+        restore-keys: "${{ runner.os }}-crosstool-32HF-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-64-
+        restore-keys: "${{ runner.os }}-crosstool-64-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-PPC64LE-
+        restore-keys: "${{ runner.os }}-crosstool-PPC64LE-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-x86-
+        restore-keys: "${{ runner.os }}-crosstool-x86-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/'
+        key: ${{ runner.os }}-crosstool-x86_64-
+        restore-keys: "${{ runner.os }}-crosstool-x86_64-"
+    - name: Add linux compilers to PATH${{ runner.os }}-crosstool
+      run: |
+        echo "$HOME/x-tools/i486-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/x86_64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabi/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/arm-unknown-linux-gnueabihf/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/aarch64-unknown-linux-gnu/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/powerpc64le-unknown-linux-gnu/bin" >> $GITHUB_PATH
+
+    ## Restore Solaris
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/*-sun-solaris2.10'
+        key: ${{ runner.os }}-solaris-
+        restore-keys: "${{ runner.os }}-solaris-"
+    - name: Add Solaris tools to PATH
+      run: |
+        echo $HOME/x-tools/x86_64-sun-solaris2.10/bin >> $GITHUB_PATH
+        echo $HOME/x-tools/sparc-sun-solaris2.10/bin >> $GITHUB_PATH
+
+    ## Download BSD
+    - name: Install FreeBSD build tools
+      run: |
+        do_wget() {
+          mkdir -p "$HOME/x-tools/${1}-unknown-freebsd12.4" && cd "$HOME/x-tools/${1}-unknown-freebsd12.4"
+          wget "http://ftp.plusline.de/FreeBSD/releases/${1}/12.4-RELEASE/base.txz"
+          tar -xf base.txz ./lib/ ./usr/lib/ ./usr/include/
+          rm base.txz
+          echo "$HOME/x-tools/${1}-unknown-freebsd12.4" >> $GITHUB_PATH
+        }
+        export ARCHS=("amd64" "arm64" "i386")
+        for arch in ${ARCHS[@]}; do
+          do_wget $arch &
+        done
+        wait
+    - name: Install OpenBSD build tools
+      run: |
+        do_wget() {
+          mkdir -p "$HOME/x-tools/${1}-unknown-openbsd7.3" && cd "$HOME/x-tools/${1}-unknown-openbsd7.3"
+          wget "https://ftp.nluug.nl/pub/OpenBSD/7.3/${1}/base73.tgz"
+          wget https://ftp.nluug.nl/pub/OpenBSD/7.3/${1}/comp73.tgz
+          tar -xf base73.tgz ./usr/lib/ ./usr/include/
+          tar -xf comp73.tgz ./usr/lib/ ./usr/include/
+          rm base73.tgz comp73.tgz
+          echo "$HOME/x-tools/${1}-unknown-openbsd7.3" >> $GITHUB_PATH
+        }
+        export ARCHS=("amd64" "i386")
+        for arch in ${ARCHS[@]}; do
+          do_wget $arch &
+        done
+        wait
+    
+    ## Restore macOS
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/osx32/'
+        key: ${{ runner.os }}-mac32-
+        restore-keys: "${{ runner.os }}-mac32-"
+    - uses: actions/cache/restore@v3
+      with:
+        fail-on-cache-miss: true
+        path: '~/x-tools/osxcross/'
+        key: ${{ runner.os }}-mac64-
+        restore-keys: "${{ runner.os }}-mac64-"
+    - name: Add macOS tools to PATH
+      run: |
+        echo "$HOME/x-tools/osx32/bin" >> $GITHUB_PATH
+        echo "$HOME/x-tools/osxcross/bin" >> $GITHUB_PATH
+    
+    ## Restore Windows
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v2.1.1
+      with:
+        name: jSerialComm-Windows
+        path: src/main/resources/Windows
+    
+    - name: Build libraries
+      run: |
+        export JDK_HOME=${JAVA_HOME}
+        cd src/main/c/Posix
+        make linux
+        make arm
+        make powerpc
+        make solaris
+        make freebsd
+        make openbsd
+        make osx
+        make android
+      
+    - name: Build with Gradle
+      uses: gradle/gradle-build-action@v2.4.2
+      with:
+        arguments: build
+    
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: jSerialComm
+        path: build/libs/*
