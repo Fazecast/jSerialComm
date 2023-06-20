@@ -239,6 +239,30 @@ static char isUsbSerialSubsystem(const char *subsystemLink)
 	return isUsbSerial;
 }
 
+static char isPtyDevice(const char *deviceLink)
+{
+	// Attempt to read the path that the potential PTY device link points to
+	struct stat fileInfo;
+	char *symlink = NULL, isPtyDevice = 0;
+	if ((lstat(deviceLink, &fileInfo) == 0) && fileInfo.st_size && ((fileInfo.st_mode & S_IFMT) == S_IFLNK))
+	{
+		ssize_t bufferSize = fileInfo.st_size + 1;
+		symlink = (char*)malloc(bufferSize);
+		if (symlink)
+		{
+			ssize_t symlinkSize = readlink(deviceLink, symlink, bufferSize);
+			if (symlinkSize >= 0)
+			{
+				symlink[symlinkSize] = '\0';
+				if (strstr(symlink, "dev/pt"))
+					isPtyDevice = 1;
+			}
+			free(symlink);
+		}
+	}
+	return isPtyDevice;
+}
+
 static void getPortLocation(const char* portDirectory, char* portLocation, int physicalPortNumber)
 {
 	// Set location of busnum and devpath files
@@ -596,6 +620,32 @@ void searchForComPorts(serialPortVector* comPorts)
 				// Add the port to the list of available ports
 				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, serialNumber, vendorID, productID);
 			}
+
+			// Read next TTY directory entry
+			directoryEntry = readdir(directoryIterator);
+		}
+		closedir(directoryIterator);
+	}
+
+	// Search through the system DEV directory for PTY symlinks
+	directoryIterator = opendir("/dev/");
+	if (directoryIterator)
+	{
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// Ensure that the file name buffer is large enough
+			if ((16 + strlen(directoryEntry->d_name)) > fileNameMaxLength)
+			{
+				fileNameMaxLength = 16 + strlen(directoryEntry->d_name);
+				fileName = (char*)realloc(fileName, fileNameMaxLength);
+			}
+
+			// Check if the entry represents a valid serial port
+			strcpy(fileName, "/dev/");
+			strcat(fileName, directoryEntry->d_name);
+			if (isPtyDevice(fileName))
+				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", -1, -1);
 
 			// Read next TTY directory entry
 			directoryEntry = readdir(directoryIterator);
