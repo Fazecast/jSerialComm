@@ -98,7 +98,7 @@ public class SerialPort
 
 	// Static initializer loads correct native library for this machine
 	static private final ReentrantLock lock = new ReentrantLock(true);
-	static private final String versionString = "2.10.0-beta2";
+	static private final String versionString = "2.10.0-beta3";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false;
@@ -691,7 +691,6 @@ public class SerialPort
 	private native long openPortNative();								// Opens serial port
 	private native long closePortNative(long portHandle);				// Closes serial port
 	private native boolean configPort(long portHandle);					// Changes/sets serial port parameters as defined by this class
-	private native boolean configTimeouts(long portHandle, int timeoutMode, int readTimeout, int writeTimeout, int eventsToMonitor);	// Changes/sets serial port timeouts as defined by this class
 	private native boolean flushRxTxBuffers(long portHandle);			// Flushes underlying RX/TX device buffers
 	private native int waitForEvent(long portHandle);					// Waits for serial event to occur as specified in eventFlags
 	private native int bytesAvailable(long portHandle);					// Returns number of bytes available for reading
@@ -969,7 +968,7 @@ public class SerialPort
 							new SerialPortEventListener()));
 			if (portHandle != 0)
 			{
-				configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
+				configPort(portHandle);
 				serialEventListener.startListening();
 			}
 			return true;
@@ -1005,7 +1004,7 @@ public class SerialPort
 				serialEventListener.stopListening();
 				serialEventListener = null;
 				if (portHandle != 0)
-					configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
+					configPort(portHandle);
 			}
 			userDataListener = null;
 		}
@@ -1179,7 +1178,7 @@ public class SerialPort
 			stopBits = newStopBits;
 			parity = newParity;
 			rs485Mode = useRS485Mode;
-	
+
 			if (portHandle != 0)
 			{
 				if (safetySleepTimeMS > 0)
@@ -1263,7 +1262,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configTimeouts(portHandle, timeoutMode, readTimeout, writeTimeout, eventFlags);
+				return configPort(portHandle);
 			}
 			return true;
 		}
@@ -1734,6 +1733,7 @@ public class SerialPort
 				return;
 			eventListenerRunning = true;
 
+			// Reset event listening parameters and start a new listening thread
 			resetBuffers();
 			setEventListeningStatus(portHandle, true);
 			serialEventThread = SerialPortThreadFactory.get().newThread(new Runnable()
@@ -1760,26 +1760,41 @@ public class SerialPort
 
 		public final void stopListening()
 		{
-			if (!eventListenerRunning)
-				return;
-			eventListenerRunning = false;
-			configTimeouts(portHandle, TIMEOUT_NONBLOCKING, 0, 0, 0);
-			setEventListeningStatus(portHandle, false);
-
-			// Wait until the event-reading thread returns. This thread MUST return or the serial port will
-			//   be in an unspecified, possibly unrecoverable state
+			lock.lock();
 			try
 			{
-				if (!Thread.currentThread().equals(serialEventThread))
-					do
-					{
-						serialEventThread.join(500);
-						if (serialEventThread.isAlive())
-							serialEventThread.interrupt();
-					} while (serialEventThread.isAlive());
+				if (!eventListenerRunning)
+					return;
+				eventListenerRunning = false;
+
+				// Clear all timeouts and event masks to allow listening threads to return
+				int oldTimeoutMode = timeoutMode, oldEventFlags = eventFlags;
+				timeoutMode = TIMEOUT_NONBLOCKING;
+				eventFlags = 0;
+				configPort(portHandle);
+				setEventListeningStatus(portHandle, false);
+
+				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
+				//   be in an unspecified, possibly unrecoverable state
+				try
+				{
+					if (!Thread.currentThread().equals(serialEventThread))
+						do
+						{
+							serialEventThread.join(500);
+							if (serialEventThread.isAlive())
+								serialEventThread.interrupt();
+						} while (serialEventThread.isAlive());
+				}
+				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+				serialEventThread = null;
+
+				// Reset the previously specified timeouts and event flags
+				timeoutMode = oldTimeoutMode;
+				eventFlags = oldEventFlags;
+				configPort(portHandle);
 			}
-			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-			serialEventThread = null;
+			finally { lock.unlock(); }
 		}
 		
 		public final void resetBuffers()

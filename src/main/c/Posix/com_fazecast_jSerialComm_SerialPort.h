@@ -125,14 +125,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    configTimeouts
- * Signature: (JIIII)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configTimeouts
-  (JNIEnv *, jobject, jlong, jint, jint, jint, jint);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    flushRxTxBuffers
  * Signature: (J)Z
  */
@@ -166,18 +158,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    readBytes
- * Signature: (J[BJJII)I
+ * Signature: (J[BIIII)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong, jint, jint);
+  (JNIEnv *, jobject, jlong, jbyteArray, jint, jint, jint, jint);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    writeBytes
- * Signature: (J[BJJI)I
+ * Signature: (J[BIII)I
  */
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes
-  (JNIEnv *, jobject, jlong, jbyteArray, jlong, jlong, jint);
+  (JNIEnv *, jobject, jlong, jbyteArray, jint, jint, jint);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
@@ -221,22 +213,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    presetRTS
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetRTS
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    preclearRTS
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearRTS
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    setDTR
  * Signature: (J)Z
  */
@@ -250,22 +226,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR
  */
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR
   (JNIEnv *, jobject, jlong);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    presetDTR
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_presetDTR
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_fazecast_jSerialComm_SerialPort
- * Method:    preclearDTR
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_preclearDTR
-  (JNIEnv *, jobject);
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort

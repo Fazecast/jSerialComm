@@ -823,15 +823,6 @@ baud_rate getBaudRateCode(baud_rate baudRate)
 
 int setBaudRateCustom(int portFD, baud_rate baudRate)
 {
-#ifdef TCSETS2
-	struct termios2 options = { 0 };
-	ioctl(portFD, TCGETS2, &options);
-	options.c_cflag &= ~CBAUD;
-	options.c_cflag |= BOTHER;
-	options.c_ispeed = baudRate;
-	options.c_ospeed = baudRate;
-	int retVal = ioctl(portFD, TCSETS2, &options);
-#else
 	struct serial_struct serInfo;
 	int retVal = ioctl(portFD, TIOCGSERIAL, &serInfo);
 	if (retVal == 0)
@@ -843,7 +834,6 @@ int setBaudRateCustom(int portFD, baud_rate baudRate)
 			serInfo.custom_divisor = 1;
 		retVal = ioctl(portFD, TIOCSSERIAL, &serInfo);
 	}
-#endif
 	return retVal;
 }
 
@@ -1452,6 +1442,7 @@ void searchForComPorts(serialPortVector* comPorts)
 		// Get serial port information
 		char isUSB = 0;
 		friendlyName[0] = '\0';
+		strcpy(serialNumber, "Unknown");
 		int vendorID = -1, productID = -1;
 		io_registry_entry_t parent = 0, service = serialPort;
 		while (service)
@@ -1525,8 +1516,6 @@ void searchForComPorts(serialPortVector* comPorts)
 				CFStringGetCString(propertyRef, serialNumber, sizeof(serialNumber), kCFStringEncodingUTF8);
 				CFRelease(propertyRef);
 			}
-			else
-				strcpy(serialNumber, "Unknown");
 		}
 		else
 			strcpy(portLocation, "0-0");
