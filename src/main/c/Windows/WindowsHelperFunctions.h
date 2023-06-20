@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Dec 01, 2022
+ *  Last Updated on:  Jun 19, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -34,10 +34,10 @@ typedef struct serialPort
 {
 	void *handle;
 	char *readBuffer;
-	wchar_t *portPath, *friendlyName, *portDescription, *portLocation;
+	wchar_t *portPath, *friendlyName, *portDescription, *portLocation, *serialNumber;
 	int errorLineNumber, errorNumber, readBufferLength, vendorID, productID;
 	volatile char enumerated, eventListenerRunning;
-	char serialNumber[16];
+	char ftdiSerialNumber[16];
 } serialPort;
 
 // Common storage functionality
@@ -46,13 +46,13 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, int vid, int pid);
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, int vid, int pid);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);
 
 // Windows-specific functionality
 void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevatedPermissions);
-int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* serialNumber);
+int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* ftdiSerialNumber);
 
 #endif		// #ifndef __WINDOWS_HELPER_FUNCTIONS_HEADER_H__

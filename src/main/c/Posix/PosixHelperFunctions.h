@@ -2,10 +2,10 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Dec 01, 2022
+ *  Last Updated on:  Jun 19, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -36,7 +36,7 @@ typedef struct serialPort
 	pthread_mutex_t eventMutex;
 	pthread_cond_t eventReceived;
 	pthread_t eventsThread1, eventsThread2;
-	char *portPath, *friendlyName, *portDescription, *portLocation, *readBuffer;
+	char *portPath, *friendlyName, *portDescription, *portLocation, *readBuffer, *serialNumber;
 	int errorLineNumber, errorNumber, handle, readBufferLength, eventsMask, event, vendorID, productID;
 	volatile char enumerated, eventListenerRunning, eventListenerUsesThreads;
 } serialPort;
@@ -47,7 +47,7 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, int vid, int pid);
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, const char* serialNumber, int vid, int pid);
 serialPort* fetchPort(serialPortVector* vector, const char* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);

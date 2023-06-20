@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 02, 2022
+ *  Last Updated on:  Jun 19, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -51,6 +51,7 @@ jfieldID friendlyNameField;
 jfieldID portDescriptionField;
 jfieldID vendorIdField;
 jfieldID productIdField;
+jfieldID serialNumberField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -343,7 +344,7 @@ static void enumeratePorts(void)
 						char isOpen = ((devInfo[i].Flags & FT_FLAGS_OPENED) || (devInfo[i].SerialNumber[0] == 0)) ? 1 : 0;
 						if (!isOpen)
 							for (int j = 0; j < serialPorts.length; ++j)
-								if ((memcmp(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
+								if ((memcmp(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber)) == 0) && (serialPorts.ports[j]->handle != INVALID_HANDLE_VALUE))
 								{
 									serialPorts.ports[j]->enumerated = 1;
 									isOpen = 1;
@@ -370,7 +371,7 @@ static void enumeratePorts(void)
 										serialPorts.ports[j]->portDescription = newMemory;
 										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
 									}
-									memcpy(serialPorts.ports[j]->serialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->serialNumber));
+									memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
 									break;
 								}
 						}
@@ -416,7 +417,7 @@ static void enumeratePorts(void)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", -1, -1);
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", -1, -1);
 			}
 		}
 
@@ -466,6 +467,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	vendorIdField = (*env)->GetFieldID(env, serialCommClass, "vendorID", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	productIdField = (*env)->GetFieldID(env, serialCommClass, "productID", "I");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	serialNumberField = (*env)->GetFieldID(env, serialCommClass, "serialNumber", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
@@ -577,6 +580,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, portLocationField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->portLocation, wcslen(serialPorts.ports[i]->portLocation)));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewStringUTF(env, serialPorts.ports[i]->serialNumber));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -626,6 +631,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, serialNumberField, (*env)->NewString(env, (jchar*)port->serialNumber, wcslen(port->serialNumber)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -665,7 +675,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", -1, -1);
+		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", L"Unknown", -1, -1);
 	}
 	LeaveCriticalSection(&criticalSection);
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))
@@ -1038,7 +1048,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	return -1;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jlong bytesToRead, jlong offset, jint timeoutMode, jint readTimeout)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
 {
 	// Ensure that the allocated read buffer is large enough
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
@@ -1088,7 +1098,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	return (result == TRUE) ? numBytesRead : -1;
 }
 
-JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jlong bytesToWrite, jlong offset, jint timeoutMode)
+JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToWrite, jint offset, jint timeoutMode)
 {
 	// Create an asynchronous result structure
 	OVERLAPPED overlappedStruct;

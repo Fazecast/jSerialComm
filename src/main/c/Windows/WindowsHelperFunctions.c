@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Dec 01, 2022
+ *  Last Updated on:  Jun 19, 2023
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2022 Fazecast, Inc.
+ * Copyright (C) 2012-2023 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -37,7 +37,7 @@
 #include "WindowsHelperFunctions.h"
 
 // Common storage functionality
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, int vid, int pid)
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, int vid, int pid)
 {
 	// Allocate memory for the new SerialPort storage structure
 	unsigned char containsSlashes = ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\'));
@@ -67,8 +67,9 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	port->portPath = (wchar_t*)malloc((wcslen(key)+(containsSlashes ? 1 : 5))*sizeof(wchar_t));
 	port->portLocation = (wchar_t*)malloc((wcslen(location)+1)*sizeof(wchar_t));
 	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
+	port->serialNumber = (wchar_t*)malloc((wcslen(serialNumber)+1)*sizeof(wchar_t));
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
-	if (!port->portPath || !port->portLocation || !port->friendlyName || !port->portDescription)
+	if (!port->portPath || !port->portLocation || !port->friendlyName || !port->serialNumber || !port->portDescription)
 	{
 		// Clean up memory associated with the port
 		vector->length--;
@@ -78,6 +79,8 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 			free(port->portLocation);
 		if (port->friendlyName)
 			free(port->friendlyName);
+		if (port->serialNumber)
+			free(port->serialNumber);
 		if (port->portDescription)
 			free(port->portDescription);
 		free(port);
@@ -95,6 +98,7 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	wcscpy_s(port->portLocation, wcslen(location)+1, location);
 	wcscpy_s(port->friendlyName, wcslen(friendlyName)+1, friendlyName);
 	wcscpy_s(port->portDescription, wcslen(description)+1, description);
+	wcscpy_s(port->serialNumber, wcslen(serialNumber)+1, serialNumber);
 
 	// Return the newly created serial port structure
 	return port;
@@ -116,6 +120,7 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port->portPath);
 	free(port->portLocation);
 	free(port->friendlyName);
+	free(port->serialNumber);
 	free(port->portDescription);
 	if (port->readBuffer)
 		free(port->readBuffer);
@@ -242,7 +247,7 @@ void reduceLatencyToMinimum(const wchar_t* portName, unsigned char requestElevat
 	}
 }
 
-int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* serialNumber)
+int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* ftdiSerialNumber)
 {
 	// Search for this port in all FTDI enumerated ports
 	int found = 0;
@@ -265,7 +270,7 @@ int getPortPathFromSerial(wchar_t* portPath, int portPathLength, const char* ser
 				if (subkeyString && (wcstombs_s(NULL, subkeyString, convertedSize, subkey, convertedSize - 1) == 0))
 				{
 					// Determine if this device matches the specified serial number
-					if (serialNumber && strstr(subkeyString, serialNumber) && (wcscat_s(subkey, maxSubkeySize, L"\\0000\\Device Parameters") == 0))
+					if (ftdiSerialNumber && strstr(subkeyString, ftdiSerialNumber) && (wcscat_s(subkey, maxSubkeySize, L"\\0000\\Device Parameters") == 0))
 					{
 						DWORD portNameSize = portPathLength;
 						if ((RegOpenKeyExW(key, subkey, 0, KEY_QUERY_VALUE, &paramKey) == ERROR_SUCCESS) &&
