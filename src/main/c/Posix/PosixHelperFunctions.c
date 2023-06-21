@@ -406,6 +406,7 @@ static void getUsbDetails(const char* fileName, char* basePathEnd, int* vendorID
 	if (input)
 	{
 		fgets(serialNumber, 128, input);
+		serialNumber[strcspn(serialNumber, "\r\n")] = 0;
 		fclose(input);
 	}
 }
