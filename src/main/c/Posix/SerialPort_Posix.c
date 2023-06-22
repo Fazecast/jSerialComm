@@ -573,8 +573,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int readTimeout = (*env)->GetIntField(env, obj, readTimeoutField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	int writeTimeout = (*env)->GetIntField(env, obj, writeTimeoutField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int eventsToMonitor = (*env)->GetIntField(env, obj, eventFlagsField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int flowControl = (*env)->GetIntField(env, obj, flowControlField);

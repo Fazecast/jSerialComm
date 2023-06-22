@@ -109,6 +109,7 @@ public class SerialPort
 		String[] architectures = null;
 		String libraryPath = "", libraryFileName = "";
 		String OS = System.getProperty("os.name").toLowerCase();
+		String arch = System.getProperty("os.arch").toLowerCase();
 		String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
 		String tempFileDirectory = System.getProperty("java.io.tmpdir");
 		String userHomeDirectory = System.getProperty("user.home");
@@ -176,6 +177,8 @@ public class SerialPort
 			libraryFileName = "libjSerialComm.so";
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
+			else if (arch.contains("86") || arch.contains("amd"))
+				architectures = new String[] { "x86_64", "x86", "armv5", "armv6", "armv6hf", "armv7", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
 			else
 				architectures = new String[] { "armv5", "armv6", "armv6hf", "armv7", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
 		}
