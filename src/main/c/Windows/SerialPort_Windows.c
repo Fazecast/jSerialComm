@@ -382,6 +382,15 @@ static void enumeratePorts(void)
 										serialPorts.ports[j]->portDescription = newMemory;
 										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
 									}
+
+									// Update the port serial number
+									size_t serialNumLength = 1 + strlen(devInfo[i].SerialNumber);
+									newMemory = (wchar_t*)realloc(serialPorts.ports[j]->serialNumber, serialNumLength*sizeof(wchar_t));
+									if (newMemory)
+									{
+										serialPorts.ports[j]->serialNumber = newMemory;
+										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].SerialNumber, -1, serialPorts.ports[j]->serialNumber, serialNumLength);
+									}
 									memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
 									break;
 								}
