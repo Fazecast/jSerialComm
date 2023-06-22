@@ -15,46 +15,13 @@ archivesBaseName = 'jSerialComm'
 version = '2.10.0'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
-if (hasProperty('productionBuild') && productionBuild == 'true')
-{
-  assert hasProperty('java6Home'): "Set the property 'java6Home' in your gradle.properties file pointing to a Java 6 JDK installation"
-  assert hasProperty('java9Home'): "Set the property 'java9Home' in your gradle.properties file pointing to a Java 9 JDK installation"
-  javadoc.options.addBooleanOption('html4', true)
-}
-else
-  project.ext.java9Home = org.gradle.internal.jvm.Jvm.current().getJavaHome()
+sourceCompatibility = 6
+targetCompatibility = 6
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
-javadoc.options.links("https://docs.oracle.com/javase/9/docs/api/")
-
-if (hasProperty('productionBuild') && productionBuild == 'true')
-{
-  def java6ExecutablesPath = new File(java6Home, 'bin')
-  def java9ExecutablesPath = new File(java9Home, 'bin')
-  def java6Executables = [:].withDefault { execName ->
-    def executable = new File(java6ExecutablesPath, execName)
-    executable
-  }
-  def java9Executables = [:].withDefault { execName ->
-    def executable = new File(java9ExecutablesPath, execName)
-    executable
-  }
-  
-  tasks.withType(JavaCompile) {
-    options.with {
-      fork = true
-      forkOptions.javaHome = file(java6Home)
-    }
-  }
-  tasks.withType(Javadoc) {
-    executable = java9Executables.javadoc
-  }
-  tasks.withType(Test) {
-    executable = java6Executables.java
-  }
-  tasks.withType(JavaExec) {
-    executable = java6Executables.java
+javadoc {
+  title archivesBaseName + ' ' + version + ' API'
+  options {
+    links 'https://docs.oracle.com/en/java/javase/12/docs/api/'
   }
 }
 
@@ -78,8 +45,6 @@ compileModuleInfoJava {
 
   doFirst {
     classpath = files()
-    options.fork = true
-    options.forkOptions.javaHome = file(java9Home)
     options.sourcepath = files(sourceSets.moduleInfo.java.srcDirs)
     options.compilerArgs = [
       '--module-path', classpath.asPath,
@@ -106,8 +71,12 @@ jar {
   )
 }
 
+tasks.withType(JavaCompile) {
+  options.compilerArgs.add('-Xlint:-options')
+}
+
 task testJar(type: Jar) {
-  classifier = 'test'
+  archiveClassifier = 'test'
   from sourceSets.test.output, sourceSets.main.output
   
   manifest {
@@ -120,12 +89,12 @@ task testJar(type: Jar) {
 }
 
 task javadocJar(type: Jar) {
-  classifier = 'javadoc'
+  archiveClassifier = 'javadoc'
   from javadoc
 }
 
 task sourcesJar(type: Jar) {
-  classifier = 'sources'
+  archiveClassifier = 'sources'
   from sourceSets.main.allSource
 }
 

@@ -16,13 +16,13 @@ COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroo
 COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/arm64-unknown-freebsd11.2
 COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/i386-unknown-openbsd6.2
 COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/amd64-unknown-openbsd6.2
-CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -fstack-protector-all -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
-CFLAGS_APPLE                := -fPIC -Os -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+CFLAGS_POSIX                := -fPIC -Os -flto -static-libgcc -fstack-protector -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
+CFLAGS_APPLE                := -fPIC -Os -flto -D_FORTIFY_SOURCE=0
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s
 LDFLAGS_FREEBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
 LDFLAGS_OPENBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-plugin
 LDFLAGS_APPLE               := -Os -dynamiclib -flto -shared -fuse-linker-plugin
-JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
+JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "`dirname $$(dirname $$(readlink -f $$(which javac)))`"; fi)
 INCLUDES                    := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
 LIBRARIES_POSIX             := 
 LIBRARIES_APPLE             := -framework Cocoa -framework IOKit
@@ -46,7 +46,7 @@ FULL_CLASS                  := com.fazecast.jSerialComm.SerialPort
 JAVA_CLASS_DIR              := $(BUILD_DIR)/com/fazecast/jSerialComm
 JNI_HEADER                  := ../com_fazecast_jSerialComm_SerialPort.h
 JAVA_CLASS                  := $(JAVA_CLASS_DIR)/SerialPort.class
-JFLAGS                      := -source 1.6 -target 1.6 -Xlint:-options
+JFLAGS                      := --release 6 -Xlint:-options
 JAVAC                       := "$(JDK_HOME)/bin/javac"
 
 # Architecture-dependent library variables

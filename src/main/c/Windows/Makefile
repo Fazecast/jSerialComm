@@ -9,7 +9,8 @@ LINK_ARM            := aarch-pc-windows-msvc-link
 LINK_ARM64          := aarch64-pc-windows-msvc-link
 CFLAGS              := /c /O2 /GF /MT /EHsc /J /nologo /TC
 LDFLAGS             := /DLL /NOLOGO
-INCLUDES            := /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32" /I"$(JDK_HOME)/include/linux" /I"$(JDK_HOME)/include/darwin" /I"$(JDK_HOME)/include/solaris"
+JDK_HOME            := $(shell echo "`dirname $$(dirname $$(readlink -f $$(which javac)))`")
+INCLUDES            := /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32"
 LIBRARIES           := advapi32.lib setupapi.lib shell32.lib
 DELETE              := @rm
 MKDIR               := @mkdir
@@ -27,7 +28,7 @@ JAVA_CLASS_DIR      := $(BUILD_DIR)/com/fazecast/jSerialComm
 JNI_HEADER_FILE     := com_fazecast_jSerialComm_SerialPort.h
 JNI_HEADER          := ../$(JNI_HEADER_FILE)
 JAVA_CLASS          := $(JAVA_CLASS_DIR)/SerialPort.class
-JFLAGS              := -source 1.6 -target 1.6 -Xlint:-options
+JFLAGS              := --release 6 -Xlint:-options
 JAVAC               := "$(JDK_HOME)/bin/javac"
 
 # Architecture-dependent library variables
