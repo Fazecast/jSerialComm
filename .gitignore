@@ -6,6 +6,9 @@ build
 # Generated files for JNI
 src/main/c/com_fazecast_jSerialComm_SerialPort.h
 
+# Binary Library Files #
+src/main/resources
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
