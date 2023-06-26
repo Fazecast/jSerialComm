@@ -1,1 +1,11 @@
-external/WindowsHeaders.tgz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/FreeBSD-amd64-base.txz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/FreeBSD-arm64-base.txz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/FreeBSD-i386-base.txz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/gradle-8.1.1-bin.zip filter=lfs diff=lfs merge=lfs -text
+toolchain/external/MacOSX10.13.sdk.tar.xz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/MacOSX12.0.sdk.tar.xz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/OpenBSD-amd64-base62.tgz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/OpenBSD-amd64-comp62.tgz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/OpenBSD-i386-base62.tgz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/OpenBSD-i386-comp62.tgz filter=lfs diff=lfs merge=lfs -text
+toolchain/external/WindowsHeaders.tgz filter=lfs diff=lfs merge=lfs -text

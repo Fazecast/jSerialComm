@@ -1,0 +1,40 @@
+*.class
+bin
+site
+build
+
+# Generated files for JNI
+src/main/c/com_fazecast_jSerialComm_SerialPort.h
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Allow Gradle Wrapper Files
+!gradle-wrapper.jar
+
+# Gradle Files #
+.gradle
+gradle.properties
+build.gradle.private
+build.gradle.private.android
+
+# Eclipse Files #
+.settings
+.project
+.cproject
+.classpath
+
+# IntelliJ IDEA Files #
+.idea
+*.iml
+
+# MacOS Files #
+.DS_Store
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
