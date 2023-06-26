@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jun 19, 2023
+ *  Last Updated on:  Jun 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -107,8 +107,6 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port->friendlyName);
 	free(port->serialNumber);
 	free(port->portDescription);
-	if (port->readBuffer)
-		free(port->readBuffer);
 	pthread_cond_destroy(&port->eventReceived);
 	pthread_mutex_destroy(&port->eventMutex);
 

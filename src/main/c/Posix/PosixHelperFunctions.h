@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jun 19, 2023
+ *  Last Updated on:  Jun 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -36,8 +36,8 @@ typedef struct serialPort
 	pthread_mutex_t eventMutex;
 	pthread_cond_t eventReceived;
 	pthread_t eventsThread1, eventsThread2;
-	char *portPath, *friendlyName, *portDescription, *portLocation, *readBuffer, *serialNumber;
-	int errorLineNumber, errorNumber, handle, readBufferLength, eventsMask, event, vendorID, productID;
+	char *portPath, *friendlyName, *portDescription, *portLocation, *serialNumber;
+	int errorLineNumber, errorNumber, handle, eventsMask, event, vendorID, productID;
 	volatile char enumerated, eventListenerRunning, eventListenerUsesThreads;
 } serialPort;
 

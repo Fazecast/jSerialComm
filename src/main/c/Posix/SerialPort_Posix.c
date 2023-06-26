@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 20, 2023
+ *  Last Updated on:  Jun 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -900,21 +900,18 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
 {
-	// Ensure that the allocated read buffer is large enough
+	// Ensure that a positive number of bytes was passed in to read
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	int numBytesRead = -1, numBytesReadTotal = 0, bytesRemaining = bytesToRead, ioctlResult = 0;
-	if (bytesToRead > port->readBufferLength)
-	{
-		port->errorLineNumber = __LINE__ + 1;
-		char *newMemory = (char*)realloc(port->readBuffer, bytesToRead);
-		if (!newMemory)
-		{
-			port->errorNumber = errno;
-			return -1;
-		}
-		port->readBuffer = newMemory;
-		port->readBufferLength = bytesToRead;
-	}
+	if ((bytesToRead < 0) || (offset < 0))
+		return -1;
+
+	// Fetch a pointer to the underlying data buffer
+	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
+	int numBytesRead = -1, numBytesReadTotal = offset, ioctlResult = 0;
+	int bytesRemaining = ((bytesToRead + offset) > bufferLength) ? (bufferLength - offset) : bytesToRead;
+	jbyte *readBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	if (checkJniError(env, __LINE__ - 1) || !readBuffer)
+		return -1;
 
 	// Infinite blocking mode specified, don't return until we have completely finished the read
 	if (((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING) > 0) && (readTimeout == 0))
@@ -924,7 +921,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		{
 			// Attempt to read some number of bytes from the serial port
 			port->errorLineNumber = __LINE__ + 1;
-			do { errno = 0; numBytesRead = read(port->handle, port->readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
+			do { errno = 0; numBytesRead = read(port->handle, readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
 			{
 				// If all bytes were not successfully read, it is an error
@@ -953,7 +950,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		do
 		{
 			port->errorLineNumber = __LINE__ + 1;
-			do { errno = 0; numBytesRead = read(port->handle, port->readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
+			do { errno = 0; numBytesRead = read(port->handle, readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
 			if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
 			{
 				// If any bytes were read, return those bytes
@@ -974,26 +971,34 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	{
 		// Read from the port
 		port->errorLineNumber = __LINE__ + 1;
-		do { errno = 0; numBytesRead = read(port->handle, port->readBuffer, bytesToRead); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
+		do { errno = 0; numBytesRead = read(port->handle, readBuffer + numBytesReadTotal, bytesRemaining); port->errorNumber = errno; } while ((numBytesRead < 0) && (errno == EINTR));
 		if ((numBytesRead == -1) || ((numBytesRead == 0) && (ioctl(port->handle, FIONREAD, &ioctlResult) == -1)))
 			numBytesRead = -1;
 		else
-			numBytesReadTotal = numBytesRead;
+			numBytesReadTotal += numBytesRead;
 	}
 
 	// Return number of bytes read if successful
-	(*env)->SetByteArrayRegion(env, buffer, offset, numBytesReadTotal, (jbyte*)port->readBuffer);
+	(*env)->ReleasePrimitiveArrayCritical(env, buffer, readBuffer, (numBytesRead == -1) ? JNI_ABORT : 0);
 	checkJniError(env, __LINE__ - 1);
-	return (numBytesRead == -1) ? -1 : numBytesReadTotal;
+	return (numBytesRead == -1) ? -1 : (numBytesReadTotal - offset);
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToWrite, jint offset, jint timeoutMode)
 {
-	// Retrieve port parameters from the Java class
+	// Ensure that a positive number of bytes was passed in to write
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if ((bytesToWrite < 0) || (offset < 0))
+		return -1;
+
+	// Fetch a pointer to the underlying data buffer
+	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
+	if ((bytesToWrite + offset) > bufferLength)
+		bytesToWrite = bufferLength - offset;
 	int writeBlockingMode = (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING);
-	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, 0);
-	if (checkJniError(env, __LINE__ - 1)) return -1;
+	jbyte *writeBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	if (checkJniError(env, __LINE__ - 1) || !writeBuffer)
+		return -1;
 
 	// Write to the port
 	int numBytesWritten;
@@ -1009,7 +1014,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		tcdrain(port->handle);
 
 	// Return the number of bytes written if successful
-	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
+	(*env)->ReleasePrimitiveArrayCritical(env, buffer, writeBuffer, JNI_ABORT);
 	checkJniError(env, __LINE__ - 1);
 	return numBytesWritten;
 }

@@ -71,9 +71,9 @@ OBJECTSosx64                := $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUIL
 OBJECTSosxaarch64           := $(BUILD_DIR)/osx_aarch64/SerialPort_Posix.o $(BUILD_DIR)/osx_aarch64/PosixHelperFunctions.o
 FLAGSlinux32                := -m32
 FLAGSlinux64                := -m64
-FLAGSarmv5                  := -marm -mthumb-interwork -march=armv5 -mfpu=none -mfloat-abi=soft
-FLAGSarmv6                  := -marm -mthumb-interwork -march=armv6 -mfpu=none -mfloat-abi=soft
-FLAGSarmv7                  := -mthumb -mthumb-interwork -march=armv7 -mfpu=none -mfloat-abi=soft
+FLAGSarmv5                  := -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
+FLAGSarmv6                  := -marm -mthumb-interwork -march=armv6+nofp -mfloat-abi=soft
+FLAGSarmv7                  := -mthumb -mthumb-interwork -march=armv7+nofp -mfloat-abi=soft
 FLAGSarmv8_32               := -mthumb -mthumb-interwork -march=armv8-a
 FLAGSarmv8_64               := -march=armv8-a
 FLAGSppc64le                := -mtune=powerpc64le -m64

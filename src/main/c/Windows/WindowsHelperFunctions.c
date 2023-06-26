@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jun 23, 2023
+ *  Last Updated on:  Jun 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -122,8 +122,6 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port->friendlyName);
 	free(port->serialNumber);
 	free(port->portDescription);
-	if (port->readBuffer)
-		free(port->readBuffer);
 
 	// Move up all remaining ports in the serial port listing
 	for (int i = 0; i < vector->length; ++i)

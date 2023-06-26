@@ -2,6 +2,7 @@
 bin
 site
 build
+toolchain
 
 # Generated files for JNI
 src/main/c/com_fazecast_jSerialComm_SerialPort.h

@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jun 19, 2023
+ *  Last Updated on:  Jun 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -33,9 +33,8 @@
 typedef struct serialPort
 {
 	void *handle;
-	char *readBuffer;
 	wchar_t *portPath, *friendlyName, *portDescription, *portLocation, *serialNumber;
-	int errorLineNumber, errorNumber, readBufferLength, vendorID, productID;
+	int errorLineNumber, errorNumber, vendorID, productID;
 	volatile char enumerated, eventListenerRunning;
 	char ftdiSerialNumber[16];
 } serialPort;
