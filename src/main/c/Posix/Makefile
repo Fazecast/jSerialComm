@@ -2,7 +2,6 @@
 COMPILE_LINUX_X86           := i486-unknown-linux-gnu-gcc
 COMPILE_LINUX_X86_64        := x86_64-unknown-linux-gnu-gcc
 COMPILE_ARM32               := arm-unknown-linux-gnueabi-gcc
-COMPILE_ARM32HF             := arm-unknown-linux-gnueabihf-gcc
 COMPILE_ARM64               := aarch64-unknown-linux-gnu-gcc
 COMPILE_PPC64LE             := powerpc64le-unknown-linux-gnu-gcc
 COMPILE_SOLARIS_X86         := x86_64-sun-solaris2.10-gcc
@@ -54,9 +53,7 @@ OBJECTSlinux32              := $(BUILD_DIR)/linux_x86/SerialPort_Posix.o $(BUILD
 OBJECTSlinux64              := $(BUILD_DIR)/linux_x86_64/SerialPort_Posix.o $(BUILD_DIR)/linux_x86_64/PosixHelperFunctions.o
 OBJECTSarmv5                := $(BUILD_DIR)/armv5/SerialPort_Posix.o $(BUILD_DIR)/armv5/PosixHelperFunctions.o
 OBJECTSarmv6                := $(BUILD_DIR)/armv6/SerialPort_Posix.o $(BUILD_DIR)/armv6/PosixHelperFunctions.o
-OBJECTSarmv6hf              := $(BUILD_DIR)/armv6hf/SerialPort_Posix.o $(BUILD_DIR)/armv6hf/PosixHelperFunctions.o
 OBJECTSarmv7                := $(BUILD_DIR)/armv7/SerialPort_Posix.o $(BUILD_DIR)/armv7/PosixHelperFunctions.o
-OBJECTSarmv7hf              := $(BUILD_DIR)/armv7hf/SerialPort_Posix.o $(BUILD_DIR)/armv7hf/PosixHelperFunctions.o
 OBJECTSarmv8_32             := $(BUILD_DIR)/armv8_32/SerialPort_Posix.o $(BUILD_DIR)/armv8_32/PosixHelperFunctions.o
 OBJECTSarmv8_64             := $(BUILD_DIR)/armv8_64/SerialPort_Posix.o $(BUILD_DIR)/armv8_64/PosixHelperFunctions.o
 OBJECTSppc64le              := $(BUILD_DIR)/ppc64le/SerialPort_Posix.o $(BUILD_DIR)/ppc64le/PosixHelperFunctions.o
@@ -74,11 +71,9 @@ OBJECTSosx64                := $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUIL
 OBJECTSosxaarch64           := $(BUILD_DIR)/osx_aarch64/SerialPort_Posix.o $(BUILD_DIR)/osx_aarch64/PosixHelperFunctions.o
 FLAGSlinux32                := -m32
 FLAGSlinux64                := -m64
-FLAGSarmv5                  := -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
-FLAGSarmv6                  := -marm -mthumb-interwork -march=armv6 -mfloat-abi=soft
-FLAGSarmv6hf                := -marm -mthumb-interwork -march=armv6+fp -mfloat-abi=hard
-FLAGSarmv7                  := -mthumb -mthumb-interwork -march=armv7 -mfloat-abi=soft
-FLAGSarmv7hf                := -mthumb -mthumb-interwork -march=armv7+fp -mfloat-abi=hard
+FLAGSarmv5                  := -marm -mthumb-interwork -march=armv5 -mfpu=none -mfloat-abi=soft
+FLAGSarmv6                  := -marm -mthumb-interwork -march=armv6 -mfpu=none -mfloat-abi=soft
+FLAGSarmv7                  := -mthumb -mthumb-interwork -march=armv7 -mfpu=none -mfloat-abi=soft
 FLAGSarmv8_32               := -mthumb -mthumb-interwork -march=armv8-a
 FLAGSarmv8_64               := -march=armv8-a
 FLAGSppc64le                := -mtune=powerpc64le -m64
@@ -96,7 +91,7 @@ FLAGSosx64                  := -arch x86_64 -m64
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64 openbsd openbsd32 openbsd64
+.PHONY: all clean linux linux32 linux64 arm armv5 armv6 armv7 armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64 openbsd openbsd32 openbsd64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
@@ -114,7 +109,7 @@ linux : linux32 linux64
 	$(DELETE) -rf ../*.h
 
 # Build all ARM libraries
-arm : armv5 armv6 armv6hf armv7 armv7hf armv8_32 armv8_64
+arm : armv5 armv6 armv7 armv8_32 armv8_64
 	$(DELETE) -rf "`readlink -f $(BUILD_DIR)`"
 	$(DELETE) -rf ../*.h
 
@@ -158,15 +153,9 @@ armv5 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv5 $(BUILD_DIR)/armv5/$(LIBRARY_NAME_P
 armv6 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv6 $(BUILD_DIR)/armv6/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv6/*.o
 	$(COPY) $(BUILD_DIR)/armv6/*.* $(RESOURCE_DIR_LINUX)/armv6/
-armv6hf : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv6hf $(BUILD_DIR)/armv6hf/$(LIBRARY_NAME_POSIX)
-	$(DELETE) -rf $(BUILD_DIR)/armv6hf/*.o
-	$(COPY) $(BUILD_DIR)/armv6hf/*.* $(RESOURCE_DIR_LINUX)/armv6hf/
 armv7 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv7 $(BUILD_DIR)/armv7/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv7/*.o
 	$(COPY) $(BUILD_DIR)/armv7/*.* $(RESOURCE_DIR_LINUX)/armv7/
-armv7hf : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv7hf $(BUILD_DIR)/armv7hf/$(LIBRARY_NAME_POSIX)
-	$(DELETE) -rf $(BUILD_DIR)/armv7hf/*.o
-	$(COPY) $(BUILD_DIR)/armv7hf/*.* $(RESOURCE_DIR_LINUX)/armv7hf/
 armv8_32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv8_32 $(BUILD_DIR)/armv8_32/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv8_32/*.o
 	$(COPY) $(BUILD_DIR)/armv8_32/*.* $(RESOURCE_DIR_LINUX)/armv8_32/
@@ -236,11 +225,7 @@ $(BUILD_DIR)/armv5 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv6 :
 	$(MKDIR) -p $@
-$(BUILD_DIR)/armv6hf :
-	$(MKDIR) -p $@
 $(BUILD_DIR)/armv7 :
-	$(MKDIR) -p $@
-$(BUILD_DIR)/armv7hf :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv8_32 :
 	$(MKDIR) -p $@
@@ -284,12 +269,8 @@ $(BUILD_DIR)/armv5/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv5)
 	$(COMPILE_ARM32) $(LDFLAGS_POSIX) $(FLAGSarmv5) -o $@ $(OBJECTSarmv5) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv6/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv6)
 	$(COMPILE_ARM32) $(LDFLAGS_POSIX) $(FLAGSarmv6) -o $@ $(OBJECTSarmv6) $(LIBRARIES_POSIX)
-$(BUILD_DIR)/armv6hf/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv6hf)
-	$(COMPILE_ARM32HF) $(LDFLAGS_POSIX) $(FLAGSarmv6hf) -o $@ $(OBJECTSarmv6hf) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv7/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv7)
 	$(COMPILE_ARM32) $(LDFLAGS_POSIX) $(FLAGSarmv7) -o $@ $(OBJECTSarmv7) $(LIBRARIES_POSIX)
-$(BUILD_DIR)/armv7hf/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv7hf)
-	$(COMPILE_ARM32HF) $(LDFLAGS_POSIX) $(FLAGSarmv7hf) -o $@ $(OBJECTSarmv7hf) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv8_32/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv8_32)
 	$(COMPILE_ARM32) $(LDFLAGS_POSIX) $(FLAGSarmv8_32) -o $@ $(OBJECTSarmv8_32) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv8_64)
@@ -330,12 +311,8 @@ $(BUILD_DIR)/armv5/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv5) -c $< -o $@
 $(BUILD_DIR)/armv6/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv6) -c $< -o $@
-$(BUILD_DIR)/armv6hf/%.o : %.c
-	$(COMPILE_ARM32HF) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv6hf) -c $< -o $@
 $(BUILD_DIR)/armv7/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv7) -c $< -o $@
-$(BUILD_DIR)/armv7hf/%.o : %.c
-	$(COMPILE_ARM32HF) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv7hf) -c $< -o $@
 $(BUILD_DIR)/armv8_32/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv8_32) -c $< -o $@
 $(BUILD_DIR)/armv8_64/%.o : %.c
