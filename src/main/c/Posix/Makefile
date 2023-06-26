@@ -100,9 +100,10 @@ FLAGSosxaarch64             := -arch arm64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
-# Default build target does nothing
-all :
-	$(PRINT) You must specify either linux, arm, powerpc, solaris, freebsd, openbsd, osx, or android!
+# Default build target builds everything EXCEPT android
+all : linux arm powerpc solaris freebsd openbsd osx
+
+# Clean build rule
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
 	$(DELETE) -rf ../*.h
