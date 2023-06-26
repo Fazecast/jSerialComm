@@ -8,6 +8,7 @@ buildscript {
 plugins {
   id 'maven-publish'
   id 'biz.aQute.bnd.builder' version '6.0.0'
+  id 'signing'
 }
 
 group = 'com.fazecast'
