@@ -1,6 +1,6 @@
 /*++
 
-Copyright © 2001-2011 Future Technology Devices International Limited
+Copyright ï¿½ 2001-2011 Future Technology Devices International Limited
 
 THIS SOFTWARE IS PROVIDED BY FUTURE TECHNOLOGY DEVICES INTERNATIONAL LIMITED "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -43,7 +43,7 @@ kernel & user mode
 
 #ifdef _WIN32
 // Compiling on Windows
-#include <windows.h>
+#include <Windows.h>
 
 // The following ifdef block is the standard way of creating macros
 // which make exporting from a DLL simpler.  All files within this DLL

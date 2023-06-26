@@ -2,7 +2,7 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Jun 19, 2023
+ *  Last Updated on:  Jun 23, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -28,7 +28,7 @@
 #define _WIN32_WINNT _WIN32_WINNT_WINXP
 #define NTDDI_VERSION NTDDI_WINXP
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <Windows.h>
 #include <direct.h>
 #include <shellapi.h>
 #include <stdlib.h>

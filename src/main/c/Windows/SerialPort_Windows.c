@@ -29,14 +29,14 @@
 #define NTDDI_VERSION NTDDI_WINXP
 #define WIN32_LEAN_AND_MEAN
 #include <initguid.h>
-#include <windows.h>
+#include <Windows.h>
 #include <delayimp.h>
 #include <direct.h>
 #include <ntddmodm.h>
 #include <ntddser.h>
 #include <stdlib.h>
 #include <string.h>
-#include <setupapi.h>
+#include <SetupAPI.h>
 #include <devpkey.h>
 #include <devguid.h>
 #include "ftdi/ftd2xx.h"
