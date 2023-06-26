@@ -1,17 +1,17 @@
 # Compiler tools, commands, and flags
-COMPILE_X86         := x86-pc-windows-msvc-cl
-COMPILE_X64         := x64-pc-windows-msvc-cl
-COMPILE_ARM         := aarch-pc-windows-msvc-cl
-COMPILE_ARM64       := aarch64-pc-windows-msvc-cl
-LINK_X86            := x86-pc-windows-msvc-link
-LINK_X64            := x64-pc-windows-msvc-link
-LINK_ARM            := aarch-pc-windows-msvc-link
-LINK_ARM64          := aarch64-pc-windows-msvc-link
-CFLAGS              := /c /O2 /GF /MT /EHsc /J /nologo /TC
-LDFLAGS             := /DLL /NOLOGO
+COMPILE_X86         := i686-pc-win32-msvc-gcc
+COMPILE_X64         := x86_64-pc-win32-msvc-gcc
+COMPILE_ARM         := arm-pc-win32-msvc-gcc
+COMPILE_ARM64       := aarch64-pc-win32-msvc-gcc
+LINK_X86            := i686-pc-win32-msvc-ld
+LINK_X64            := x86_64-pc-win32-msvc-ld
+LINK_ARM            := arm-pc-win32-msvc-ld
+LINK_ARM64          := aarch64-pc-win32-msvc-ld
+CFLAGS              := -Os -flto
+LDFLAGS             := -flto -Wl,/DLL
 JDK_HOME            := $(shell echo "`dirname $$(dirname $$(readlink -f $$(which javac)))`")
-INCLUDES            := /I"$(JDK_HOME)/include" /I"$(JDK_HOME)/include/win32"
-LIBRARIES           := advapi32.lib setupapi.lib shell32.lib
+INCLUDES            := -I"$(JDK_HOME)/include" -Iwin32
+LIBRARIES           := -lAdvAPI32 -lSetupAPI -lshell32
 DELETE              := @rm
 MKDIR               := @mkdir
 COPY                := @cp
@@ -74,13 +74,13 @@ $(JAVA_CLASS_DIR) :
 
 # Build rules for all libraries
 $(BUILD_DIR)/x86/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
-	$(LINK_X86) $(LDFLAGS) /OUT:$@ $(OBJECTSx86) $(LIBRARIES)
+	$(LINK_X86) $(LDFLAGS) -o $@ $(OBJECTSx86) $(LIBRARIES)
 $(BUILD_DIR)/x86_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx64)
-	$(LINK_X64) $(LDFLAGS) /OUT:$@ $(OBJECTSx64) $(LIBRARIES)
+	$(LINK_X64) $(LDFLAGS) -o $@ $(OBJECTSx64) $(LIBRARIES)
 $(BUILD_DIR)/armv7/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm)
-	$(LINK_ARM) $(LDFLAGS) /OUT:$@ $(OBJECTSarm) $(LIBRARIES)
+	$(LINK_ARM) $(LDFLAGS) -o $@ $(OBJECTSarm) $(LIBRARIES)
 $(BUILD_DIR)/aarch64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm64)
-	$(LINK_ARM64) $(LDFLAGS) /OUT:$@ $(OBJECTSarm64) $(LIBRARIES)
+	$(LINK_ARM64) $(LDFLAGS) -o $@ $(OBJECTSarm64) $(LIBRARIES)
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/x86/%.o : %.c
