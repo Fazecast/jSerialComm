@@ -25,7 +25,7 @@ jobs:
       - name: Set up Java build environment
         uses: actions/setup-java@v3
         with:
-          distribution: 'oracle'
+          distribution: 'zulu'
           java-version: '11'
 
       - name: Build library using Gradle
