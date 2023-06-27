@@ -9,7 +9,7 @@ on:
         default: '3.?.?'
 
 jobs:
-  build:
+  buildpublish:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}"
@@ -33,11 +33,7 @@ jobs:
         with:
           gradle-version: 8.1.1
           arguments: build
-  
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
+
       - name: Publish library using Gradle
         uses: gradle/gradle-build-action@v2.4.2
         env:
@@ -65,5 +61,5 @@ jobs:
           tag_name: "v${{ github.event.inputs.releaseversion }}"
           release_name: "jSerialComm v${{ github.event.inputs.releaseversion }}"
           body: ${{ steps.changelog.outputs.changelog }}
-          draft: false
+          draft: true
           prerelease: false
