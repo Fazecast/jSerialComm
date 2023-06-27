@@ -19,7 +19,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: fazecast/jserialcomm:builder
-          options: --user root --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
+          options: --user toolchain --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
           run: /home/toolchain/compile.sh all
 
       - name: Set up Java build environment
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Publish library using Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v2.4.2
         env:
           MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
