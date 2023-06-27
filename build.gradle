@@ -160,26 +160,16 @@ publishing {
       def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
       url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
       credentials {
-        username = System.getenv("MAVEN_USERNAME")
-        password = System.getenv("MAVEN_PASSWORD")
-      }
-    }
-    maven {
-      name = "GitHubPackages"
-      url = "https://maven.pkg.github.com/fazecast/jserialcomm"
-      credentials {
-        username = System.getenv("GITHUB_ACTOR")
-        password = System.getenv("GITHUB_TOKEN")
+        username = project.findProperty("ossrhUsername") ?: System.getenv("MAVEN_USERNAME")
+        password = project.findProperty("ossrhPassword") ?: System.getenv("MAVEN_PASSWORD")
       }
     }
   }
 }
 
 signing {
-//  def signingKeyId = System.getenv("SIGNING_KEY_ID")
   def signingKey = System.getenv("SIGNING_KEY")
   def signingPassword = System.getenv("SIGNING_PASSWORD")
   useInMemoryPgpKeys(signingKey, signingPassword)
-//  useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
   sign publishing.publications.maven
 }
