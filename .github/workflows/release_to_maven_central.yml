@@ -1,21 +1,17 @@
 name: Release to Maven Central
 
-on:
-  workflow_dispatch:
-    inputs:
-      releaseversion:
-        description: 'Release version'
-        required: true
-        default: '3.?.?'
+on: [workflow_dispatch]
 
 jobs:
   buildpublish:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}"
-
       - name: Check out source code
         uses: actions/checkout@v3
+
+      - name: Get source code version number
+        id: gitversion
+        run: echo "version=$(grep -o "versionString = .*;" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
@@ -32,6 +28,8 @@ jobs:
 
       - name: Build library using Gradle
         uses: gradle/gradle-build-action@v2.4.2
+        env:
+          LIB_VERSION: ${{ steps.gitversion.outputs.version }}
         with:
           gradle-version: 8.1.1
           arguments: build
@@ -39,6 +37,7 @@ jobs:
       - name: Publish library using Gradle
         uses: gradle/gradle-build-action@v2.4.2
         env:
+          LIB_VERSION: ${{ steps.gitversion.outputs.version }}
           MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
           SIGNING_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
@@ -57,11 +56,11 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GRADLE_UPDATE_PAT }}
-          name: "jSerialComm v${{ github.event.inputs.releaseversion }}"
-          tag: "v${{ github.event.inputs.releaseversion }}"
+          name: "jSerialComm v${{ steps.gitversion.outputs.version }}"
+          tag: "v${{ steps.gitversion.outputs.version }}"
           body: ${{ steps.changelog.outputs.changelog }}
           commit: "master"
-          artifacts: "build/libs/jSerialComm-${{ github.event.inputs.releaseversion }}.jar"
+          artifacts: "build/libs/jSerialComm-${{ steps.gitversion.outputs.version }}.jar"
           generateReleaseNotes: false
           prerelease: false
           makeLatest: true
@@ -72,7 +71,7 @@ jobs:
         with:
           ref: gh-pages
           path: documentation
-      - run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ github.event.inputs.releaseversion }}.jar/g" documentation/index.html
+      - run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@v2.6.0
@@ -81,4 +80,4 @@ jobs:
           BRANCH: gh-pages
           FOLDER: documentation
           GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
-          MESSAGE: "Updated docs to v${{ github.event.inputs.releaseversion }}"
+          MESSAGE: "Updated docs to v${{ steps.gitversion.outputs.version }}"

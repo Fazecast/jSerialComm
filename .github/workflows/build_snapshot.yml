@@ -16,8 +16,12 @@ jobs:
         id: gitsha
         run: echo "sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
 
+      - name: Get source code version number
+        id: gitversion
+        run: echo "version=$(grep -o "versionString = .*;" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
+
       - name: Update library version string
-        run: sed -i "s/versionString = .*;/versionString = \"${{ steps.gitsha.outputs.sha }}-SNAPSHOT\";/g" src/main/java/com/fazecast/jSerialComm/SerialPort.java
+        run: sed -i "s/versionString = .*;/versionString = \"${{ steps.gitversion.outputs.version }}-${{ steps.gitsha.outputs.sha }}-SNAPSHOT\";/g" src/main/java/com/fazecast/jSerialComm/SerialPort.java
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
@@ -35,7 +39,7 @@ jobs:
       - name: Build SNAPSHOT using Gradle
         uses: gradle/gradle-build-action@v2.4.2
         env:
-          LIB_VERSION: ${{ steps.gitsha.outputs.sha }}-SNAPSHOT
+          LIB_VERSION: ${{ steps.gitversion.outputs.version }}-SNAPSHOT
         with:
           gradle-version: 8.1.1
           arguments: build
@@ -43,7 +47,7 @@ jobs:
       - name: Publish SNAPSHOT using Gradle
         uses: gradle/gradle-build-action@v2.4.2
         env:
-          LIB_VERSION: ${{ steps.gitsha.outputs.sha }}-SNAPSHOT
+          LIB_VERSION: ${{ steps.gitversion.outputs.version }}-SNAPSHOT
           MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
           SIGNING_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
