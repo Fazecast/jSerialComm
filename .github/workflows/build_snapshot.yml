@@ -17,5 +17,37 @@ jobs:
         run: echo "sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
 
       - name: Update library version string
-        run: echo "${{ steps.gitsha.outputs.sha }}-SNAPSHOT"
-        #TODO: sed SerialPort.java to update version to include githash-SNAPSHOT
+        run: sed -i "s/versionString = .*;/versionString = \"${{ steps.gitsha.outputs.sha }}-SNAPSHOT\";/g" src/main/java/com/fazecast/jSerialComm/SerialPort.java
+
+      - name: Build native libraries using Docker toolchain
+        uses: addnab/docker-run-action@v3
+        with:
+          image: fazecast/jserialcomm:builder
+          options: --user root --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
+          run: /home/toolchain/compile.sh libs
+
+      - name: Set up Java build environment
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Build SNAPSHOT using Gradle
+        uses: gradle/gradle-build-action@v2.4.2
+        env:
+          LIB_VERSION: ${{ steps.gitsha.outputs.sha }}-SNAPSHOT
+        with:
+          gradle-version: 8.1.1
+          arguments: build
+
+      - name: Publish SNAPSHOT using Gradle
+        uses: gradle/gradle-build-action@v2.4.2
+        env:
+          LIB_VERSION: ${{ steps.gitsha.outputs.sha }}-SNAPSHOT
+          MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        with:
+          gradle-version: 8.1.1
+          arguments: publish
