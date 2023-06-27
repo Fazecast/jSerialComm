@@ -1,0 +1,69 @@
+name: Release to Maven Central
+
+on:
+  workflow_dispatch:
+    inputs:
+      releaseversion:
+        description: 'Release version'
+        required: true
+        default: '3.?.?'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}!"
+      - uses: actions/checkout@v3
+
+      - name: Build native libraries using Docker toolchain
+        uses: addnab/docker-run-action@v3
+        with:
+          image: fazecast/jserialcomm:builder
+          options: --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
+          run: /home/toolchain/compile.sh all
+
+      - name: Set up Java build environment
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'oracle'
+          java-version: '11'
+
+      - name: Build library using Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.1
+          arguments: build
+  
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish library using Gradle
+        uses: gradle/gradle-build-action@v2
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
+        with:
+          gradle-version: 8.1
+          arguments: publish
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.1.0
+        with:
+          myToken: ${{ secrets.GRADLE_UPDATE_PAT }}
+          fetch: false
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
+        with:
+          tag_name: "v${{ github.event.inputs.releaseversion }}"
+          release_name: "jSerialComm v${{ github.event.inputs.releaseversion }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
