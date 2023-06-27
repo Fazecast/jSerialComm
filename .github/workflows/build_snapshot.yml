@@ -1,0 +1,21 @@
+name: Generate Snapshot
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  publishsnapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v3
+
+      - name: Get latest commit SHA
+        id: gitsha
+        run: echo "sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT"
+
+      - name: Update library version string
+        run: echo "${{ steps.gitsha.outputs.sha }}-SNAPSHOT"
+        #TODO: sed SerialPort.java to update version to include githash-SNAPSHOT

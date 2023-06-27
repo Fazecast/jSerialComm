@@ -13,7 +13,7 @@ plugins {
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = '2.10.0'
+version = System.getenv("LIB_VERSION") ?: '2.10.0'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 sourceCompatibility = 6
@@ -176,6 +176,7 @@ publishing {
 signing {
   def signingKey = System.getenv("SIGNING_KEY")
   def signingPassword = System.getenv("SIGNING_PASSWORD")
-  useInMemoryPgpKeys(signingKey, signingPassword)
+  if (signingKey && signingPassword)
+    useInMemoryPgpKeys(signingKey, signingPassword)
   sign publishing.publications.maven
 }

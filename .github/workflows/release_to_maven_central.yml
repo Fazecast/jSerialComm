@@ -13,7 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}"
-      - uses: actions/checkout@v3
+
+      - name: Check out source code
+        uses: actions/checkout@v3
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
@@ -64,3 +66,19 @@ jobs:
           prerelease: false
           makeLatest: true
           draft: true
+
+      - name: Update Javadoc library documentation
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: documentation
+      - run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ github.event.inputs.releaseversion }}.jar/g" documentation/index.html
+
+      - name: Publish new library documentation
+        uses: s0/git-publish-subdir-action@v2.6.0
+        with:
+          REPO: self
+          BRANCH: gh-pages
+          FOLDER: documentation
+          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
+          MESSAGE: "Updated docs to v${{ github.event.inputs.releaseversion }}"
