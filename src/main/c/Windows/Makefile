@@ -52,12 +52,16 @@ clean :
 
 # Build architecture-specific Windows libraries
 win32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/x86 $(BUILD_DIR)/x86/$(LIBRARY_NAME)
+	$(MKDIR) -p $(RESOURCE_DIR)/x86/
 	$(COPY) $(BUILD_DIR)/x86/*.dll $(RESOURCE_DIR)/x86/
 win64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/x86_64 $(BUILD_DIR)/x86_64/$(LIBRARY_NAME)
+	$(MKDIR) -p $(RESOURCE_DIR)/x86_64
 	$(COPY) $(BUILD_DIR)/x86_64/*.dll $(RESOURCE_DIR)/x86_64
 winarm : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv7 $(BUILD_DIR)/armv7/$(LIBRARY_NAME)
+	$(MKDIR) -p $(RESOURCE_DIR)/armv7/
 	$(COPY) $(BUILD_DIR)/armv7/*.dll $(RESOURCE_DIR)/armv7/
 winarm64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/aarch64 $(BUILD_DIR)/aarch64/$(LIBRARY_NAME)
+	$(MKDIR) -p $(RESOURCE_DIR)/aarch64/
 	$(COPY) $(BUILD_DIR)/aarch64/*.dll $(RESOURCE_DIR)/aarch64/
 
 # Rule to create build directories

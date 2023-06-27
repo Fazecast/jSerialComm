@@ -141,75 +141,95 @@ osx : osx32 osx64 osxaarch64
 # Build architecture-specific Linux libraries
 linux32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/linux_x86 $(BUILD_DIR)/linux_x86/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/linux_x86/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/x86/
 	$(COPY) $(BUILD_DIR)/linux_x86/*.* $(RESOURCE_DIR_LINUX)/x86/
 linux64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/linux_x86_64 $(BUILD_DIR)/linux_x86_64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/linux_x86_64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/x86_64/
 	$(COPY) $(BUILD_DIR)/linux_x86_64/*.* $(RESOURCE_DIR_LINUX)/x86_64/
 
 # Build architecture-specific ARM libraries
 armv5 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv5 $(BUILD_DIR)/armv5/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv5/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/armv5/
 	$(COPY) $(BUILD_DIR)/armv5/*.* $(RESOURCE_DIR_LINUX)/armv5/
 armv6 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv6 $(BUILD_DIR)/armv6/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv6/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/armv6/
 	$(COPY) $(BUILD_DIR)/armv6/*.* $(RESOURCE_DIR_LINUX)/armv6/
 armv7 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv7 $(BUILD_DIR)/armv7/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv7/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/armv7/
 	$(COPY) $(BUILD_DIR)/armv7/*.* $(RESOURCE_DIR_LINUX)/armv7/
 armv8_32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv8_32 $(BUILD_DIR)/armv8_32/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv8_32/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/armv8_32/
 	$(COPY) $(BUILD_DIR)/armv8_32/*.* $(RESOURCE_DIR_LINUX)/armv8_32/
 armv8_64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv8_64 $(BUILD_DIR)/armv8_64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/armv8_64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/armv8_64/
 	$(COPY) $(BUILD_DIR)/armv8_64/*.* $(RESOURCE_DIR_LINUX)/armv8_64/
 
 # Build architecture-specific POWERPC libraries
 ppc64le : $(JAVA_CLASS_DIR) $(BUILD_DIR)/ppc64le $(BUILD_DIR)/ppc64le/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/ppc64le/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/ppc64le/
 	$(COPY) $(BUILD_DIR)/ppc64le/*.* $(RESOURCE_DIR_LINUX)/ppc64le/
 
 # Build architecture-specific Solaris libraries
 solaris32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_x86 $(BUILD_DIR)/solaris_x86/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/solaris_x86/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_SOLARIS)/x86/
 	$(COPY) $(BUILD_DIR)/solaris_x86/*.* $(RESOURCE_DIR_SOLARIS)/x86/
 solaris64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_x86_64 $(BUILD_DIR)/solaris_x86_64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/solaris_x86_64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_SOLARIS)/x86_64/
 	$(COPY) $(BUILD_DIR)/solaris_x86_64/*.* $(RESOURCE_DIR_SOLARIS)/x86_64/
 solarisSparc32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_sparc32 $(BUILD_DIR)/solaris_sparc32/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/solaris_sparc32/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_SOLARIS)/sparcv8plus_32/
 	$(COPY) $(BUILD_DIR)/solaris_sparc32/*.* $(RESOURCE_DIR_SOLARIS)/sparcv8plus_32/
 solarisSparc64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/solaris_sparc64 $(BUILD_DIR)/solaris_sparc64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/solaris_sparc64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_SOLARIS)/sparcv9_64/
 	$(COPY) $(BUILD_DIR)/solaris_sparc64/*.* $(RESOURCE_DIR_SOLARIS)/sparcv9_64/
 
 # Build architecture-specific FreeBSD libraries
 freebsd32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/freebsd_x86 $(BUILD_DIR)/freebsd_x86/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/freebsd_x86/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_FREEBSD)/x86/
 	$(COPY) $(BUILD_DIR)/freebsd_x86/*.* $(RESOURCE_DIR_FREEBSD)/x86/
 freebsd64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/freebsd_x86_64 $(BUILD_DIR)/freebsd_x86_64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/freebsd_x86_64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_FREEBSD)/x86_64/
 	$(COPY) $(BUILD_DIR)/freebsd_x86_64/*.* $(RESOURCE_DIR_FREEBSD)/x86_64/
 freebsdArm64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/freebsd_arm64 $(BUILD_DIR)/freebsd_arm64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/freebsd_arm64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_FREEBSD)/arm64/
 	$(COPY) $(BUILD_DIR)/freebsd_arm64/*.* $(RESOURCE_DIR_FREEBSD)/arm64/
 
 # Build architecture-specific OpenBSD libraries
 openbsd32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/openbsd_x86 $(BUILD_DIR)/openbsd_x86/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/openbsd_x86/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_OPENBSD)/x86/
 	$(COPY) $(BUILD_DIR)/openbsd_x86/*.* $(RESOURCE_DIR_OPENBSD)/x86/
 openbsd64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/openbsd_amd64 $(BUILD_DIR)/openbsd_amd64/$(LIBRARY_NAME_POSIX)
 	$(DELETE) -rf $(BUILD_DIR)/openbsd_amd64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_OPENBSD)/amd64/
 	$(COPY) $(BUILD_DIR)/openbsd_amd64/*.* $(RESOURCE_DIR_OPENBSD)/amd64/
 
 # Build architecture-specific OSX libraries
 osx32 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86 $(BUILD_DIR)/osx_x86/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_OSX)/x86/
 	$(COPY) $(BUILD_DIR)/osx_x86/*.* $(RESOURCE_DIR_OSX)/x86/
 osx64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_x86_64 $(BUILD_DIR)/osx_x86_64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_x86_64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_OSX)/x86_64/
 	$(COPY) $(BUILD_DIR)/osx_x86_64/*.* $(RESOURCE_DIR_OSX)/x86_64/
 osxaarch64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/osx_aarch64 $(BUILD_DIR)/osx_aarch64/$(LIBRARY_NAME_APPLE)
 	$(DELETE) -rf $(BUILD_DIR)/osx_aarch64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_OSX)/aarch64/
 	$(COPY) $(BUILD_DIR)/osx_aarch64/*.* $(RESOURCE_DIR_OSX)/aarch64/
 
 # Build Android libraries
