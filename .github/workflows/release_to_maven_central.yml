@@ -20,7 +20,7 @@ jobs:
         with:
           image: fazecast/jserialcomm:builder
           options: --user root --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
-          run: /home/toolchain/compile.sh all
+          run: /home/toolchain/compile.sh libs
 
       - name: Set up Java build environment
         uses: actions/setup-java@v3
