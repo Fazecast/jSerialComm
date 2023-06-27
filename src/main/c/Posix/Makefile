@@ -10,11 +10,11 @@ COMPILE_OSX_X86             := o32-clang
 COMPILE_OSX_X86_64          := o64-clang
 COMPILE_OSX_ARM64           := oa64-clang
 COMPILE_ANDROID             := ndk-build
-COMPILE_FREEBSD_X86         := clang -target i386-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/i386-unknown-freebsd11.2
-COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/x86_64-unknown-freebsd11.2
-COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd11.2 --sysroot=$(HOME)/x-tools/arm64-unknown-freebsd11.2
-COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/i386-unknown-openbsd6.2
-COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd6.2 --sysroot=$(HOME)/x-tools/amd64-unknown-openbsd6.2
+COMPILE_FREEBSD_X86         := clang -target i386-unknown-freebsd11.2 --sysroot=$(shell echo "`dirname $$(dirname $$(dirname $$(which aarch64-unknown-linux-gnu-gcc)))`")/i386-unknown-freebsd11.2
+COMPILE_FREEBSD_X86_64      := clang -target x86_64-unknown-freebsd11.2 --sysroot=$(shell echo "`dirname $$(dirname $$(dirname $$(which aarch64-unknown-linux-gnu-gcc)))`")/x86_64-unknown-freebsd11.2
+COMPILE_FREEBSD_ARM64       := clang -target arm64-unknown-freebsd11.2 --sysroot=$(shell echo "`dirname $$(dirname $$(dirname $$(which aarch64-unknown-linux-gnu-gcc)))`")/arm64-unknown-freebsd11.2
+COMPILE_OPENBSD_X86         := clang -target i386-unknown-openbsd6.2 --sysroot=$(shell echo "`dirname $$(dirname $$(dirname $$(which aarch64-unknown-linux-gnu-gcc)))`")/i386-unknown-openbsd6.2
+COMPILE_OPENBSD_X86_64      := clang -target amd64-unknown-openbsd6.2 --sysroot=$(shell echo "`dirname $$(dirname $$(dirname $$(which aarch64-unknown-linux-gnu-gcc)))`")/amd64-unknown-openbsd6.2
 CFLAGS_POSIX                := -Wall -Wtrampolines -fPIC -Os -flto -static-libgcc -D_FORTIFY_SOURCE=0 -fuse-linker-plugin
 CFLAGS_APPLE                := -fPIC -Os -flto -D_FORTIFY_SOURCE=0
 LDFLAGS_POSIX               := -Os -flto -static-libgcc -shared -fuse-linker-plugin -s

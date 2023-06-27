@@ -12,14 +12,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}!"
+      - run: echo "Releasing jSerialComm v${{ github.event.inputs.releaseversion }}"
       - uses: actions/checkout@v3
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
         with:
           image: fazecast/jserialcomm:builder
-          options: --user toolchain --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
+          options: --user root --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
           run: /home/toolchain/compile.sh all
 
       - name: Set up Java build environment
@@ -29,7 +29,7 @@ jobs:
           java-version: '11'
 
       - name: Build library using Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v2.4.2
         with:
           gradle-version: 8.1
           arguments: build
