@@ -14,7 +14,7 @@ jobs:
 
       - name: Get latest commit SHA
         id: gitsha
-        run: echo "sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT"
+        run: echo "sha=$(git rev-parse --short ${{ github.sha }})" >> $GITHUB_OUTPUT
 
       - name: Update library version string
         run: echo "${{ steps.gitsha.outputs.sha }}-SNAPSHOT"
