@@ -52,12 +52,15 @@ jobs:
           myToken: ${{ secrets.GRADLE_UPDATE_PAT }}
 
       - name: Create GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: "v${{ github.event.inputs.releaseversion }}"
-          release_name: "jSerialComm v${{ github.event.inputs.releaseversion }}"
+          token: ${{ secrets.GRADLE_UPDATE_PAT }}
+          name: "jSerialComm v${{ github.event.inputs.releaseversion }}"
+          tag: "v${{ github.event.inputs.releaseversion }}"
           body: ${{ steps.changelog.outputs.changelog }}
-          draft: true
+          commit: "master"
+          artifacts: "build/libs/jSerialComm-${{ github.event.inputs.releaseversion }}.jar"
+          generateReleaseNotes: false
           prerelease: false
+          makeLatest: true
+          draft: true
