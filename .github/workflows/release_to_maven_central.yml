@@ -41,7 +41,6 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
           SIGNING_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           SIGNING_PASSWORD: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
-          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
         with:
           gradle-version: 8.1.1
           arguments: publish
@@ -51,7 +50,6 @@ jobs:
         uses: metcalfc/changelog-generator@v4.1.0
         with:
           myToken: ${{ secrets.GRADLE_UPDATE_PAT }}
-          fetch: false
 
       - name: Create GitHub release
         uses: actions/create-release@v1

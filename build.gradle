@@ -60,6 +60,7 @@ jar {
 
   bnd (
     '-exportcontents': 'com.fazecast.jSerialComm;version="' + archiveVersion.get() + '"',
+    'Import-Package': '!android.*',
     'Bundle-Name': 'jSerialComm',
     'Bundle-SymbolicName': 'com.fazecast.jSerialComm',
     'Bundle-Description': 'Java Serial Communications Library',
@@ -101,6 +102,11 @@ task sourcesJar(type: Jar) {
 
 artifacts {
   archives jar, javadocJar, sourcesJar, testJar
+}
+
+java {
+  withJavadocJar()
+  withSourcesJar()
 }
 
 publishing {
