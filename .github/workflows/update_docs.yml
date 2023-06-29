@@ -1,0 +1,29 @@
+name: Update Documentation
+
+on: [workflow_dispatch]
+
+jobs:
+  buildpublish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v3
+
+      - name: Get source code version number
+        id: gitversion
+        run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
+
+      - name: Check out library documentation
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: documentation
+
+      - name: Publish new library documentation
+        uses: s0/git-publish-subdir-action@v2.6.0
+        env:
+          REPO: self
+          BRANCH: gh-pages
+          FOLDER: documentation
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MESSAGE: "Updated docs to v${{ steps.gitversion.outputs.version }}"
