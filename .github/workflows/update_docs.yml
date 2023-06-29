@@ -3,7 +3,7 @@ name: Update Documentation
 on: [workflow_dispatch]
 
 jobs:
-  buildpublish:
+  update:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source code
@@ -13,11 +13,28 @@ jobs:
         id: gitversion
         run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
 
+      - name: Set up Java build environment
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Build library using Gradle
+        uses: gradle/gradle-build-action@v2.4.2
+        env:
+          LIB_VERSION: ${{ steps.gitversion.outputs.version }}
+        with:
+          gradle-version: 8.1.1
+          arguments: build
+
       - name: Check out library documentation
         uses: actions/checkout@v3
         with:
           ref: gh-pages
           path: documentation
+
+      - name: Update Javadoc library documentation
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@v2.6.0
@@ -25,5 +42,5 @@ jobs:
           REPO: self
           BRANCH: gh-pages
           FOLDER: documentation
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
           MESSAGE: "Updated docs to v${{ steps.gitversion.outputs.version }}"
