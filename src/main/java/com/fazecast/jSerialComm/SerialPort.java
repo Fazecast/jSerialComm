@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 27, 2023
+ *  Last Updated on:  Jun 29, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -98,7 +98,7 @@ public class SerialPort
 
 	// Static initializer loads correct native library for this machine
 	static private final ReentrantLock lock = new ReentrantLock(true);
-	static private final String versionString = "2.10.0";
+	static private final String versionString = "2.10.1";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false;
