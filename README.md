@@ -18,7 +18,7 @@ In order to use the ```jSerialComm``` library in your own project, you must simp
 include the JAR file in your build path and import it like any other
 Java package using ```import com.fazecast.jSerialComm.*;```.
 
-Alternatively, you can automatically add ```jSerialComm``` to your project as a
+Alternately, you can automatically add ```jSerialComm``` to your project as a
 dependency from the ```Maven Central Repository```. Use the following dependency
 declaration depending on your build system:
 
@@ -91,9 +91,8 @@ restrictive permissions, the library may be unable to determine that the
 underlying system architecture is ARM. In this case, you can force the
 library to disable its auto-detect functionality and instead directly specify
 the architecture using the Java ```os.arch_full``` system property. Acceptable
-values for this property are currently one of: ``armv5``, ``armv6``,
-``armv6-hf``, ``armv7``, ``armv7-hf``, ``armv8_32``, ``armv8_64``, ``ppc64le``,
-``x86``, or ``x86_64``.
+values for this property are currently one of: ``armv5``, ``armv6``, ``armv7``,
+``armv8_32``, ``armv8_64``, ``ppc64le``, ``x86``, or ``x86_64``.
 
 Additionally, some systems may block execution of libraries from the system
 temp folder. If you are experiencing this problem, you can specify a different,
@@ -134,6 +133,6 @@ recommended to simply use the pre-built ```jSerialComm``` library in your
 application. For installation/usage instructions, please skip to the [usage](#usage)
 section.
 
-If you do choose to build this library for your specific system, please follow
-the instructions in the [Building Tutorial](https://github.com/Fazecast/jSerialComm/wiki/Building-Tutorial)
-to set up the required native cross-compilation toolchains.
+If you do choose to build this library from source, please follow the instructions
+in the [Building Tutorial](https://github.com/Fazecast/jSerialComm/wiki/Building-Tutorial)
+to set up the required toolchains.
