@@ -11,7 +11,7 @@ jobs:
 
       - name: Get source code version number
         id: gitversion
-        run: echo "version=$(grep -o "versionString = .*;" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
@@ -66,16 +66,18 @@ jobs:
           makeLatest: true
           draft: true
 
-      - name: Update Javadoc library documentation
+      - name: Check out library documentation
         uses: actions/checkout@v3
         with:
           ref: gh-pages
           path: documentation
-      - run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
+
+      - name: Update Javadoc library documentation
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@v2.6.0
-        with:
+        env:
           REPO: self
           BRANCH: gh-pages
           FOLDER: documentation
