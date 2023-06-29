@@ -18,10 +18,10 @@ jobs:
 
       - name: Get source code version number
         id: gitversion
-        run: echo "version=$(grep -o "versionString = .*;" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
+        run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
 
       - name: Update library version string
-        run: sed -i "s/versionString = .*;/versionString = \"${{ steps.gitversion.outputs.version }}-${{ steps.gitsha.outputs.sha }}-SNAPSHOT\";/g" src/main/java/com/fazecast/jSerialComm/SerialPort.java
+        run: sed -i "s/versionString = [^, ;]*/versionString = \"${{ steps.gitversion.outputs.version }}-${{ steps.gitsha.outputs.sha }}-SNAPSHOT\"/g" src/main/java/com/fazecast/jSerialComm/SerialPort.java
 
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
