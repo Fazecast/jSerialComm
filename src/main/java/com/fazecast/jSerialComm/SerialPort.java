@@ -98,7 +98,7 @@ public class SerialPort
 
 	// Static initializer loads correct native library for this machine
 	static private final ReentrantLock lock = new ReentrantLock(true);
-	static private final String versionString = "2.10.1";
+	static private final String versionString = "2.10.2";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false;
@@ -178,9 +178,9 @@ public class SerialPort
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
 			else if (arch.contains("86") || arch.contains("amd"))
-				architectures = new String[] { "x86_64", "x86", "armv5", "armv6", "armv6hf", "armv7", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
+				architectures = new String[] { "x86_64", "x86", "armv5", "armv6", "armv7", "armv8_64", "armv8_32", "ppc64le" };
 			else
-				architectures = new String[] { "armv5", "armv6", "armv6hf", "armv7", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
+				architectures = new String[] { "armv5", "armv6", "armv7", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
 		}
 		else
 		{

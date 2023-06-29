@@ -13,7 +13,7 @@ plugins {
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = System.getenv("LIB_VERSION") ?: '2.10.1'
+version = System.getenv("LIB_VERSION") ?: '2.10.2'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 sourceCompatibility = 6
