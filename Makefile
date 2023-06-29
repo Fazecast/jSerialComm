@@ -1,5 +1,6 @@
 ifeq ($(OS),Windows_NT)
 	SHELL=cmd
+	UPDATE_SCRIPT := updateVersionNumber.bat
 	ROOT_DIR := $(shell cd)\..
 	ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
 		ARCH := amd64
@@ -12,6 +13,7 @@ ifeq ($(OS),Windows_NT)
 	endif
 else
 	ROOT_DIR := $(shell pwd)/..
+	UPDATE_SCRIPT := ./updateVersionNumber.sh
 	UNAME_P := $(shell uname -p)
 	ifeq ($(UNAME_P),x86_64)
 		ARCH := amd64
@@ -19,6 +21,12 @@ else
 		ARCH := aarch64
 	endif
 endif
+
+clean :
+	rm -rf ../build ../bin
+
+bump :
+	$(UPDATE_SCRIPT)
 
 buildmeta :
 	docker build --target build -t fazecast/jserialcomm:metabuilder-$(ARCH) .
@@ -39,6 +47,7 @@ push :
 	docker push fazecast/jserialcomm:builder-$(ARCH)
 
 combine :
+	docker manifest rm fazecast/jserialcomm:builder
 	docker manifest create fazecast/jserialcomm:builder --amend fazecast/jserialcomm:builder-amd64 --amend fazecast/jserialcomm:builder-aarch64
 	docker manifest push fazecast/jserialcomm:builder
 
