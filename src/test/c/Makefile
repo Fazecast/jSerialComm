@@ -6,9 +6,9 @@ LINK_WIN					= link
 BUILD_DIR                   = build
 JDK_HOME                    = $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "$$JDK_HOME"; fi)
 INCLUDES                    = -I"../../main/c/Posix" -I"../../main/c/Windows" -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/win32" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
-CFLAGS                      = -fPIC -O0 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
+CFLAGS                      = -fPIC -O0 -g -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
 CFLAGS_WIN                  = /c /O2 /GF /GL /MT /EHsc /fp:precise /J /nologo /TC /Zi
-LDFLAGS                     = -O0 $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
+LDFLAGS                     = -O0 -g $(shell if [ "`uname`" != "Darwin" ]; then echo "-static-libgcc"; fi)
 LDFLAGS_WIN                 = /LTCG /NOLOGO /INCREMENTAL:NO /DEBUG /OPT:REF,ICF,LBR
 LIBRARIES                   = $(shell if [ "`uname`" = "Darwin" ]; then echo "-framework Cocoa -framework IOKit"; else echo "-pthread"; fi)
 LIBRARIES_WIN               = Advapi32.lib SetupAPI.lib Shell32.lib
@@ -29,7 +29,7 @@ all :
 	$(PRINT) You must specify a specify test to make!
 clean :
 	$(DELETE) -rf "$(BUILD_DIR)"
-	$(DELETE) *.pdb *.exe
+	$(DELETE) -rf *.pdb *.exe
 
 # Rule to create build directories
 $(BUILD_DIR) :
@@ -44,6 +44,8 @@ testEnumeratePosix : $(BUILD_DIR)/testEnumeratePosix.o $(BUILD_DIR)/PosixHelperF
 	$(LINK) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 testEnumerateWindows : $(BUILD_DIR)/testEnumerateWindows.obj $(BUILD_DIR)/WindowsHelperFunctions.obj
 	$(LINK_WIN) $(LDFLAGS_WIN) /OUT:$@.exe $^ $(LIBRARIES_WIN)
+testPollPosix : $(BUILD_DIR)/testPollPosix.o $(BUILD_DIR)/PosixHelperFunctions.o
+	$(LINK) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/testEnumerateWindows.obj : testEnumerateWindows.c
