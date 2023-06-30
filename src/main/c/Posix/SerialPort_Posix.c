@@ -829,7 +829,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		while ((pollResult == 0) && port->eventListenerRunning);
 
 		// Return the detected port events
-		if (waitingSet.revents & POLLHUP)
+		if (waitingSet.revents & (POLLHUP | POLLNVAL))
 			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
 		else if (waitingSet.revents & POLLIN)
 			event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
