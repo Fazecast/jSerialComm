@@ -2,7 +2,7 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jun 27, 2023
+ *  Last Updated on:  Jul 06, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -28,6 +28,7 @@
 
 // Serial port JNI header file
 #include <pthread.h>
+#include <termios.h>
 #include "com_fazecast_jSerialComm_SerialPort.h"
 
 // Serial port data structure
@@ -66,7 +67,6 @@ void cleanUpVector(serialPortVector* vector);
 typedef int baud_rate;
 
 #ifdef __ANDROID__
-
 extern int ioctl(int __fd, int __request, ...);
 #else
 extern int ioctl(int __fd, unsigned long int __request, ...);
@@ -99,7 +99,6 @@ typedef int baud_rate;
 
 #define fdatasync fsync
 
-#include <termios.h>
 typedef speed_t baud_rate;
 
 #endif
@@ -107,8 +106,7 @@ typedef speed_t baud_rate;
 
 // Common Posix functionality
 void searchForComPorts(serialPortVector* comPorts);
-baud_rate getBaudRateCode(baud_rate baudRate);
-int setBaudRateCustom(int portFD, baud_rate baudRate);
+int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options);
 int verifyAndSetUserPortGroup(const char *portFile);
 
 #endif		// #ifndef __POSIX_HELPER_FUNCTIONS_HEADER_H__

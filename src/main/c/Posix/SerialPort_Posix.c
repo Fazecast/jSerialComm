@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 27, 2023
+ *  Last Updated on:  Jul 06, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -33,7 +33,6 @@
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 #if defined(__linux__)
@@ -737,13 +736,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		options.c_cc[VTIME] = 0;
 	}
 
-	// Set the baud rate
-	baud_rate baudRateCode = getBaudRateCode(baudRate);
-	if (!baudRateCode)
-		baudRateCode = B38400;
-	cfsetispeed(&options, baudRateCode);
-	cfsetospeed(&options, baudRateCode);
-
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
 	{
@@ -751,13 +743,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
-	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
-	{
-		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
-		port->errorNumber = lastErrorNumber = errno;
-		return JNI_FALSE;
-	}
-	if (!getBaudRateCode(baudRate) && setBaudRateCustom(port->handle, baudRate))
+	if (setConfigOptions(port->handle, baudRate, &options))
 	{
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 		port->errorNumber = lastErrorNumber = errno;
