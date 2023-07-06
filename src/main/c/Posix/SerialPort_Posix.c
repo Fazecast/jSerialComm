@@ -799,7 +799,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 	{
 		// Initialize the local variables
 		int pollResult;
-		short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : POLLERR;
+		short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : (POLLHUP | POLLERR);
 		struct pollfd waitingSet = { port->handle, pollEventsMask, 0 };
 #if defined(__linux__)
 		struct serial_icounter_struct oldSerialLineInterrupts, newSerialLineInterrupts;

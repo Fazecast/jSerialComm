@@ -77,6 +77,7 @@ int configPort(serialPort *port)
 	options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD | CSTOPB | CRTSCTS);
 
 	// Update the user-specified port parameters
+	int baudRate = 115200;
 	tcflag_t byteSize = CS8;
 	tcflag_t parity = 0;
 	options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
@@ -84,24 +85,14 @@ int configPort(serialPort *port)
 
 	// Configure the serial port read and write timeouts
 	int flags = 0;
-	port->eventsMask = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
+	port->eventsMask = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;// | com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE;
 	options.c_cc[VMIN] = 0;
 	options.c_cc[VTIME] = 10;
-
-	// Set the baud rate
-	int baudRate = 115200;
-	baud_rate baudRateCode = getBaudRateCode(baudRate);
-	if (!baudRateCode)
-		baudRateCode = B38400;
-	cfsetispeed(&options, baudRateCode);
-	cfsetospeed(&options, baudRateCode);
 
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
 		return 0;
-	if (tcsetattr(port->handle, TCSANOW, &options) || tcsetattr(port->handle, TCSANOW, &options))
-		return 0;
-	if (!getBaudRateCode(baudRate) && setBaudRateCustom(port->handle, baudRate))
+	if (setConfigOptions(port->handle, baudRate, &options))
 		return 0;
 	return 1;
 }
@@ -110,7 +101,7 @@ int waitForEvent(serialPort *port)
 {
 	// Initialize local variables
 	int pollResult;
-	short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : POLLERR;
+	short pollEventsMask = ((port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_AVAILABLE) || (port->eventsMask & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)) ? (POLLIN | POLLERR) : (POLLHUP | POLLERR);
 	jint event = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_TIMED_OUT;
 	struct pollfd waitingSet = { port->handle, pollEventsMask, 0 };
 

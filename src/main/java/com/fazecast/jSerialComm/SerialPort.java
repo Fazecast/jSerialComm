@@ -1006,8 +1006,6 @@ public class SerialPort
 			{
 				serialEventListener.stopListening();
 				serialEventListener = null;
-				if (portHandle != 0)
-					configPort(portHandle);
 			}
 			userDataListener = null;
 		}
@@ -1772,10 +1770,10 @@ public class SerialPort
 
 				// Clear all timeouts and event masks to allow listening threads to return
 				int oldTimeoutMode = timeoutMode, oldEventFlags = eventFlags;
+				setEventListeningStatus(portHandle, false);
 				timeoutMode = TIMEOUT_NONBLOCKING;
 				eventFlags = 0;
 				configPort(portHandle);
-				setEventListeningStatus(portHandle, false);
 
 				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
 				//   be in an unspecified, possibly unrecoverable state
