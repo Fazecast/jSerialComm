@@ -83,3 +83,18 @@ jobs:
           FOLDER: documentation
           GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
           MESSAGE: "Updated docs to v${{ steps.gitversion.outputs.version }}"
+
+      - name: Check out Wiki source data
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: markdown
+
+      - name: Update and publish Wiki release link
+        run: |
+          cd markdown
+          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://oss.sonatype.org/service/local/repositories/releases/content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])@" Home.md
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "New jSerialComm release version" && git push
