@@ -23,7 +23,7 @@ else
 endif
 
 clean :
-	rm -rf ../build ../bin
+	rm -rf ../build ../bin ../src/main/resources/FreeBSD ../src/main/resources/OpenBSD ../src/main/resources/Linux ../src/main/resources/OSX ../src/main/resources/Solaris ../src/main/resources/Windows
 
 bump :
 	$(UPDATE_SCRIPT)
