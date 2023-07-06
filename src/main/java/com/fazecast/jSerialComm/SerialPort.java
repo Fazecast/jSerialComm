@@ -201,6 +201,21 @@ public class SerialPort
 				libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryFileName).getAbsolutePath(), errorMessages);
 		}
 
+		// Attempt to load from the system-defined library location
+		try
+		{
+			System.loadLibrary("jSerialComm");
+			if (getNativeLibraryVersion().equals(versionString))
+				libraryLoaded = true;
+			else
+			{
+				errorMessages.add("Native library in system path has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
+				uninitializeLibrary();
+			}
+		}
+		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); }
+		catch (Exception e) { errorMessages.add(e.getMessage()); }
+
 		// Attempt to load from an existing extracted location
 		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
 		{
