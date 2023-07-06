@@ -129,6 +129,8 @@ public class SerialPort
 			userHomeDirectory += File.separator;
 		cleanUpDirectory(new File(tempFileDirectory));
 		cleanUpDirectory(new File(userHomeDirectory));
+		String bareTempFileDirectory = tempFileDirectory;
+		String bareUserHomeDirectory = userHomeDirectory;
 		tempFileDirectory += versionString + File.separator;
 		userHomeDirectory += versionString + File.separator;
 
@@ -208,6 +210,8 @@ public class SerialPort
 
 		// Attempt to load from the expected JAR location
 		String attempt1Library = "";
+		deleteDirectory(new File(bareTempFileDirectory));
+		deleteDirectory(new File(bareUserHomeDirectory));
 		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
 		{
 			// Create a temporary working directory with open permissions
@@ -312,10 +316,35 @@ public class SerialPort
 			path.delete();
 	}
 
+	// Static recursive directory deletion function
+	static private void deleteDirectory(File path)
+	{
+		// Recursively delete all files and directories
+		if (path.isDirectory())
+		{
+			File[] files = path.listFiles();
+			if (files != null)
+				for (File file : files)
+					deleteDirectory(file);
+		}
+		path.delete();
+	}
+
 	// Static native library loading function
 	static private boolean loadNativeLibrary(String absoluteLibraryPath, Vector<String> errorMessages)
 	{
-		try { System.load(absoluteLibraryPath); return true; }
+		try
+		{
+			System.load(absoluteLibraryPath);
+			if (!getNativeLibraryVersion().equals(versionString))
+			{
+				errorMessages.add("Native library at " + absoluteLibraryPath + " has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
+				uninitializeLibrary();
+				return false;
+			}
+			else
+				return true;
+		}
 		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); return false; }
 		catch (Exception e) { errorMessages.add(e.getMessage()); return false; }
 	}
@@ -690,6 +719,7 @@ public class SerialPort
 	// Serial Port Native Methods
 	private static native void uninitializeLibrary();					// Un-initializes the JNI code
 	private static native SerialPort[] getCommPortsNative();            // Enumerate available serial ports
+	private static native String getNativeLibraryVersion();				// Returns the version string of the currently loaded native library
 	private native void retrievePortDetails();							// Retrieves port descriptions, names, and details
 	private native long openPortNative();								// Opens serial port
 	private native long closePortNative(long portHandle);				// Closes serial port

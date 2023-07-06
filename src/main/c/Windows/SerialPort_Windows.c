@@ -88,6 +88,7 @@ CancelIoExFunction CancelIoEx = NULL;
 char portsEnumerated = 0;
 char classInitialized = 0;
 CRITICAL_SECTION criticalSection;
+const char nativeLibraryVersion[] = "2.10.2";
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler
@@ -575,6 +576,12 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibr
 	JavaVM *jvm;
 	(*env)->GetJavaVM(env, &jvm);
 	JNI_OnUnload(jvm, NULL);
+}
+
+JNIEXPORT jstring JNICALL Java_com_fazecast_jSerialComm_SerialPort_getNativeLibraryVersion(JNIEnv *env, jclass serialComm)
+{
+	// Return the current native library version string
+	return (*env)->NewStringUTF(env, nativeLibraryVersion);
 }
 
 JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommPortsNative(JNIEnv *env, jclass serialComm)

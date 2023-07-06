@@ -93,6 +93,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    getNativeLibraryVersion
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_fazecast_jSerialComm_SerialPort_getNativeLibraryVersion
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    retrievePortDetails
  * Signature: ()V
  */
