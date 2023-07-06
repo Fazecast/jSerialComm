@@ -13,6 +13,12 @@ jobs:
         id: gitversion
         run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
 
+      - name: Update library version string
+        run: |
+          sed -i "s/@version .*/@version ${{ steps.gitversion.outputs.version }}/" src/main/java/com/fazecast/jSerialComm/package-info.java
+          sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"${{ steps.gitversion.outputs.version }}\"/g" src/main/c/Posix/SerialPort_Posix.c
+          sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"${{ steps.gitversion.outputs.version }}\"/g" src/main/c/Windows/SerialPort_Windows.c
+
       - name: Build native libraries using Docker toolchain
         uses: addnab/docker-run-action@v3
         with:
@@ -73,7 +79,7 @@ jobs:
           path: documentation
 
       - name: Update Javadoc library documentation
-        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s@content/com/fazecast/jSerialComm/[^\"]*@content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@v2.6.0

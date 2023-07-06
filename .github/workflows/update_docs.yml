@@ -34,7 +34,7 @@ jobs:
           path: documentation
 
       - name: Update Javadoc library documentation
-        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s/jSerialComm-[^j]*jar/jSerialComm-${{ steps.gitversion.outputs.version }}.jar/g" documentation/index.html
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s@content/com/fazecast/jSerialComm/[^\"]*@content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@v2.6.0
