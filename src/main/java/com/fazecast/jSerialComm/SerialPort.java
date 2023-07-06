@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 29, 2023
+ *  Last Updated on:  Jul 06, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -178,9 +178,9 @@ public class SerialPort
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
 			else if (arch.contains("86") || arch.contains("amd"))
-				architectures = new String[] { "x86_64", "x86", "armv5", "armv6", "armv7", "armv8_64", "armv8_32", "ppc64le" };
+				architectures = new String[] { "x86_64", "x86", "armv5", "armv7hf", "armv6hf", "armv8_64", "armv8_32", "ppc64le" };
 			else
-				architectures = new String[] { "armv5", "armv6", "armv7", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
+				architectures = new String[] { "armv5", "armv7hf", "armv6hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
 		}
 		else
 		{
