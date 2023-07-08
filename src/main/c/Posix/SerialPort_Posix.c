@@ -360,9 +360,10 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserved)
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
 {
 	// Call the JNI Unload function
-	JavaVM *jvm;
+	JavaVM *jvm = NULL;
 	(*env)->GetJavaVM(env, &jvm);
-	JNI_OnUnload(jvm, NULL);
+	if (jvm)
+		JNI_OnUnload(jvm, NULL);
 }
 
 JNIEXPORT jstring JNICALL Java_com_fazecast_jSerialComm_SerialPort_getNativeLibraryVersion(JNIEnv *env, jclass serialComm)
