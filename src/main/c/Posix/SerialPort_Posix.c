@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 06, 2023
+ *  Last Updated on:  Jul 08, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -894,15 +894,15 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
 {
 	// Ensure that a positive number of bytes was passed in to read
+	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	if ((bytesToRead < 0) || (offset < 0))
+	if ((bytesToRead < 0) || (offset < 0) || (bufferLength < offset))
 		return -1;
 
 	// Fetch a pointer to the underlying data buffer
-	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	int numBytesRead = -1, numBytesReadTotal = offset, ioctlResult = 0;
 	int bytesRemaining = ((bytesToRead + offset) > bufferLength) ? (bufferLength - offset) : bytesToRead;
-	jbyte *readBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	jbyte *readBuffer = (*env)->GetByteArrayElements(env, buffer, NULL);
 	if (checkJniError(env, __LINE__ - 1) || !readBuffer)
 		return -1;
 
@@ -972,7 +972,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	}
 
 	// Return number of bytes read if successful
-	(*env)->ReleasePrimitiveArrayCritical(env, buffer, readBuffer, (numBytesRead == -1) ? JNI_ABORT : 0);
+	(*env)->ReleaseByteArrayElements(env, buffer, readBuffer, (numBytesRead == -1) ? JNI_ABORT : 0);
 	checkJniError(env, __LINE__ - 1);
 	return (numBytesRead == -1) ? -1 : (numBytesReadTotal - offset);
 }
@@ -989,7 +989,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	if ((bytesToWrite + offset) > bufferLength)
 		bytesToWrite = bufferLength - offset;
 	int writeBlockingMode = (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING);
-	jbyte *writeBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, NULL);
 	if (checkJniError(env, __LINE__ - 1) || !writeBuffer)
 		return -1;
 
@@ -1007,7 +1007,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		tcdrain(port->handle);
 
 	// Return the number of bytes written if successful
-	(*env)->ReleasePrimitiveArrayCritical(env, buffer, writeBuffer, JNI_ABORT);
+	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 	checkJniError(env, __LINE__ - 1);
 	return numBytesWritten;
 }

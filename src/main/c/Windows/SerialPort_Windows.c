@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jun 27, 2023
+ *  Last Updated on:  Jul 08, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -1073,15 +1073,15 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
 {
 	// Ensure that a positive number of bytes was passed in to read
+	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	if ((bytesToRead < 0) || (offset < 0))
+	if ((bytesToRead < 0) || (offset < 0) || (bufferLength < offset))
 		return -1;
 
 	// Fetch a pointer to the underlying data buffer
-	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	if ((bytesToRead + offset) > bufferLength)
 		bytesToRead = bufferLength - offset;
-	jbyte *readBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	jbyte *readBuffer = (*env)->GetByteArrayElements(env, buffer, NULL);
 	if (checkJniError(env, __LINE__ - 1) || !readBuffer)
 		return -1;
 
@@ -1094,7 +1094,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 		port->errorNumber = GetLastError();
 		port->errorLineNumber = __LINE__ - 4;
 		CloseHandle(overlappedStruct.hEvent);
-		(*env)->ReleasePrimitiveArrayCritical(env, buffer, readBuffer, JNI_ABORT);
+		(*env)->ReleaseByteArrayElements(env, buffer, readBuffer, JNI_ABORT);
 		return -1;
 	}
 
@@ -1114,7 +1114,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 
 	// Return number of bytes read
 	CloseHandle(overlappedStruct.hEvent);
-	(*env)->ReleasePrimitiveArrayCritical(env, buffer, readBuffer, (result == TRUE) ? 0 : JNI_ABORT);
+	(*env)->ReleaseByteArrayElements(env, buffer, readBuffer, (result == TRUE) ? 0 : JNI_ABORT);
 	checkJniError(env, __LINE__ - 1);
 	return (result == TRUE) ? numBytesRead : -1;
 }
@@ -1130,7 +1130,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	if ((bytesToWrite + offset) > bufferLength)
 		bytesToWrite = bufferLength - offset;
-	jbyte *writeBuffer = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
+	jbyte *writeBuffer = (*env)->GetByteArrayElements(env, buffer, NULL);
 	if (checkJniError(env, __LINE__ - 1) || !writeBuffer)
 		return -1;
 
@@ -1143,7 +1143,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 		port->errorNumber = GetLastError();
 		port->errorLineNumber = __LINE__ - 4;
 		CloseHandle(overlappedStruct.hEvent);
-		(*env)->ReleasePrimitiveArrayCritical(env, buffer, writeBuffer, JNI_ABORT);
+		(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 		return -1;
 	}
 
@@ -1163,7 +1163,7 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 	// Return number of bytes written
 	CloseHandle(overlappedStruct.hEvent);
-	(*env)->ReleasePrimitiveArrayCritical(env, buffer, writeBuffer, JNI_ABORT);
+	(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 	checkJniError(env, __LINE__ - 1);
 	return (result == TRUE) ? numBytesWritten : -1;
 }
