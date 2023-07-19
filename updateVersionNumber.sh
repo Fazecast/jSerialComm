@@ -15,3 +15,5 @@ cd ../site && git pull && cd ..
 sed -i "s/versionString = [^, ;]*/versionString = \"$newVersion\"/" src/main/java/com/fazecast/jSerialComm/SerialPort.java
 sed -i "s/@version .*/@version $newVersion/" src/main/java/com/fazecast/jSerialComm/package-info.java
 sed -i "s/version = System.getenv(\"LIB_VERSION\") ?: .*/version = System.getenv(\"LIB_VERSION\") ?: '$newVersion'/" build.gradle
+sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"$newVersion\"/" src/main/c/Posix/SerialPort_Posix.c
+sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"$newVersion\"/" src/main/c/Windows/SerialPort_Windows.c

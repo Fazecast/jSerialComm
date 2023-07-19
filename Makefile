@@ -35,10 +35,10 @@ build :
 	docker build -t fazecast/jserialcomm:builder-$(ARCH) .
 
 runmeta :
-	docker run -it --privileged --rm fazecast/jserialcomm:metabuilder-$(ARCH)
+	docker run -it --privileged --rm -v "$(ROOT_DIR)":/home/toolchain/jSerialComm --entrypoint /bin/bash fazecast/jserialcomm:metabuilder-$(ARCH)
 
 run :
-	docker run -it --privileged --rm fazecast/jserialcomm:builder-$(ARCH)
+	docker run -it --privileged --rm -v "$(ROOT_DIR)":/home/toolchain/jSerialComm --entrypoint /bin/bash fazecast/jserialcomm:builder-$(ARCH)
 
 pushmeta :
 	docker push fazecast/jserialcomm:metabuilder-$(ARCH)

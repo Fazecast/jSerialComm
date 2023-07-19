@@ -111,6 +111,9 @@ RUN mkdir -p $HOME/x-tools/windows/bin && cd $HOME/x-tools/windows && tar xvf $H
     echo 'clang -fuse-ld=lld -target aarch64-pc-win32-msvc -Wl,-machine:arm64 -fmsc-version=1935 -L'$HOME'/x-tools/windows/msvc/MSVC/14.35.32215/lib/arm64 -L'$HOME'/x-tools/windows/msvc/Kits/10.0.22000.0/Lib/um/arm64 -L'$HOME'/x-tools/windows/msvc/Kits/10.0.22000.0/Lib/ucrt/arm64 -nostdlib -llibcmt -Wno-msvc-not-found "$@"' > aarch64-pc-win32-msvc-ld && \
     chmod +x * && cd $HOME
 
+# Build Mac OSX SDK version fixer tool
+RUN gcc -o $HOME/x-tools/fixMacSdkVersion $HOME/external/fix_macos_version.c
+
 # Install Gradle
 RUN wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip && \
     mkdir -p $HOME/gradle && unzip -d $HOME/gradle gradle-8.1.1-bin.zip && rm gradle-8.1.1-bin.zip
@@ -139,11 +142,11 @@ RUN echo '#!/bin/sh\n' >> compile.sh && \
     echo 'posix_targets="linux arm powerpc solaris freebsd openbsd osx "' >> compile.sh && \
     echo 'win_targets="win32 win64 winarm winarm64 "\n' >> compile.sh && \
     echo 'if [ $# -ne 1 ] || ! echo "$valid_targets" | grep -q "$1 "; then echo "Target must be one of: $valid_targets"; return 1; fi\n' >> compile.sh && \
-    echo 'if [ "$1" = "all" ]; then cd jSerialComm/src/main/c/Posix && make && cd ../Windows && make && cd ../../../.. && gradle build;' >> compile.sh && \
-    echo 'elif [ "$1" = "libs" ]; then cd jSerialComm/src/main/c/Posix && make && cd ../Windows && make;' >> compile.sh && \
-    echo 'elif echo "$posix_targets" | grep -q "$1 "; then cd jSerialComm/src/main/c/Posix && make;' >> compile.sh && \
+    echo 'if [ "$1" = "all" ]; then cd jSerialComm/src/main/c/Posix && make && fixMacSdkVersion ../../resources/OSX/x86/libjSerialComm.jnilib && cd ../Windows && make && cd ../../../.. && gradle build;' >> compile.sh && \
+    echo 'elif [ "$1" = "libs" ]; then cd jSerialComm/src/main/c/Posix && make && fixMacSdkVersion ../../resources/OSX/x86/libjSerialComm.jnilib && cd ../Windows && make;' >> compile.sh && \
+    echo 'elif echo "$posix_targets" | grep -q "$1 "; then cd jSerialComm/src/main/c/Posix && make && fixMacSdkVersion ../../resources/OSX/x86/libjSerialComm.jnilib;' >> compile.sh && \
     echo 'else cd jSerialComm/src/main/c/Windows && make;' >> compile.sh && \
     echo 'fi' >> compile.sh && chmod +x compile.sh
-ENV PATH="/home/toolchain/x-tools/aarch64-unknown-linux-gnu/bin:/home/toolchain/x-tools/amd64-unknown-openbsd6.2/bin:/home/toolchain/x-tools/arm-unknown-linux-gnueabi/bin:/home/toolchain/x-tools/arm-unknown-linux-gnueabihf/bin:/home/toolchain/x-tools/arm64-unknown-freebsd11.2/bin:/home/toolchain/x-tools/i386-unknown-freebsd11.2/bin:/home/toolchain/x-tools/i386-unknown-openbsd6.2/bin:/home/toolchain/x-tools/i486-unknown-linux-gnu/bin:/home/toolchain/x-tools/powerpc64le-unknown-linux-gnu/bin:/home/toolchain/x-tools/x86_64-sun-solaris2.10/bin:/home/toolchain/x-tools/sparc-sun-solaris2.10/bin:/home/toolchain/x-tools/osxcross/bin:/home/toolchain/x-tools/osx32/bin:/home/toolchain/x-tools/x86_64-unknown-linux-gnu/bin:/home/toolchain/x-tools/x86_64-unknown-freebsd11.2/bin:/home/toolchain/x-tools/windows/bin:/home/toolchain/gradle/gradle-8.1.1/bin:$PATH"
+ENV PATH="/home/toolchain/x-tools/aarch64-unknown-linux-gnu/bin:/home/toolchain/x-tools/amd64-unknown-openbsd6.2/bin:/home/toolchain/x-tools/arm-unknown-linux-gnueabi/bin:/home/toolchain/x-tools/arm-unknown-linux-gnueabihf/bin:/home/toolchain/x-tools/arm64-unknown-freebsd11.2/bin:/home/toolchain/x-tools/i386-unknown-freebsd11.2/bin:/home/toolchain/x-tools/i386-unknown-openbsd6.2/bin:/home/toolchain/x-tools/i486-unknown-linux-gnu/bin:/home/toolchain/x-tools/powerpc64le-unknown-linux-gnu/bin:/home/toolchain/x-tools/x86_64-sun-solaris2.10/bin:/home/toolchain/x-tools/sparc-sun-solaris2.10/bin:/home/toolchain/x-tools/osxcross/bin:/home/toolchain/x-tools/osx32/bin:/home/toolchain/x-tools/x86_64-unknown-linux-gnu/bin:/home/toolchain/x-tools/x86_64-unknown-freebsd11.2/bin:/home/toolchain/x-tools/windows/bin:/home/toolchain/x-tools:/home/toolchain/gradle/gradle-8.1.1/bin:$PATH"
 ENTRYPOINT [ "/home/toolchain/compile.sh" ]
 CMD [ "all" ]
