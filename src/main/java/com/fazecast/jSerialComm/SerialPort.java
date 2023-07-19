@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 06, 2023
+ *  Last Updated on:  Jul 18, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -24,6 +24,10 @@
  */
 
 package com.fazecast.jSerialComm;
+
+import android.app.Application;
+
+import com.fazecast.jSerialComm.android.AndroidPort;
 
 import java.lang.ProcessBuilder;
 import java.io.BufferedReader;
@@ -49,7 +53,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @see java.io.InputStream
  * @see java.io.OutputStream
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused"})
 public class SerialPort
 {
 	// Parity Values
@@ -101,43 +105,25 @@ public class SerialPort
 	static private final String versionString = "2.10.3";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
-	static private boolean isWindows = false, isAndroid = false;
+	static private boolean isWindows = false, isAndroid = false, isAndroidDelete = false;
 	static private volatile boolean isShuttingDown = false;
 	static
 	{
 		// Determine the temporary file directories for native library storage
-		String[] architectures = null;
-		String libraryPath = "", libraryFileName = "";
-		String OS = System.getProperty("os.name").toLowerCase();
-		String arch = System.getProperty("os.arch").toLowerCase();
-		String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
-		String tempFileDirectory = System.getProperty("java.io.tmpdir");
-		String userHomeDirectory = System.getProperty("user.home");
-		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
-			tempFileDirectory += File.separator;
-		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
-			userHomeDirectory += File.separator;
-		if (!manualLibraryPath.isEmpty() && !manualLibraryPath.endsWith("\\") && !manualLibraryPath.endsWith("/"))
-			manualLibraryPath += File.separator;
-
-		// Make sure to use appId to separate tmpdir directories if library is used by multiple modules so they don't erase each others' folders
-		tempFileDirectory += "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, "");
-		userHomeDirectory += ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, "");
-		if (!tempFileDirectory.endsWith("\\") && !tempFileDirectory.endsWith("/"))
-			tempFileDirectory += File.separator;
-		if (!userHomeDirectory.endsWith("\\") && !userHomeDirectory.endsWith("/"))
-			userHomeDirectory += File.separator;
-		cleanUpDirectory(new File(tempFileDirectory));
-		cleanUpDirectory(new File(userHomeDirectory));
-		String bareTempFileDirectory = tempFileDirectory;
-		String bareUserHomeDirectory = userHomeDirectory;
-		tempFileDirectory += versionString + File.separator;
-		userHomeDirectory += versionString + File.separator;
+		String[] architectures;
+		String libraryPath, libraryFileName;
+		final String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
+		final String OS = System.getProperty("os.name").toLowerCase();
+		final String arch = System.getProperty("os.arch").toLowerCase();
+		final File tempFileDirectory = new File(System.getProperty("java.io.tmpdir"), "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString);
+		final File userHomeDirectory = new File(System.getProperty("user.home"), ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString);
+		cleanUpDirectory(new File(tempFileDirectory, ".."));
+		cleanUpDirectory(new File(userHomeDirectory, ".."));
 
 		// Determine Operating System and architecture
 		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
 		{
-			isAndroid = true;
+			isAndroidDelete = true;
 			libraryPath = "Android";
 			libraryFileName = "libjSerialComm.so";
 			architectures = new String[] { "arm64-v8a", "armeabi-v7a", "x86_64", "x86" };
@@ -187,100 +173,102 @@ public class SerialPort
 		else
 		{
 			System.err.println("This operating system is not supported by the jSerialComm library.");
+			libraryPath = libraryFileName = null;
+			architectures = null;
 			System.exit(-1);
 		}
 
-		// Attempt to load from a manually-specified user location
-		boolean libraryLoaded = false;
-		Vector<String> errorMessages = new Vector<String>();
-		if (!manualLibraryPath.isEmpty())
+		// Load platform-specific binaries for non-Android systems
+		if (!isAndroid)
 		{
-			for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-				libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryPath + File.separator + architectures[i] + File.separator + libraryFileName).getAbsolutePath(), errorMessages);
-			if (!libraryLoaded)
-				libraryLoaded = loadNativeLibrary(new File(manualLibraryPath + libraryFileName).getAbsolutePath(), errorMessages);
-		}
-
-		// Attempt to load from the system-defined library location
-		try
-		{
-			System.loadLibrary("jSerialComm");
-			if (getNativeLibraryVersion().equals(versionString))
-				libraryLoaded = true;
-			else
+			// Attempt to load from a manually-specified user location
+			boolean libraryLoaded = false;
+			Vector<String> errorMessages = new Vector<String>();
+			if (!manualLibraryPath.isEmpty())
 			{
-				errorMessages.add("Native library in system path has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
-				uninitializeLibrary();
-			}
-		}
-		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); }
-		catch (Exception e) { errorMessages.add(e.getMessage()); }
-
-		// Attempt to load from an existing extracted location
-		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
-		{
-			File nativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + libraryFileName);
-			libraryLoaded = nativeLibrary.exists() && loadNativeLibrary(nativeLibrary.getAbsolutePath(), errorMessages);
-		}
-
-		// Attempt to load from the expected JAR location
-		String attempt1Library = "";
-		deleteDirectory(new File(bareTempFileDirectory));
-		deleteDirectory(new File(bareUserHomeDirectory));
-		for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
-		{
-			// Create a temporary working directory with open permissions
-			File tempNativeLibrary = new File(((attempt == 0) ? tempFileDirectory : userHomeDirectory) + libraryFileName);
-			if (attempt == 0)
-				attempt1Library = tempNativeLibrary.getAbsolutePath();
-			if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
-			{
-				tempNativeLibrary.getParentFile().setReadable(true, false);
-				tempNativeLibrary.getParentFile().setWritable(true, true);
-				tempNativeLibrary.getParentFile().setExecutable(true, false);
-			}
-			else
-				continue;
-
-			// Attempt to load the native jSerialComm library for any available architecture
-			for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-			{
-				InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
-				if (fileContents != null)
-					try
-					{
-						// Copy the native library to the temporary working directory
-						tempNativeLibrary.delete();
-						FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-						byte[] transferBuffer = new byte[4096];
-						int numBytesRead;
-						while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-							destinationFileContents.write(transferBuffer, 0, numBytesRead);
-						destinationFileContents.close();
-						fileContents.close();
-						tempNativeLibrary.setReadable(true, false);
-						tempNativeLibrary.setWritable(false, false);
-						tempNativeLibrary.setExecutable(true, false);
-
-						// Attempt to load the native library
-						errorMessages.add("Loading for arch: " + architectures[i]);
-						libraryLoaded = loadNativeLibrary(tempNativeLibrary.getAbsolutePath(), errorMessages);
-						if (libraryLoaded)
-							errorMessages.add("Successfully loaded!");
-					}
-					catch (Exception e) { e.printStackTrace(); }
+				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryPath + File.separator + architectures[i] + File.separator + libraryFileName).getAbsolutePath(), errorMessages);
+				if (!libraryLoaded)
+					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryFileName).getAbsolutePath(), errorMessages);
 			}
 
-			// Throw an error if unable to load any native libraries
-			if (!libraryLoaded)
+			// Attempt to load from the system-defined library location
+			try
 			{
-				tempNativeLibrary.delete();
-				if (attempt > 0)
+				System.loadLibrary("jSerialComm");
+				if (getNativeLibraryVersion().equals(versionString))
+					libraryLoaded = true;
+				else
 				{
-					StringBuilder errorMessage = new StringBuilder("Cannot load native library. Errors as follows:\n");
-					for (int i = 0; i < errorMessages.size(); ++i)
-						errorMessage.append('[').append(i+1).append("]: ").append(errorMessages.get(i)).append('\n');
-					throw new UnsatisfiedLinkError(errorMessage.toString());
+					errorMessages.add("Native library in system path has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
+					uninitializeLibrary();
+				}
+			}
+			catch (Exception e) { errorMessages.add(e.getMessage()); }
+
+			// Attempt to load from an existing extracted location
+			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+			{
+				File nativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
+				libraryLoaded = nativeLibrary.exists() && loadNativeLibrary(nativeLibrary.getAbsolutePath(), errorMessages);
+			}
+
+			// Attempt to load from the expected JAR location
+			deleteDirectory(new File(tempFileDirectory, ".."));
+			deleteDirectory(new File(userHomeDirectory, ".."));
+			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+			{
+				// Create a temporary working directory with open permissions
+				File tempNativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
+				if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
+				{
+					tempNativeLibrary.getParentFile().setReadable(true, false);
+					tempNativeLibrary.getParentFile().setWritable(true, true);
+					tempNativeLibrary.getParentFile().setExecutable(true, false);
+				}
+				else
+					continue;
+
+				// Attempt to load the native jSerialComm library for any available architecture
+				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+				{
+					InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
+					if (fileContents != null)
+						try
+						{
+							// Copy the native library to the temporary working directory
+							tempNativeLibrary.delete();
+							FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+							byte[] transferBuffer = new byte[4096];
+							int numBytesRead;
+							while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+								destinationFileContents.write(transferBuffer, 0, numBytesRead);
+							destinationFileContents.close();
+							fileContents.close();
+							tempNativeLibrary.setReadable(true, false);
+							tempNativeLibrary.setWritable(false, false);
+							tempNativeLibrary.setExecutable(true, false);
+
+							// Attempt to load the native library
+							errorMessages.add("Loading for arch: " + architectures[i]);
+							libraryLoaded = loadNativeLibrary(tempNativeLibrary.getAbsolutePath(), errorMessages);
+							if (libraryLoaded)
+								errorMessages.add("Successfully loaded!");
+						}
+						catch (Exception e) { e.printStackTrace(); }
+				}
+
+				// Throw an error if unable to load any native libraries
+				if (!libraryLoaded)
+				{
+					tempNativeLibrary.delete();
+					if (attempt > 0)
+					{
+						StringBuilder errorMessage = new StringBuilder("Cannot load native library. Errors as follows:\n");
+						for (int i = 0; i < errorMessages.size(); ++i)
+							errorMessage.append('[').append(i+1).append("]: ").append(errorMessages.get(i)).append('\n');
+						throw new UnsatisfiedLinkError(errorMessage.toString());
+					}
 				}
 			}
 		}
@@ -303,7 +291,8 @@ public class SerialPort
 
 				// Un-initialize the native library
 				isShuttingDown = true;
-				uninitializeLibrary();
+				if (!isAndroid)
+					uninitializeLibrary();
 			}
 		}));
 	}
@@ -360,7 +349,6 @@ public class SerialPort
 			else
 				return true;
 		}
-		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); return false; }
 		catch (Exception e) { errorMessages.add(e.getMessage()); return false; }
 	}
 
@@ -402,6 +390,23 @@ public class SerialPort
 	}
 
 	/**
+	 * Registers an application context to be used by the library when running on an Android device.
+	 * <p>
+	 * This method <b>must</b> be called prior to using any other library functionality when running on
+	 * an Android device. Failure to do so will result in a runtime error. Calling this method on a
+	 * non-Android device will have no effect.
+	 * <p>
+	 * The preferred way to use this method is by calling "SerialPort.setAndroidContext(getApplication())"
+	 * from your Android application's "onCreate()" method.
+	 * 
+	 * @param androidApp The android.app.Application object for the current application.
+	 */
+	static public void setAndroidContext(Application androidApp) {
+		if (isAndroid)
+			AndroidPort.setAndroidContext(androidApp);
+	}
+
+	/**
 	 * Returns a list of all available serial ports on this machine.
 	 * <p>
 	 * The serial ports can be accessed by iterating through each of the SerialPort objects in this array.
@@ -426,7 +431,7 @@ public class SerialPort
 	static public SerialPort[] getCommPorts()
 	{
 		lock.lock();
-		try { return getCommPortsNative(); }
+		try { return isAndroid ? AndroidPort.getCommPortsNative() : getCommPortsNative(); }
 		finally { lock.unlock(); }
 	}
 
@@ -442,6 +447,10 @@ public class SerialPort
 	 */
 	static public SerialPort getCommPort(String portDescriptor) throws SerialPortInvalidPortException
 	{
+		// Make this method a no-op on Android
+		if (isAndroid)
+			return null;
+
 		// Correct port descriptor, if needed
 		lock.lock();
 		try
@@ -483,6 +492,7 @@ public class SerialPort
 	}
 
 	// Serial Port Parameters (may also be accessed by native code)
+	private AndroidPort androidPort = null;
 	private volatile long portHandle = 0;
 	private volatile int baudRate = 9600, dataBits = 8, stopBits = SerialPort.ONE_STOP_BIT, parity = SerialPort.NO_PARITY, eventFlags = 0;
 	private volatile int timeoutMode = SerialPort.TIMEOUT_NONBLOCKING, readTimeout = 0, writeTimeout = 0, flowControl = 0;
@@ -518,17 +528,19 @@ public class SerialPort
 		{
 			// Set the send/receive internal buffer sizes, and return true if already opened
 			safetySleepTimeMS = safetySleepTime;
-			sendDeviceQueueSize = (deviceSendQueueSize > 0) ? deviceSendQueueSize : sendDeviceQueueSize;
-			receiveDeviceQueueSize = (deviceReceiveQueueSize > 0) ? deviceReceiveQueueSize : receiveDeviceQueueSize;
+			if (deviceSendQueueSize > 0)
+				sendDeviceQueueSize = deviceSendQueueSize;
+			if (deviceReceiveQueueSize > 0)
+				receiveDeviceQueueSize = deviceReceiveQueueSize;
 			if (portHandle != 0)
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 	
 			// Force a sleep to ensure that the port does not become unusable due to rapid closing/opening on the part of the user
 			if (safetySleepTimeMS > 0)
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 	
 			// If this is an Android root application, we must explicitly allow serial port access to the library
-			File portFile = isAndroid ? new File(comPort) : null;
+			File portFile = isAndroidDelete ? new File(comPort) : null;
 			if (portFile != null && (!portFile.canRead() || !portFile.canWrite()))
 			{
 				Process process = null;
@@ -560,7 +572,7 @@ public class SerialPort
 			}
 	
 			// Natively open the serial port, and start an event-based listener if registered
-			portHandle = openPortNative();
+			portHandle = (androidPort != null) ? androidPort.openPortNative(this) : openPortNative();
 			if ((portHandle != 0) && (serialEventListener != null))
 				serialEventListener.startListening();
 			return (portHandle != 0);
@@ -627,7 +639,7 @@ public class SerialPort
 	
 			// Natively close the port
 			if (portHandle != 0)
-				portHandle = closePortNative(portHandle);
+				portHandle = (androidPort != null) ? androidPort.closePortNative() : closePortNative(portHandle);
 			return (portHandle == 0);
 		}
 		finally { lock.unlock(); }
@@ -712,7 +724,7 @@ public class SerialPort
 	public final int getLastErrorLocation()
 	{
 		lock.lock();
-		try { return getLastErrorLocation(portHandle); }
+		try { return (androidPort != null) ? androidPort.getLastErrorLocation() : getLastErrorLocation(portHandle); }
 		finally { lock.unlock(); }
 	}
 	
@@ -727,7 +739,7 @@ public class SerialPort
 	public final int getLastErrorCode()
 	{
 		lock.lock();
-		try { return getLastErrorCode(portHandle); }
+		try { return (androidPort != null) ? androidPort.getLastErrorCode(): getLastErrorCode(portHandle); }
 		finally { lock.unlock(); }
 	}
 
@@ -767,7 +779,7 @@ public class SerialPort
 	 *
 	 * @return The number of bytes currently available to be read, or -1 if the port is not open.
 	 */
-	public final int bytesAvailable() { return (portHandle != 0) ? bytesAvailable(portHandle) : -1; }
+	public final int bytesAvailable() { return (portHandle != 0) ? ((androidPort != null) ? androidPort.bytesAvailable() : bytesAvailable(portHandle)) : -1; }
 
 	/**
 	 * Returns the number of bytes still waiting to be written in the device's output queue.
@@ -776,7 +788,7 @@ public class SerialPort
 	 *
 	 * @return The number of bytes currently waiting to be written, or -1 if the port is not open.
 	 */
-	public final int bytesAwaitingWrite() { return (portHandle != 0) ? bytesAwaitingWrite(portHandle) : -1; }
+	public final int bytesAwaitingWrite() { return (portHandle != 0) ? ((androidPort != null) ? androidPort.bytesAwaitingWrite() : bytesAwaitingWrite(portHandle)) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
@@ -791,7 +803,7 @@ public class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, int bytesToRead) { return (portHandle != 0) ? readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout) : -1; }
+	public final int readBytes(byte[] buffer, int bytesToRead) { return (portHandle != 0) ? ((androidPort != null) ? androidPort.readBytes(buffer, bytesToRead, 0, timeoutMode, readTimeout) : readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout)) : -1; }
 
 	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
@@ -807,7 +819,7 @@ public class SerialPort
 	 * @param offset The read buffer index into which to begin storing data.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, int bytesToRead, int offset) { return (portHandle != 0) ? readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout) : -1; }
+	public final int readBytes(byte[] buffer, int bytesToRead, int offset) { return (portHandle != 0) ? ((androidPort != null) ? androidPort.readBytes(buffer, bytesToRead, offset, timeoutMode, readTimeout) : readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout)) : -1; }
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -828,7 +840,8 @@ public class SerialPort
 		int totalNumWritten = 0;
 		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
 		{
-			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode);
+			int numWritten = (androidPort != null) ? androidPort.writeBytes(buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode) : 
+				writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode);
 			if (numWritten > 0)
 				totalNumWritten += numWritten;
 			else
@@ -857,7 +870,8 @@ public class SerialPort
 		int totalNumWritten = 0;
 		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
 		{
-			int numWritten = writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
+			int numWritten = (androidPort != null) ? androidPort.writeBytes(buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode) :
+				writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
 			if (numWritten > 0)
 				totalNumWritten += numWritten;
 			else
@@ -886,13 +900,13 @@ public class SerialPort
 	 * Sets the BREAK signal on the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean setBreak() { return (portHandle != 0) && setBreak(portHandle); }
+	public final boolean setBreak() { return (portHandle != 0) && ((androidPort != null) ? androidPort.setBreak() : setBreak(portHandle)); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
 	 * @return true if successful, false if not.
 	 */
-	public final boolean clearBreak() { return (portHandle != 0) && clearBreak(portHandle); }
+	public final boolean clearBreak() { return (portHandle != 0) && ((androidPort != null) ? androidPort.clearBreak() : clearBreak(portHandle)); }
 
 	/**
 	 * Sets the state of the RTS line to 1.
@@ -901,7 +915,7 @@ public class SerialPort
 	public final boolean setRTS()
 	{
 		isRtsEnabled = true;
-		return (portHandle != 0) ? setRTS(portHandle) : true;
+		return (androidPort != null) ? androidPort.setRTS() : ((portHandle == 0) || setRTS(portHandle));
 	}
 
 	/**
@@ -911,7 +925,7 @@ public class SerialPort
 	public final boolean clearRTS()
 	{
 		isRtsEnabled = false;
-		return (portHandle != 0) ? clearRTS(portHandle) : true;
+		return (androidPort != null) ? androidPort.clearRTS() : ((portHandle == 0) || clearRTS(portHandle));
 	}
 
 	/**
@@ -921,7 +935,7 @@ public class SerialPort
 	public final boolean setDTR()
 	{
 		isDtrEnabled = true;
-		return (portHandle != 0) ? setDTR(portHandle) : true;
+		return (androidPort != null) ? androidPort.setDTR() : ((portHandle == 0) || setDTR(portHandle));
 	}
 
 	/**
@@ -931,26 +945,26 @@ public class SerialPort
 	public final boolean clearDTR()
 	{
 		isDtrEnabled = false;
-		return (portHandle != 0) ? clearDTR(portHandle) : true;
+		return (androidPort != null) ? androidPort.clearDTR() : ((portHandle == 0) || clearDTR(portHandle));
 	}
 
 	/**
 	 * Returns whether the CTS line is currently asserted.
 	 * @return Whether or not the CTS line is asserted.
 	 */
-	public final boolean getCTS() { return (portHandle != 0) && getCTS(portHandle); }
+	public final boolean getCTS() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getCTS() : getCTS(portHandle)); }
 
 	/**
 	 * Returns whether the DSR line is currently asserted.
 	 * @return Whether or not the DSR line is asserted.
 	 */
-	public final boolean getDSR() { return (portHandle != 0) && getDSR(portHandle); }
+	public final boolean getDSR() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getDSR() : getDSR(portHandle)); }
 	
 	/**
 	 * Returns whether the DCD line is currently asserted.
 	 * @return Whether or not the DCD line is asserted.
 	 */
-	public final boolean getDCD() { return (portHandle != 0) && getDCD(portHandle); }
+	public final boolean getDCD() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getDCD() : getDCD(portHandle)); }
 
 	/**
 	 * Returns whether the DTR line is currently asserted.
@@ -958,7 +972,7 @@ public class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the DTR line is asserted.
 	 */
-	public final boolean getDTR() { return (portHandle != 0) && getDTR(portHandle); }
+	public final boolean getDTR() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getDTR() : getDTR(portHandle)); }
 
 	/**
 	 * Returns whether the RTS line is currently asserted.
@@ -966,16 +980,27 @@ public class SerialPort
 	 * Note that polling this line's status is not supported on Windows, so results may be incorrect.
 	 * @return Whether or not the RTS line is asserted.
 	 */
-	public final boolean getRTS() { return (portHandle != 0) && getRTS(portHandle); }
+	public final boolean getRTS() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getRTS() : getRTS(portHandle)); }
 
 	/**
 	 * Returns whether the RI line is currently asserted.
 	 * @return Whether or not the RI line is asserted.
 	 */
-	public final boolean getRI() { return (portHandle != 0) && getRI(portHandle); }
+	public final boolean getRI() { return (portHandle != 0) && ((androidPort != null) ? androidPort.getRI() : getRI(portHandle)); }
 
-	// Default Constructor
+	// SerialPort Constructors
 	private SerialPort() {}
+	public SerialPort(AndroidPort androidSerialPort, String port, String friendly, String description, String location, String serial, int vid, int pid)
+	{
+		androidPort = androidSerialPort;
+		comPort = port;
+		friendlyName = friendly;
+		portDescription = description;
+		portLocation = location;
+		serialNumber = serial;
+		vendorID = vid;
+		productID = pid;
+	}
 
 	/**
 	 * Adds a {@link SerialPortDataListener} to the serial port interface.
@@ -1016,7 +1041,10 @@ public class SerialPort
 							new SerialPortEventListener()));
 			if (portHandle != 0)
 			{
-				configPort(portHandle);
+				if (androidPort != null)
+					androidPort.configPort(this);
+				else
+					configPort(portHandle);
 				serialEventListener.startListening();
 			}
 			return true;
@@ -1138,7 +1166,7 @@ public class SerialPort
 		{
 			autoFlushIOBuffers = true;
 			if (portHandle != 0)
-				return flushRxTxBuffers(portHandle);
+				return (androidPort != null) ? androidPort.flushRxTxBuffers() : flushRxTxBuffers(portHandle);
 			return true;
 		}
 		finally { lock.unlock(); }
@@ -1229,7 +1257,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1308,7 +1336,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1333,7 +1361,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1358,7 +1386,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1390,7 +1418,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1444,7 +1472,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1476,7 +1504,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1543,7 +1571,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1572,7 +1600,7 @@ public class SerialPort
 			{
 				if (safetySleepTimeMS > 0)
 					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
-				return configPort(portHandle);
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
 			}
 			return true;
 		}
@@ -1781,7 +1809,10 @@ public class SerialPort
 
 			// Reset event listening parameters and start a new listening thread
 			resetBuffers();
-			setEventListeningStatus(portHandle, true);
+			if (androidPort != null)
+				androidPort.setEventListeningStatus(true);
+			else
+				setEventListeningStatus(portHandle, true);
 			serialEventThread = SerialPortThreadFactory.get().newThread(new Runnable()
 			{
 				@Override
@@ -1815,10 +1846,18 @@ public class SerialPort
 
 				// Clear all timeouts and event masks to allow listening threads to return
 				int oldTimeoutMode = timeoutMode, oldEventFlags = eventFlags;
-				setEventListeningStatus(portHandle, false);
 				timeoutMode = TIMEOUT_NONBLOCKING;
 				eventFlags = 0;
-				configPort(portHandle);
+				if (androidPort != null)
+				{
+					androidPort.setEventListeningStatus(false);
+					androidPort.configPort(SerialPort.this);
+				}
+				else
+				{
+					setEventListeningStatus(portHandle, false);
+					configPort(portHandle);
+				}
 
 				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
 				//   be in an unspecified, possibly unrecoverable state
@@ -1838,7 +1877,10 @@ public class SerialPort
 				// Reset the previously specified timeouts and event flags
 				timeoutMode = oldTimeoutMode;
 				eventFlags = oldEventFlags;
-				configPort(portHandle);
+				if (androidPort != null)
+					androidPort.configPort(SerialPort.this);
+				else
+					configPort(portHandle);
 			}
 			finally { lock.unlock(); }
 		}
@@ -1851,7 +1893,7 @@ public class SerialPort
 
 		public final void waitForSerialEvent() throws Exception
 		{
-			int event = waitForEvent(portHandle) & eventFlags;
+			int event = ((androidPort != null) ? androidPort.waitForEvent() : waitForEvent(portHandle)) & eventFlags;
 			if (((event & SerialPort.LISTENING_EVENT_DATA_AVAILABLE) > 0) && ((eventFlags & SerialPort.LISTENING_EVENT_DATA_RECEIVED) > 0))
 			{
 				// Read data from serial port
@@ -2020,7 +2062,7 @@ public class SerialPort
 			if (portHandle == 0)
 				throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 			byteBuffer[0] = (byte)(b & 0xFF);
-			int bytesWritten = writeBytes(portHandle, byteBuffer, 1, 0, timeoutMode);
+			int bytesWritten = writeBytes (byteBuffer, 1);
 			if (bytesWritten < 0)
 				throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 			else if (bytesWritten == 0)
@@ -2051,7 +2093,7 @@ public class SerialPort
 					throw new SerialPortIOException("This port appears to have been shutdown or disconnected.");
 				
 				// Write the actual bytes to the serial port
-				int numWritten = writeBytes(portHandle, b, len - totalNumWritten, off + totalNumWritten, timeoutMode);
+				int numWritten = writeBytes(b, len - totalNumWritten, off + totalNumWritten);
 				if (numWritten < 0)
 					throw new SerialPortIOException("No bytes written. This port appears to have been shutdown or disconnected.");
 				else if (numWritten == 0)

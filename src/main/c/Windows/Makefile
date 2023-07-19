@@ -27,6 +27,7 @@ FULL_CLASS          := com.fazecast.jSerialComm.SerialPort
 JAVA_CLASS_DIR      := $(BUILD_DIR)/com/fazecast/jSerialComm
 JNI_HEADER_FILE     := com_fazecast_jSerialComm_SerialPort.h
 JNI_HEADER          := ../$(JNI_HEADER_FILE)
+ANDROID_JAR         := ../../../external/android.jar
 JAVA_CLASS          := $(JAVA_CLASS_DIR)/SerialPort.class
 JFLAGS              := --release 6 -Xlint:-options
 JAVAC               := "$(JDK_HOME)/bin/javac"
@@ -102,4 +103,4 @@ $(JNI_HEADER) : $(JAVA_CLASS)
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :
-	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..
+	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../..:$(ANDROID_JAR) $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..

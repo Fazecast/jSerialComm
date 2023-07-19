@@ -24,6 +24,7 @@ LDFLAGS_OPENBSD             := -fuse-ld=lld -O3 -flto -shared -s -fuse-linker-pl
 LDFLAGS_APPLE               := -Os -dynamiclib -flto -shared -fuse-linker-plugin
 JDK_HOME                    := $(shell if [ "`uname`" = "Darwin" ]; then echo "`/usr/libexec/java_home`"; else echo "`dirname $$(dirname $$(readlink -f $$(which javac)))`"; fi)
 INCLUDES                    := -I"$(JDK_HOME)/include" -I"$(JDK_HOME)/include/linux" -I"$(JDK_HOME)/include/darwin" -I"$(JDK_HOME)/include/solaris"
+ANDROID_JAR                 := ../../../external/android.jar
 LIBRARIES_POSIX             := 
 LIBRARIES_APPLE             := -framework Cocoa -framework IOKit
 DELETE                      := @rm
@@ -371,4 +372,4 @@ $(JNI_HEADER) : $(JAVA_CLASS)
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :
-	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../.. $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..
+	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../..:$(ANDROID_JAR) $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..

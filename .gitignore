@@ -18,6 +18,9 @@ src/main/resources
 *.war
 *.ear
 
+# Allow Android JAR
+!android.jar
+
 # Allow Gradle Wrapper Files
 !gradle-wrapper.jar
 
