@@ -204,6 +204,7 @@ public class SerialPort
 					uninitializeLibrary();
 				}
 			}
+			catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); }
 			catch (Exception e) { errorMessages.add(e.getMessage()); }
 
 			// Attempt to load from an existing extracted location
@@ -349,6 +350,7 @@ public class SerialPort
 			else
 				return true;
 		}
+		catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); return false; }
 		catch (Exception e) { errorMessages.add(e.getMessage()); return false; }
 	}
 
