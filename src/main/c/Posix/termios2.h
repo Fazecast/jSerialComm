@@ -2,7 +2,7 @@
  * termios2.h
  *
  *       Created on:  Jul 06, 2023
- *  Last Updated on:  Jul 06, 2023
+ *  Last Updated on:  Jul 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -69,9 +69,20 @@ struct termios2 {
 #else
 
 #define T2CSANOW TCSETS2
-#define BOTHER CBAUDEX
-#define IBSHIFT 16
-#define K_NCCS 19
+#ifndef NCCS
+  #define K_NCCS 19
+#else
+  #define K_NCCS NCCS
+#endif
+#ifndef BOTHER
+  #define BOTHER CBAUDEX
+#endif
+#ifndef IBSHIFT
+  #define IBSHIFT 16
+#endif
+
+#if !defined(__ANDROID__)
+
 struct termios2 {
 	tcflag_t c_iflag;
 	tcflag_t c_oflag;
@@ -82,6 +93,8 @@ struct termios2 {
 	speed_t c_ispeed;
 	speed_t c_ospeed;
 };
+
+#endif
 
 #endif
 
