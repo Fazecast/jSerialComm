@@ -992,9 +992,8 @@ public class SerialPort
 
 	// SerialPort Constructors
 	private SerialPort() {}
-	public SerialPort(AndroidPort androidSerialPort, String port, String friendly, String description, String location, String serial, int vid, int pid)
+	private SerialPort(String port, String friendly, String description, String location, String serial, int vid, int pid)
 	{
-		androidPort = androidSerialPort;
 		comPort = port;
 		friendlyName = friendly;
 		portDescription = description;

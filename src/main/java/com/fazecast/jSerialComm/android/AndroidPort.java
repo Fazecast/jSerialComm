@@ -2,7 +2,7 @@
  * AndroidPort.java
  *
  *       Created on:  Feb 15, 2022
- *  Last Updated on:  Jul 23, 2023
+ *  Last Updated on:  Jul 27, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2022-2023 Fazecast, Inc.
@@ -41,6 +41,8 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 
 public abstract class AndroidPort
@@ -130,8 +132,19 @@ public abstract class AndroidPort
 			AndroidPort androidPort = null;
 
 			// Create a new serial port object and add it to the port listing
-			SerialPort serialPort = new SerialPort(androidPort, "COM" + (i+1), device.getDeviceName(), device.getProductName(), device.getSerialNumber(), device.getSerialNumber(), device.getVendorId(), device.getProductId());
-			portsList[i++] = serialPort;
+			SerialPort serialPort = null;
+			try {
+				Constructor<SerialPort> serialPortConstructor = SerialPort.class.getDeclaredConstructor(String.class, String.class, String.class, String.class, String.class, int.class, int.class);
+				serialPortConstructor.setAccessible(true);
+				serialPort = serialPortConstructor.newInstance("COM" + (i+1), device.getDeviceName(), device.getProductName(), device.getSerialNumber(), device.getSerialNumber(), device.getVendorId(), device.getProductId());
+				Field privateAndroidPort = SerialPort.class.getDeclaredField("androidPort");
+				privateAndroidPort.setAccessible(true);
+				privateAndroidPort.set(serialPort, androidPort);
+				portsList[i++] = serialPort;
+			} catch (Exception e) {
+				e.printStackTrace();
+				continue;
+			}
 
 			Log.i("jSerialComm", "System Port Name: " + serialPort.getSystemPortName());
 			Log.i("jSerialComm", "System Port Path: " + serialPort.getSystemPortPath());
