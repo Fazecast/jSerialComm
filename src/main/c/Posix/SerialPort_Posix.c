@@ -84,7 +84,7 @@ jfieldID eventFlagsField;
 char portsEnumerated = 0;
 char classInitialized = 0;
 pthread_mutex_t criticalSection;
-const char nativeLibraryVersion[] = "2.10.3";
+const char nativeLibraryVersion[] = "2.10.4";
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler

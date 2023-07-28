@@ -102,7 +102,7 @@ public class SerialPort
 
 	// Static initializer loads correct native library for this machine
 	static private final ReentrantLock libraryLock = new ReentrantLock(true);
-	static private final String versionString = "2.10.3";
+	static private final String versionString = "2.10.4";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
 	static private boolean isWindows = false, isAndroid = false, isAndroidDelete = false;
