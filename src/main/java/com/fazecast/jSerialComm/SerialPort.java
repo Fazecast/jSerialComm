@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 18, 2023
+ *  Last Updated on:  Jul 28, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -101,7 +101,7 @@ public class SerialPort
 	static final public int LISTENING_EVENT_PORT_DISCONNECTED = 0x10000000;
 
 	// Static initializer loads correct native library for this machine
-	static private final ReentrantLock lock = new ReentrantLock(true);
+	static private final ReentrantLock libraryLock = new ReentrantLock(true);
 	static private final String versionString = "2.10.3";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
@@ -386,9 +386,9 @@ public class SerialPort
 	 */
 	static public void addShutdownHook(Thread hook)
 	{
-		lock.lock();
+		libraryLock.lock();
 		try { shutdownHooks.add(hook); }
-		finally { lock.unlock(); }
+		finally { libraryLock.unlock(); }
 	}
 
 	/**
@@ -432,9 +432,9 @@ public class SerialPort
 	 */
 	static public SerialPort[] getCommPorts()
 	{
-		lock.lock();
+		libraryLock.lock();
 		try { return isAndroid ? AndroidPort.getCommPortsNative() : getCommPortsNative(); }
-		finally { lock.unlock(); }
+		finally { libraryLock.unlock(); }
 	}
 
 	/**
@@ -454,7 +454,7 @@ public class SerialPort
 			return null;
 
 		// Correct port descriptor, if needed
-		lock.lock();
+		libraryLock.lock();
 		try
 		{
 			// Resolve home directory ~
@@ -490,7 +490,7 @@ public class SerialPort
 			return serialPort;
 		}
 		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
-		finally { lock.unlock(); }
+		finally { libraryLock.unlock(); }
 	}
 
 	// Serial Port Parameters (may also be accessed by native code)
@@ -507,6 +507,7 @@ public class SerialPort
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
+	private final ReentrantLock configurationLock = new ReentrantLock(true);
 
 	/**
 	 * Opens this serial port for reading and writing with an optional delay time and user-specified device buffer size.
@@ -525,7 +526,7 @@ public class SerialPort
 	 */
 	public final boolean openPort(int safetySleepTime, int deviceSendQueueSize, int deviceReceiveQueueSize)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			// Set the send/receive internal buffer sizes, and return true if already opened
@@ -579,7 +580,7 @@ public class SerialPort
 				serialEventListener.startListening();
 			return (portHandle != 0);
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -597,9 +598,7 @@ public class SerialPort
 	 */
 	public final boolean openPort(int safetySleepTime)
 	{
-		lock.lock();
-		try { return openPort(safetySleepTime, sendDeviceQueueSize, receiveDeviceQueueSize); }
-		finally { lock.unlock(); }
+		return openPort(safetySleepTime, sendDeviceQueueSize, receiveDeviceQueueSize);
 	}
 
 	/**
@@ -618,9 +617,7 @@ public class SerialPort
 	 */
 	public final boolean openPort()
 	{
-		lock.lock();
-		try { return openPort(0); }
-		finally { lock.unlock(); }
+		return openPort(0);
 	}
 
 	/**
@@ -632,7 +629,7 @@ public class SerialPort
 	 */
 	public final boolean closePort()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			// Stop a registered event listener
@@ -644,7 +641,7 @@ public class SerialPort
 				portHandle = (androidPort != null) ? androidPort.closePortNative() : closePortNative(portHandle);
 			return (portHandle == 0);
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -654,9 +651,9 @@ public class SerialPort
 	 */
 	public final boolean isOpen()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try { return (portHandle != 0); }
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -668,9 +665,9 @@ public class SerialPort
 	 */
 	public final void disablePortConfiguration()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try { disableConfig = true; }
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -681,9 +678,9 @@ public class SerialPort
 	 */
 	public final void disableExclusiveLock()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try { disableExclusiveLock = true; }
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -709,9 +706,9 @@ public class SerialPort
 	 */
 	public final void allowElevatedPermissionsRequest()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try { requestElevatedPermissions = true; }
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -725,9 +722,7 @@ public class SerialPort
 	 */
 	public final int getLastErrorLocation()
 	{
-		lock.lock();
-		try { return (androidPort != null) ? androidPort.getLastErrorLocation() : getLastErrorLocation(portHandle); }
-		finally { lock.unlock(); }
+		return (androidPort != null) ? androidPort.getLastErrorLocation() : getLastErrorLocation(portHandle);
 	}
 	
 	/**
@@ -740,9 +735,7 @@ public class SerialPort
 	 */
 	public final int getLastErrorCode()
 	{
-		lock.lock();
-		try { return (androidPort != null) ? androidPort.getLastErrorCode(): getLastErrorCode(portHandle); }
-		finally { lock.unlock(); }
+		return (androidPort != null) ? androidPort.getLastErrorCode(): getLastErrorCode(portHandle);
 	}
 
 	// Serial Port Native Methods
@@ -1027,7 +1020,7 @@ public class SerialPort
 	 */
 	public final boolean addDataListener(SerialPortDataListener listener)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			if (userDataListener != null)
@@ -1050,7 +1043,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1058,13 +1051,13 @@ public class SerialPort
 	 */
 	public final void flushDataListener()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			if (serialEventListener != null)
 				serialEventListener.resetBuffers();
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1072,7 +1065,7 @@ public class SerialPort
 	 */
 	public final void removeDataListener()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			eventFlags = 0;
@@ -1083,7 +1076,7 @@ public class SerialPort
 			}
 			userDataListener = null;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1162,7 +1155,7 @@ public class SerialPort
 	 */
 	public final boolean flushIOBuffers()
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			autoFlushIOBuffers = true;
@@ -1170,7 +1163,7 @@ public class SerialPort
 				return (androidPort != null) ? androidPort.flushRxTxBuffers() : flushRxTxBuffers(portHandle);
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1245,7 +1238,7 @@ public class SerialPort
 	 */
 	public final boolean setComPortParameters(int newBaudRate, int newDataBits, int newStopBits, int newParity, boolean useRS485Mode)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			baudRate = newBaudRate;
@@ -1262,7 +1255,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1319,7 +1312,7 @@ public class SerialPort
 	 */
 	public final boolean setComPortTimeouts(int newTimeoutMode, int newReadTimeout, int newWriteTimeout)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			timeoutMode = newTimeoutMode;
@@ -1341,7 +1334,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1354,7 +1347,7 @@ public class SerialPort
 	 */
 	public final boolean setBaudRate(int newBaudRate)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			baudRate = newBaudRate;
@@ -1366,7 +1359,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1379,7 +1372,7 @@ public class SerialPort
 	 */
 	public final boolean setNumDataBits(int newDataBits)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			dataBits = newDataBits;
@@ -1391,7 +1384,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1411,7 +1404,7 @@ public class SerialPort
 	 */
 	public final boolean setNumStopBits(int newStopBits)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			stopBits = newStopBits;
@@ -1423,7 +1416,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1465,7 +1458,7 @@ public class SerialPort
 	 */
 	public final boolean setFlowControl(int newFlowControlSettings)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			flowControl = newFlowControlSettings;
@@ -1477,7 +1470,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1497,7 +1490,7 @@ public class SerialPort
 	 */
 	public final boolean setParity(int newParity)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			parity = newParity;
@@ -1509,7 +1502,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1527,9 +1520,7 @@ public class SerialPort
 	 */
 	public final boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
-		lock.lock();
-		try { return setRs485ModeParameters(useRS485Mode, rs485RtsActiveHigh, false, false, delayBeforeSendMicroseconds, delayAfterSendMicroseconds); }
-		finally { lock.unlock(); }
+		return setRs485ModeParameters(useRS485Mode, rs485RtsActiveHigh, false, false, delayBeforeSendMicroseconds, delayAfterSendMicroseconds);
 	}
 
 	/**
@@ -1558,7 +1549,7 @@ public class SerialPort
 	 */
 	public final boolean setRs485ModeParameters(boolean useRS485Mode, boolean rs485RtsActiveHigh, boolean enableTermination, boolean rxDuringTx,int delayBeforeSendMicroseconds, int delayAfterSendMicroseconds)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			rs485Mode = useRS485Mode;
@@ -1576,7 +1567,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1592,7 +1583,7 @@ public class SerialPort
 	 */
 	public final boolean setXonXoffCharacters(byte xonStartCharacter, byte xoffStopCharacter)
 	{
-		lock.lock();
+		configurationLock.lock();
 		try
 		{
 			xonStartChar = xonStartCharacter;
@@ -1605,7 +1596,7 @@ public class SerialPort
 			}
 			return true;
 		}
-		finally { lock.unlock(); }
+		finally { configurationLock.unlock(); }
 	}
 
 	/**
@@ -1838,52 +1829,47 @@ public class SerialPort
 
 		public final void stopListening()
 		{
-			lock.lock();
+			if (!eventListenerRunning)
+				return;
+			eventListenerRunning = false;
+
+			// Clear all timeouts and event masks to allow listening threads to return
+			int oldTimeoutMode = timeoutMode, oldEventFlags = eventFlags;
+			timeoutMode = TIMEOUT_NONBLOCKING;
+			eventFlags = 0;
+			if (androidPort != null)
+			{
+				androidPort.setEventListeningStatus(false);
+				androidPort.configPort(SerialPort.this);
+			}
+			else
+			{
+				setEventListeningStatus(portHandle, false);
+				configPort(portHandle);
+			}
+
+			// Wait until the event-reading thread returns. This thread MUST return or the serial port will
+			//   be in an unspecified, possibly unrecoverable state
 			try
 			{
-				if (!eventListenerRunning)
-					return;
-				eventListenerRunning = false;
-
-				// Clear all timeouts and event masks to allow listening threads to return
-				int oldTimeoutMode = timeoutMode, oldEventFlags = eventFlags;
-				timeoutMode = TIMEOUT_NONBLOCKING;
-				eventFlags = 0;
-				if (androidPort != null)
-				{
-					androidPort.setEventListeningStatus(false);
-					androidPort.configPort(SerialPort.this);
-				}
-				else
-				{
-					setEventListeningStatus(portHandle, false);
-					configPort(portHandle);
-				}
-
-				// Wait until the event-reading thread returns. This thread MUST return or the serial port will
-				//   be in an unspecified, possibly unrecoverable state
-				try
-				{
-					if (!Thread.currentThread().equals(serialEventThread))
-						do
-						{
-							serialEventThread.join(500);
-							if (serialEventThread.isAlive())
-								serialEventThread.interrupt();
-						} while (serialEventThread.isAlive());
-				}
-				catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-				serialEventThread = null;
-
-				// Reset the previously specified timeouts and event flags
-				timeoutMode = oldTimeoutMode;
-				eventFlags = oldEventFlags;
-				if (androidPort != null)
-					androidPort.configPort(SerialPort.this);
-				else
-					configPort(portHandle);
+				if (!Thread.currentThread().equals(serialEventThread))
+					do
+					{
+						serialEventThread.join(500);
+						if (serialEventThread.isAlive())
+							serialEventThread.interrupt();
+					} while (serialEventThread.isAlive());
 			}
-			finally { lock.unlock(); }
+			catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+			serialEventThread = null;
+
+			// Reset the previously specified timeouts and event flags
+			timeoutMode = oldTimeoutMode;
+			eventFlags = oldEventFlags;
+			if (androidPort != null)
+				androidPort.configPort(SerialPort.this);
+			else
+				configPort(portHandle);
 		}
 		
 		public final void resetBuffers()
