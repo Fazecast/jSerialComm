@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 28, 2023
+ *  Last Updated on:  Jul 31, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -24,8 +24,6 @@
  */
 
 package com.fazecast.jSerialComm;
-
-import android.app.Application;
 
 import com.fazecast.jSerialComm.android.AndroidPort;
 
@@ -403,9 +401,20 @@ public class SerialPort
 	 * 
 	 * @param androidApp The android.app.Application object for the current application.
 	 */
-	static public void setAndroidContext(Application androidApp) {
+	static public boolean setAndroidContext(Object androidApp) {
 		if (isAndroid)
-			AndroidPort.setAndroidContext(androidApp);
+		{
+			try
+			{
+				if (Class.forName("android.app.Application").isInstance(androidApp))
+				{
+					AndroidPort.setAndroidContext(androidApp);
+					return true;
+				}
+			}
+			catch (ClassNotFoundException e) {}
+		}
+		return false;
 	}
 
 	/**

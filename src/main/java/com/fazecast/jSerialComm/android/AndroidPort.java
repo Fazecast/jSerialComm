@@ -81,7 +81,7 @@ public abstract class AndroidPort
 	protected AndroidPort(UsbDevice device) { usbDevice = device; }
 
 	// Method to set the Android application context
-	public static void setAndroidContext(Application androidContext) { context = androidContext; }
+	public static void setAndroidContext(Object androidContext) { context = Application.class.cast(androidContext); }
 
 	// USB event handler
 	private static final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
