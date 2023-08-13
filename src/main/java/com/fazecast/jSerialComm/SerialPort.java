@@ -450,7 +450,8 @@ public class SerialPort
 	 * Allocates a {@link SerialPort} object corresponding to the user-specified port descriptor.
 	 * <p>
 	 * On Windows machines, this descriptor should be in the form of "COM[*]".<br>
-	 * On Linux machines, the descriptor will look similar to "/dev/tty[*]".
+	 * On Linux machines, the descriptor will look similar to "/dev/tty[*]".<br>
+	 * On Android machines, this method is unavailable and will return <b>null</b>.
 	 *
 	 * @param portDescriptor The desired serial port to use with this library.
 	 * @return A {@link SerialPort} object.

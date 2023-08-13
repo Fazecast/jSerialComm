@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 08, 2023
+ *  Last Updated on:  Aug 11, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -686,8 +686,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
-	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
-	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
@@ -739,7 +737,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			Java_com_fazecast_jSerialComm_SerialPort_clearRTS(env, obj, (jlong)(intptr_t)port);
 
 		// Configure the port parameters and timeouts
-		if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
+		if (!Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
 		{
 			// Close the port if there was a problem setting the parameters
 			PurgeComm(port->handle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
@@ -767,6 +765,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 {
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	unsigned char disableConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	DWORD baudRate = (DWORD)(*env)->GetIntField(env, obj, baudRateField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	BYTE byteSize = (BYTE)(*env)->GetIntField(env, obj, dataBitsField);
@@ -812,46 +812,50 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BOOL XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0);
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
-	// Retrieve existing port configuration
-	DCB dcbSerialParams;
-	memset(&dcbSerialParams, 0, sizeof(DCB));
-	dcbSerialParams.DCBlength = sizeof(DCB);
-	if (!SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(port->handle, &dcbSerialParams))
+	// Configure port parameters if not explicitly disabled
+	if (!disableConfig)
 	{
-		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
-		port->errorNumber = lastErrorNumber = GetLastError();
-		return JNI_FALSE;
-	}
+		// Retrieve existing port configuration
+		DCB dcbSerialParams;
+		memset(&dcbSerialParams, 0, sizeof(DCB));
+		dcbSerialParams.DCBlength = sizeof(DCB);
+		if (!SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(port->handle, &dcbSerialParams))
+		{
+			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+			port->errorNumber = lastErrorNumber = GetLastError();
+			return JNI_FALSE;
+		}
 
-	// Set updated port parameters
-	dcbSerialParams.BaudRate = baudRate;
-	dcbSerialParams.ByteSize = byteSize;
-	dcbSerialParams.StopBits = stopBits;
-	dcbSerialParams.Parity = parity;
-	dcbSerialParams.fParity = isParity;
-	dcbSerialParams.fBinary = TRUE;
-	dcbSerialParams.fAbortOnError = FALSE;
-	dcbSerialParams.fRtsControl = RTSValue;
-	dcbSerialParams.fOutxCtsFlow = CTSEnabled;
-	dcbSerialParams.fOutxDsrFlow = DSREnabled;
-	dcbSerialParams.fDtrControl = DTRValue;
-	dcbSerialParams.fDsrSensitivity = DSREnabled;
-	dcbSerialParams.fOutX = XonXoffOutEnabled;
-	dcbSerialParams.fInX = XonXoffInEnabled;
-	dcbSerialParams.fTXContinueOnXoff = TRUE;
-	dcbSerialParams.fErrorChar = FALSE;
-	dcbSerialParams.fNull = FALSE;
-	dcbSerialParams.XonLim = 2048;
-	dcbSerialParams.XoffLim = 512;
-	dcbSerialParams.XonChar = xonStartChar;
-	dcbSerialParams.XoffChar = xoffStopChar;
+		// Set updated port parameters
+		dcbSerialParams.BaudRate = baudRate;
+		dcbSerialParams.ByteSize = byteSize;
+		dcbSerialParams.StopBits = stopBits;
+		dcbSerialParams.Parity = parity;
+		dcbSerialParams.fParity = isParity;
+		dcbSerialParams.fBinary = TRUE;
+		dcbSerialParams.fAbortOnError = FALSE;
+		dcbSerialParams.fRtsControl = RTSValue;
+		dcbSerialParams.fOutxCtsFlow = CTSEnabled;
+		dcbSerialParams.fOutxDsrFlow = DSREnabled;
+		dcbSerialParams.fDtrControl = DTRValue;
+		dcbSerialParams.fDsrSensitivity = DSREnabled;
+		dcbSerialParams.fOutX = XonXoffOutEnabled;
+		dcbSerialParams.fInX = XonXoffInEnabled;
+		dcbSerialParams.fTXContinueOnXoff = TRUE;
+		dcbSerialParams.fErrorChar = FALSE;
+		dcbSerialParams.fNull = FALSE;
+		dcbSerialParams.XonLim = 2048;
+		dcbSerialParams.XoffLim = 512;
+		dcbSerialParams.XonChar = xonStartChar;
+		dcbSerialParams.XoffChar = xoffStopChar;
 
-	// Apply changes
-	if (!SetCommState(port->handle, &dcbSerialParams))
-	{
-		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
-		port->errorNumber = lastErrorNumber = GetLastError();
-		return JNI_FALSE;
+		// Apply changes
+		if (!SetCommState(port->handle, &dcbSerialParams))
+		{
+			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+			port->errorNumber = lastErrorNumber = GetLastError();
+			return JNI_FALSE;
+		}
 	}
 
 	// Get event flags from the Java class

@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 08, 2023
+ *  Last Updated on:  Aug 11, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -473,8 +473,6 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char requestElevatedPermissions = (*env)->GetBooleanField(env, obj, requestElevatedPermissionsField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
-	unsigned char disableAutoConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
-	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char autoFlushIOBuffers = (*env)->GetBooleanField(env, obj, autoFlushIOBuffersField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
@@ -537,7 +535,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 			port->handle = -1;
 			pthread_mutex_unlock(&criticalSection);
 		}
-		else if (!disableAutoConfig && !Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
+		else if (!Java_com_fazecast_jSerialComm_SerialPort_configPort(env, obj, (jlong)(intptr_t)port))
 		{
 			// Close the port if there was a problem setting the parameters
 			fcntl(port->handle, F_SETFL, O_NONBLOCK);
@@ -568,6 +566,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 {
 	// Retrieve port parameters from the Java class
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	unsigned char disableConfig = (*env)->GetBooleanField(env, obj, disableConfigField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	baud_rate baudRate = (*env)->GetIntField(env, obj, baudRateField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int byteSizeInt = (*env)->GetIntField(env, obj, dataBitsField);
@@ -611,97 +611,101 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 #endif
 
-	// Clear any serial port flags and set up raw non-canonical port parameters
+	// Configure port parameters if not explicitly disabled
 	struct termios options = { 0 };
 	tcgetattr(port->handle, &options);
-	options.c_cc[VSTART] = (unsigned char)xonStartChar;
-	options.c_cc[VSTOP] = (unsigned char)xoffStopChar;
-	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | INPCK | IGNPAR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
-	options.c_oflag &= ~OPOST;
-	options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-	options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD | CSTOPB | CRTSCTS);
+	if (!disableConfig)
+	{
+		// Clear any serial port flags and set up raw non-canonical port parameters
+		options.c_cc[VSTART] = (unsigned char)xonStartChar;
+		options.c_cc[VSTOP] = (unsigned char)xoffStopChar;
+		options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | INPCK | IGNPAR | IGNCR | ICRNL | IXON | IXOFF | IXANY);
+		options.c_oflag &= ~OPOST;
+		options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+		options.c_cflag &= ~(CSIZE | PARENB | CMSPAR | PARODD | CSTOPB | CRTSCTS);
 
-	// Update the user-specified port parameters
-	tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
-	tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
-	options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
-	if (!isDtrEnabled || !isRtsEnabled)
-		options.c_cflag &= ~HUPCL;
-	if (!rs485ModeEnabled)
-		options.c_iflag |= BRKINT;
-	if (stopBitsInt == com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS)
-		options.c_cflag |= CSTOPB;
-	if (byteSizeInt < 8)
-		options.c_iflag |= ISTRIP;
-	if (parityInt != 0)
-		options.c_iflag |= (INPCK | IGNPAR);
-	if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
-		options.c_cflag |= CRTSCTS;
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
-		options.c_iflag |= IXOFF;
-	if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
-		options.c_iflag |= IXON;
+		// Update the user-specified port parameters
+		tcflag_t byteSize = (byteSizeInt == 5) ? CS5 : (byteSizeInt == 6) ? CS6 : (byteSizeInt == 7) ? CS7 : CS8;
+		tcflag_t parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR);
+		options.c_cflag |= (byteSize | parity | CLOCAL | CREAD);
+		if (!isDtrEnabled || !isRtsEnabled)
+			options.c_cflag &= ~HUPCL;
+		if (!rs485ModeEnabled)
+			options.c_iflag |= BRKINT;
+		if (stopBitsInt == com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS)
+			options.c_cflag |= CSTOPB;
+		if (byteSizeInt < 8)
+			options.c_iflag |= ISTRIP;
+		if (parityInt != 0)
+			options.c_iflag |= (INPCK | IGNPAR);
+		if (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) || ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0))
+			options.c_cflag |= CRTSCTS;
+		if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0)
+			options.c_iflag |= IXOFF;
+		if ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0)
+			options.c_iflag |= IXON;
 
 #if defined(__linux__)
 
-	// Attempt to set the transmit buffer size, closing wait time, and latency flags
-	struct serial_struct serInfo = { 0 };
-	if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
-	{
-		serInfo.closing_wait = 250;
-		serInfo.xmit_fifo_size = sendDeviceQueueSize;
-		serInfo.flags |= ASYNC_LOW_LATENCY;
-		ioctl(port->handle, TIOCSSERIAL, &serInfo);
-	}
-
-	// Retrieve the driver-reported transmit buffer size
-	if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
-		sendDeviceQueueSize = serInfo.xmit_fifo_size;
-	receiveDeviceQueueSize = sendDeviceQueueSize;
-	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sendDeviceQueueSize);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, receiveDeviceQueueSize);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-
-	// Attempt to set the requested RS-485 mode
-	struct serial_rs485 rs485Conf = { 0 };
-	if (!ioctl(port->handle, TIOCGRS485, &rs485Conf))
-	{
-		if (rs485ModeEnabled)
-			rs485Conf.flags |= SER_RS485_ENABLED;
-		else
-			rs485Conf.flags &= ~SER_RS485_ENABLED;
-		if (rs485ActiveHigh)
+		// Attempt to set the transmit buffer size, closing wait time, and latency flags
+		struct serial_struct serInfo = { 0 };
+		if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
 		{
-			rs485Conf.flags |= SER_RS485_RTS_ON_SEND;
-			rs485Conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
+			serInfo.closing_wait = 250;
+			serInfo.xmit_fifo_size = sendDeviceQueueSize;
+			serInfo.flags |= ASYNC_LOW_LATENCY;
+			ioctl(port->handle, TIOCSSERIAL, &serInfo);
 		}
-		else
+
+		// Retrieve the driver-reported transmit buffer size
+		if (!ioctl(port->handle, TIOCGSERIAL, &serInfo))
+			sendDeviceQueueSize = serInfo.xmit_fifo_size;
+		receiveDeviceQueueSize = sendDeviceQueueSize;
+		(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sendDeviceQueueSize);
+		if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+		(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, receiveDeviceQueueSize);
+		if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+
+		// Attempt to set the requested RS-485 mode
+		struct serial_rs485 rs485Conf = { 0 };
+		if (!ioctl(port->handle, TIOCGRS485, &rs485Conf))
 		{
-			rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
-			rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
+			if (rs485ModeEnabled)
+				rs485Conf.flags |= SER_RS485_ENABLED;
+			else
+				rs485Conf.flags &= ~SER_RS485_ENABLED;
+			if (rs485ActiveHigh)
+			{
+				rs485Conf.flags |= SER_RS485_RTS_ON_SEND;
+				rs485Conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
+			}
+			else
+			{
+				rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
+				rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
+			}
+			if (rs485RxDuringTx)
+				rs485Conf.flags |= SER_RS485_RX_DURING_TX;
+			else
+				rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
+			if (rs485EnableTermination)
+				rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
+			else
+				rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
+			rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
+			rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
+			ioctl(port->handle, TIOCSRS485, &rs485Conf);
 		}
-		if (rs485RxDuringTx)
-			rs485Conf.flags |= SER_RS485_RX_DURING_TX;
-		else
-			rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
-		if (rs485EnableTermination)
-			rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
-		else
-			rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
-		rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
-		rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
-		ioctl(port->handle, TIOCSRS485, &rs485Conf);
-	}
 
 #else
 
-	(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+		(*env)->SetIntField(env, obj, sendDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+		if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+		(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, sysconf(_SC_PAGESIZE));
+		if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
 #endif
+	}
 
 	// Configure the serial port read and write timeouts
 	int flags = 0;
