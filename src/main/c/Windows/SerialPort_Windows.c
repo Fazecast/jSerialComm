@@ -963,8 +963,9 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 			while ((waitValue == WAIT_TIMEOUT) && port->eventListenerRunning);
 			if ((waitValue != WAIT_OBJECT_0) || !GetOverlappedResult(port->handle, &overlappedStruct, &numBytesTransferred, FALSE))
 			{
+				event |= com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
 				port->errorNumber = GetLastError();
-				port->errorLineNumber = __LINE__ - 3;
+				port->errorLineNumber = __LINE__ - 4;
 				CloseHandle(overlappedStruct.hEvent);
 				return event;
 			}
