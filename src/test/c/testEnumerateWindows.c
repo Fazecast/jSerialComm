@@ -92,7 +92,7 @@ static void enumeratePorts(void)
 					{
 						comPortLength += sizeof(wchar_t);
 						comPort = (wchar_t*)malloc(comPortLength);
-						if (comPort && (RegGetValueW(key, NULL, L"PortName", RRF_RT_REG_SZ, NULL, (LPBYTE)comPort, &comPortLength) == ERROR_SUCCESS))
+						if (comPort && (RegQueryValueExW(key, L"PortName", NULL, NULL, (LPBYTE)comPort, &comPortLength) == ERROR_SUCCESS))
 							comPortString = (comPort[0] == L'\\') ? (wcsrchr(comPort, L'\\') + 1) : comPort;
 					}
 					RegCloseKey(key);
@@ -109,14 +109,12 @@ static void enumeratePorts(void)
 				// Fetch the friendly name for this device
 				DWORD friendlyNameLength = 0;
 				wchar_t *friendlyNameString = NULL;
-				if ((!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, NULL, 0, &friendlyNameLength, 0) && (GetLastError() != ERROR_INSUFFICIENT_BUFFER)) || !friendlyNameLength)
-					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, NULL, 0, &friendlyNameLength);
 				if (friendlyNameLength && (friendlyNameLength < 256))
 				{
 					friendlyNameLength += sizeof(wchar_t);
 					friendlyNameString = (wchar_t*)malloc(friendlyNameLength);
-					if (!friendlyNameString || (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_FriendlyName, &devInfoPropType, (BYTE*)friendlyNameString, friendlyNameLength, NULL, 0) &&
-							!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL)))
+					if (!friendlyNameString || !SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_FRIENDLYNAME, NULL, (BYTE*)friendlyNameString, friendlyNameLength, NULL))
 					{
 						if (friendlyNameString)
 							free(friendlyNameString);
@@ -138,7 +136,7 @@ static void enumeratePorts(void)
 				// Fetch the bus-reported device description
 				DWORD portDescriptionLength = 0;
 				wchar_t *portDescriptionString = NULL;
-				if ((SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0) || (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) && portDescriptionLength && (portDescriptionLength < 256))
+				if (SetupDiGetDevicePropertyW && (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusReportedDeviceDesc, &devInfoPropType, NULL, 0, &portDescriptionLength, 0) || (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) && portDescriptionLength && (portDescriptionLength < 256))
 				{
 					portDescriptionLength += sizeof(wchar_t);
 					portDescriptionString = (wchar_t*)malloc(portDescriptionLength);
@@ -164,20 +162,16 @@ static void enumeratePorts(void)
 				// Fetch the physical location for this device
 				wchar_t *locationString = NULL;
 				DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_BusNumber, &devInfoPropType, (BYTE*)&busNumber, sizeof(busNumber), NULL, 0) &&
-						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
+				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
 					busNumber = -1;
-				if (!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_Address, &devInfoPropType, (BYTE*)&portNumber, sizeof(portNumber), NULL, 0) &&
-						!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
+				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
 					portNumber = -1;
-				if ((!SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, NULL, 0, &locationLength, 0) && (GetLastError() != ERROR_INSUFFICIENT_BUFFER)) || !locationLength)
-					SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
 				if (locationLength && (locationLength < 256))
 				{
 					locationLength += sizeof(wchar_t);
 					locationString = (wchar_t*)malloc(locationLength);
-					if (locationString && (SetupDiGetDevicePropertyW(devList, &devInfoData, &DEVPKEY_Device_LocationInfo, &devInfoPropType, (BYTE*)locationString, locationLength, NULL, 0) ||
-							SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL)))
+					if (locationString && SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
 					{
 						locationString[(locationLength / sizeof(wchar_t)) - 1] = 0;
 						if (wcsstr(locationString, L"Hub"))
