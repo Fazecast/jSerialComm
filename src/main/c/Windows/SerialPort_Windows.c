@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 17, 2023
+ *  Last Updated on:  Oct 24, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -258,18 +258,55 @@ static void enumeratePorts(void)
 					if (locationString && SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, (BYTE*)locationString, locationLength, NULL))
 					{
 						locationString[(locationLength / sizeof(wchar_t)) - 1] = 0;
-						if (wcsstr(locationString, L"Hub"))
+						if (wcsstr(locationString, L"Hub_#"))
 							hubNumber = _wtoi(wcschr(wcsstr(locationString, L"Hub"), L'#') + 1);
-						if ((portNumber == -1) && wcsstr(locationString, L"Port"))
+						if (portNumber == -1)
 						{
-							wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
-							if (portString)
+							if (wcsstr(locationString, L"Port_#"))
 							{
-								wchar_t *end = wcschr(portString, L'.');
-								if (end)
-									*end = L'\0';
+								wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'#') + 1;
+								if (portString)
+								{
+									wchar_t *end = wcschr(portString, L'.');
+									if (end)
+										*end = L'\0';
+									portNumber = _wtoi(portString);
+								}
 							}
-							portNumber = _wtoi(portString);
+							else if (wcsstr(locationString, L"Port_") && wcschr(locationString, L'-') && wcschr(locationString, L']'))
+							{
+								wchar_t *portString = wcschr(wcsstr(locationString, L"Port"), L'_') + 1;
+								if (portString)
+								{
+									wchar_t *end = wcschr(portString, L' ');
+									if (end)
+										*end = L'\0';
+									portNumber = _wtoi(portString);
+									if (end)
+										*end = L' ';
+								}
+								if (hubNumber == -1)
+								{
+									wchar_t *hubString = wcsrchr(locationString, L'-') + 1;
+									if (hubString)
+									{
+										wchar_t *end = wcschr(hubString, L']');
+										if (end)
+											*end = L'\0';
+										hubNumber = _wtoi(hubString);
+										if (end)
+											*end = L']';
+									}
+								}
+								if (!serialNumberString && wcschr(locationString, L'[') && wcschr(locationString, L']'))
+								{
+									serialNumberString = (wchar_t*)malloc(32*sizeof(wchar_t));
+									wchar_t *serialBegin = wcschr(locationString, L'[') + 1;
+									wchar_t *serialEnd = wcspbrk(serialBegin, L"-]");
+									*serialEnd = L'\0';
+									wcscpy_s(serialNumberString, 32, serialBegin);
+								}
+							}
 						}
 					}
 					if (locationString)
