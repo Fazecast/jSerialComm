@@ -767,12 +767,8 @@ public class SerialPort
 	private native boolean clearBreak(long portHandle);					// Clear BREAK status on serial line
 	private native boolean setRTS(long portHandle);						// Set RTS line to 1
 	private native boolean clearRTS(long portHandle);					// Clear RTS line to 0
-	private native boolean presetRTS();									// Set RTS line to 1 prior to opening
-	private native boolean preclearRTS();								// Clear RTS line to 0 prior to opening
 	private native boolean setDTR(long portHandle);						// Set DTR line to 1
 	private native boolean clearDTR(long portHandle);					// Clear DTR line to 0
-	private native boolean presetDTR();									// Set DTR line to 1 prior to opening
-	private native boolean preclearDTR();								// Clear DTR line to 0 prior to opening
 	private native boolean getCTS(long portHandle);						// Returns whether the CTS signal is 1
 	private native boolean getDSR(long portHandle);						// Returns whether the DSR signal is 1
 	private native boolean getDCD(long portHandle);						// Returns whether the DCD signal is 1
@@ -924,7 +920,7 @@ public class SerialPort
 	public final boolean setRTS()
 	{
 		isRtsEnabled = true;
-		return (androidPort != null) ? androidPort.setRTS() : ((portHandle != 0) ? setRTS(portHandle) : presetRTS());
+		return (androidPort != null) ? androidPort.setRTS() : ((portHandle == 0) || setRTS(portHandle));
 	}
 
 	/**
@@ -934,7 +930,7 @@ public class SerialPort
 	public final boolean clearRTS()
 	{
 		isRtsEnabled = false;
-		return (androidPort != null) ? androidPort.clearRTS() : ((portHandle != 0) ? clearRTS(portHandle) : preclearRTS());
+		return (androidPort != null) ? androidPort.clearRTS() : ((portHandle == 0) || clearRTS(portHandle));
 	}
 
 	/**
@@ -944,7 +940,7 @@ public class SerialPort
 	public final boolean setDTR()
 	{
 		isDtrEnabled = true;
-		return (androidPort != null) ? androidPort.setDTR() : ((portHandle != 0) ? setDTR(portHandle) : presetDTR());
+		return (androidPort != null) ? androidPort.setDTR() : ((portHandle == 0) || setDTR(portHandle));
 	}
 
 	/**
@@ -954,7 +950,7 @@ public class SerialPort
 	public final boolean clearDTR()
 	{
 		isDtrEnabled = false;
-		return (androidPort != null) ? androidPort.clearDTR() : ((portHandle != 0) ? clearDTR(portHandle) : preclearDTR());
+		return (androidPort != null) ? androidPort.clearDTR() : ((portHandle == 0) || clearDTR(portHandle));
 	}
 
 	/**
