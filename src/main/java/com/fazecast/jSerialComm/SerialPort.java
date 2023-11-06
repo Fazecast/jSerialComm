@@ -945,6 +945,10 @@ public class SerialPort
 
 	/**
 	 * Clears the state of the DTR line to 0.
+	 * <p>
+	 * If you call this function <i>before</i> opening your port, it may help to mitigate a known problem with Arduino-based
+	 * devices resetting themselves upon a connection being made.
+	 *
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearDTR()
