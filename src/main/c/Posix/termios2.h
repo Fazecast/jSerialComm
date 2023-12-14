@@ -2,7 +2,7 @@
  * termios2.h
  *
  *       Created on:  Jul 06, 2023
- *  Last Updated on:  Jul 27, 2023
+ *  Last Updated on:  Dec 14, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -28,13 +28,10 @@
 
 #include <termios.h>
 
-#define IBAUD0 020000000000
-
 #if defined (__powerpc__) || defined (__powerpc64__)
 
 #define T2CSANOW _IOW('t', 20, struct termios2)
 #define BOTHER 00037
-#define IBSHIFT 16
 #define K_NCCS 19
 struct termios2 {
 	tcflag_t c_iflag;
@@ -52,7 +49,6 @@ struct termios2 {
 
 #define T2CSANOW TCSETS2
 #define BOTHER CBAUDEX
-#define IBSHIFT 16
 #define K_NCCS 23
 struct termios2 {
 	tcflag_t c_iflag;
@@ -76,9 +72,6 @@ struct termios2 {
 #endif
 #ifndef BOTHER
   #define BOTHER CBAUDEX
-#endif
-#ifndef IBSHIFT
-  #define IBSHIFT 16
 #endif
 
 #if !defined(__ANDROID__)

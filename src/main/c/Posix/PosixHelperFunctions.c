@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Jul 06, 2023
+ *  Last Updated on:  Dec 14, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -837,9 +837,7 @@ int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
 		// Copy termios info into newer termios2 data structure
 		struct termios2 options2 = { 0 };
 		options2.c_cflag = (options->c_cflag & ~(CBAUD | CBAUDEX)) | BOTHER;
-		options2.c_cflag &= ~((CBAUD | CBAUDEX) << IBSHIFT);
-		options2.c_cflag |= (BOTHER << IBSHIFT);
-		options2.c_iflag = options->c_iflag & ~IBAUD0;
+		options2.c_iflag = options->c_iflag;
 		options2.c_oflag = options->c_oflag;
 		options2.c_lflag = options->c_lflag;
 		options2.c_line = options->c_line;
