@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 24, 2023
+ *  Last Updated on:  Dec 14, 2023
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2023 Fazecast, Inc.
@@ -916,41 +916,37 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	COMMTIMEOUTS timeouts;
 	memset(&timeouts, 0, sizeof(COMMTIMEOUTS));
 	timeouts.WriteTotalTimeoutMultiplier = 0;
+	timeouts.WriteTotalTimeoutConstant = (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_WRITE_BLOCKING) ? writeTimeout : 0;
 	if (eventsToMonitor & com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_DATA_RECEIVED)
 	{
 		// Force specific read timeouts if we are monitoring data received
 		timeouts.ReadIntervalTimeout = MAXDWORD;
 		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 		timeouts.ReadTotalTimeoutConstant = 1000;
-		timeouts.WriteTotalTimeoutConstant = 0;
 	}
 	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_SCANNER)
 	{
 		timeouts.ReadIntervalTimeout = MAXDWORD;
 		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 		timeouts.ReadTotalTimeoutConstant = 0x0FFFFFFF;
-		timeouts.WriteTotalTimeoutConstant = writeTimeout;
 	}
 	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_SEMI_BLOCKING)
 	{
 		timeouts.ReadIntervalTimeout = MAXDWORD;
 		timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
 		timeouts.ReadTotalTimeoutConstant = readTimeout ? readTimeout : 0x0FFFFFFF;
-		timeouts.WriteTotalTimeoutConstant = writeTimeout;
 	}
 	else if (timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING)
 	{
 		timeouts.ReadIntervalTimeout = 0;
 		timeouts.ReadTotalTimeoutMultiplier = 0;
 		timeouts.ReadTotalTimeoutConstant = readTimeout;
-		timeouts.WriteTotalTimeoutConstant = writeTimeout;
 	}
 	else		// Non-blocking
 	{
 		timeouts.ReadIntervalTimeout = MAXDWORD;
 		timeouts.ReadTotalTimeoutMultiplier = 0;
 		timeouts.ReadTotalTimeoutConstant = 0;
-		timeouts.WriteTotalTimeoutConstant = writeTimeout;
 	}
 
 	// Apply changes
