@@ -164,9 +164,9 @@ public class SerialPort
 			if (!System.getProperty("os.arch_full", "").isEmpty())
 				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
 			else if (arch.contains("86") || arch.contains("amd"))
-				architectures = new String[] { "x86_64", "x86", "armv5", "armv6hf", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
+				architectures = new String[] { "x86_64", "x86", "armv5", "armv6hf", "armv7hf", "armv8_64", "armv8_32", "ppc64le", "loongarch64" };
 			else
-				architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
+				architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86", "loongarch64" };
 		}
 		else
 		{
