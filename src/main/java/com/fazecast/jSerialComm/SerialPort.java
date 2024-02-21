@@ -914,7 +914,9 @@ public class SerialPort
 	public final boolean clearBreak() { return (portHandle != 0) && ((androidPort != null) ? androidPort.clearBreak() : clearBreak(portHandle)); }
 
 	/**
-	 * Sets the state of the RTS line to 1.
+	 * Asserts RTS by setting the line's state to 1.
+	 * On a "real" RS232 port, setting RTS causes the pin to output positive voltage.
+	 *With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setRTS()
@@ -924,7 +926,9 @@ public class SerialPort
 	}
 
 	/**
-	 * Clears the state of the RTS line to 0.
+	 * De-asserts RTS by clearing the line's state to 0.
+	 * On a "real" RS232 port, clearing RTS causes the pin to output negative voltage.
+	 * With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearRTS()
@@ -934,7 +938,9 @@ public class SerialPort
 	}
 
 	/**
-	 * Sets the state of the DTR line to 1.
+	 * Asserts DTR by setting the line's state to 1.
+	 * With a "real" RS232 port, asserting DTR causes the port to output positive voltage.
+	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so clearing DTR causes the pin to go HIGH.
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setDTR()
@@ -944,7 +950,10 @@ public class SerialPort
 	}
 
 	/**
-	 * Clears the state of the DTR line to 0.
+	 * De-asserts DTR by clearing the line's state to 0.
+	 * <p>
+	 * On a "real" RS232 port, clearing DTR causes the port to output negative voltage.
+	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so clearing DTR causes the pin to go HIGH.
 	 * <p>
 	 * If you call this function <i>before</i> opening your port, it may help to mitigate a known problem with Arduino-based
 	 * devices resetting themselves upon a connection being made.
