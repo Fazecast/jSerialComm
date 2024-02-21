@@ -940,8 +940,8 @@ public class SerialPort
 
 	/**
 	 * Asserts RTS by setting the line's state to 1.
-	 * On a "real" RS232 port, setting RTS causes the pin to output positive voltage.
-	 *With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so setting RTS causes the pin to go LOW.
+	 * <ul><li>On a "real" RS232 port, setting RTS causes the pin to output positive voltage.</li>
+	 * <li>With a typical USB-UART bridge (like the CP210x), the RTS pin is 'active low', so setting RTS causes the pin to go LOW.</li>
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setRTS()
@@ -952,8 +952,8 @@ public class SerialPort
 
 	/**
 	 * De-asserts RTS by clearing the line's state to 0.
-	 * On a "real" RS232 port, clearing RTS causes the pin to output negative voltage.
-	 * With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.
+	 * <ul><li>On a "real" RS232 port, clearing RTS causes the pin to output negative voltage.</li>
+	 * <li>With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.</li></ul>
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearRTS()
@@ -964,8 +964,8 @@ public class SerialPort
 
 	/**
 	 * Asserts DTR by setting the line's state to 1.
-	 * With a "real" RS232 port, asserting DTR causes the port to output positive voltage.
-	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so setting DTR causes the pin to go LOW.
+	 * <ul><li>With a "real" RS232 port, asserting DTR causes the pin to output positive voltage.</li>
+	 * <li>With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so setting DTR causes the pin to go LOW.</li></ul>
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setDTR()
@@ -976,10 +976,9 @@ public class SerialPort
 
 	/**
 	 * De-asserts DTR by clearing the line's state to 0.
-	 * <p>
-	 * On a "real" RS232 port, clearing DTR causes the port to output negative voltage.
-	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so clearing DTR causes the pin to go HIGH.
-	 * <p>
+	 * <ul><li>On a "real" RS232 port, clearing DTR causes the pin to output negative voltage.</li>
+	 * <li>With a typical USB-UART bridge (like the CP210x), the DTR pin is 'active low', so clearing DTR causes the pin to go HIGH.</li>
+	 * </ul>
 	 * If you call this function <i>before</i> opening your port, it may help to mitigate a known problem with Arduino-based
 	 * devices resetting themselves upon a connection being made.
 	 *
