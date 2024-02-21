@@ -656,6 +656,31 @@ public class SerialPort
 
 	/**
 	 * Returns whether the port is currently open and available for communication.
+	 * <p></p><b>Warning!</b> This method alone <i>might not</i> reliably indicate the unplugging of a USB serial port,
+	 * including USB ports on popular microcontrollers like Arduino and ESP32.
+	 * (ie, it'll return <i>true</i> after you open the port, then continue to return <i>true</i> even after the interface
+	 * has been unplugged from the USB port).
+	 * In order to detect the port's unplugging, add the following code to your program after opening the SerialPort:
+	 *	<pre>
+	 *	port.addDataListener(new SerialPortDataListener() {
+	 *	// (atOverride annotations omitted to avoid confusing Javadoc generator, but necessary in actual use)
+     *       public int getListeningEvents() {
+     *           return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED;
+     *       }
+     *       public void serialEvent(SerialPortEvent serialPortEvent) {
+     *           port.closePort();
+     *       }
+     *   });
+	 *	</pre>
+	 *	Once the port has been closed by the event handler, isOpen() will return false, and you can periodically
+	 *  attempt to reopen it within your event loop without creating a new SerialPort object:
+	 *	<pre>
+	 *	if (port.isOpen() == false)
+	 *		port.open();
+	 *	</pre>
+	 *	Note that once a USB serial port has been unplugged and reconnected, it's unlikely (certain?) to
+	 *  not work again until the SerialPort object's close() and open() methods have both been called to
+	 *  re-establish the connection.
 	 *
 	 * @return Whether the port is opened.
 	 */
