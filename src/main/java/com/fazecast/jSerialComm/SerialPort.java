@@ -1388,6 +1388,26 @@ public class SerialPort
 	 * Sets the desired baud rate for this serial port.
 	 * <p>
 	 * The default baud rate is 9600 baud.
+	 * <p>Note: Using baud rates above 230400 on <b>Apple Macintosh</b> computers requires additional
+	 * steps to enable their use that are beyond the scope of this Javadoc.</p>
+	 * <p>Note: for <b>USB serial adapters</b> (like the SiLabs CP210x family, commonly used with Arduino and ESP32 boards),
+	 * the baud rate set by a call to setBaudRate() dictates the baud rate on the TxD and RxD pins at the <i>other end</i> of the USB port,
+	 * and generally has <i>no effect</i> on the mode or transfer rate of bits across the USB bus itself.</p>
+	 * <ul><li>The actual <i>achievable</i> transfer rate MIGHT be limited by the USB transfer mode used by the kernel driver itself.</li>
+	 * <li>Many (though not necessarily ALL) USB-serial adapters use USB "control" transfers. Control transfers deliver a 64-byte payload
+	 * in each direction at 1 millisecond intervals.
+	 * This implicitly imposes an absolute speed limit of 64 x 8 x 1000 = 512kbps, minus any overhead related to communicating the state of DTR, RTS, etc.
+	 * Your interface might be different... but keep this in mind as a possibility if you notice that baudrates above 460kbps (or even 230kbps)
+	 * appear to be dropping bytes.</li>
+	 * <li>This doesn't mean you can't set a baudrate of "1mbps" (or 921kbps, or
+	 * some other baudrate supported at the other end of the serial adapter), but it DOES mean you'll probably have to implement
+	 * some form of flow control to avoid overflowing the USB-serial adapter's send buffer if you're filling it with
+	 * bytes faster than the host PC is polling for them.</li>
+	 * <li>Also, be aware that things like start/stop bits and parity are handled at the USB adapter's end. A byte might
+	 * require 10 clocks at your baudrate to transfer a start bit, 8 data bits, and a stop bit between the USB adapter's
+	 * TxD/RxD pins and whatever you connect to them, but the actual payload delivered across the USB bus will consume
+	 * only 8 bits per byte.</li>
+	 * </ul>
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
 	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
