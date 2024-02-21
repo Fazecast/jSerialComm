@@ -656,7 +656,7 @@ public class SerialPort
 
 	/**
 	 * Returns whether the port is currently open and available for communication.
-	 * <p></p><b>Warning!</b> This method alone <i>might not</i> reliably indicate the unplugging of a USB serial port,
+	 * <p><b>Warning!</b> This method alone <i>might not</i> reliably indicate the unplugging of a USB serial port,
 	 * including USB ports on popular microcontrollers like Arduino and ESP32.
 	 * (ie, it'll return <i>true</i> after you open the port, then continue to return <i>true</i> even after the interface
 	 * has been unplugged from the USB port).
