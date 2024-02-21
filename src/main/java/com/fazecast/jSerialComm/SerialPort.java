@@ -916,7 +916,7 @@ public class SerialPort
 	/**
 	 * Asserts RTS by setting the line's state to 1.
 	 * On a "real" RS232 port, setting RTS causes the pin to output positive voltage.
-	 *With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.
+	 *With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so setting RTS causes the pin to go LOW.
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setRTS()
@@ -940,7 +940,7 @@ public class SerialPort
 	/**
 	 * Asserts DTR by setting the line's state to 1.
 	 * With a "real" RS232 port, asserting DTR causes the port to output positive voltage.
-	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so clearing DTR causes the pin to go HIGH.
+	 * With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so setting DTR causes the pin to go LOW.
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setDTR()
