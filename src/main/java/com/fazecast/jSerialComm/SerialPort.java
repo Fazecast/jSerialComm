@@ -666,9 +666,16 @@ public class SerialPort
 	 *	// (atOverride annotations omitted to avoid confusing Javadoc generator, but necessary in actual use)
      *       public int getListeningEvents() {
      *           return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED;
+	 *           // or, if you want to listen for multiple events (see warning below):
+	 *           // return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED | SerialPort.LISTENING_EVENT_DATA_RECEIVED
      *       }
      *       public void serialEvent(SerialPortEvent serialPortEvent) {
      *           port.closePort();
+	 *           // or, if you're listening for two or more events:
+	 *           // if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+	 *           //     port.closePort();
+	 *           // else if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_DATA_RECEIVED)
+	 *           //	... you get the idea
      *       }
      *   });
 	 *	</pre>
@@ -681,6 +688,9 @@ public class SerialPort
 	 *	Note that once a USB serial port has been unplugged and reconnected, it's unlikely (certain?) to
 	 *  not work again until the SerialPort object's close() and open() methods have both been called to
 	 *  re-establish the connection.
+	 *
+	 *  <p><b>WARNING!</b> There can be **only one** DataListener. To Listen for multiple SerialPortEvents,
+	 *  OR (|) them together in getListeningEvents(), and check to see which event fired in serialEvent().
 	 *
 	 * @return Whether the port is opened.
 	 */
