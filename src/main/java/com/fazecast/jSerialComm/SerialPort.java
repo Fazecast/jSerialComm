@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 17, 2023
+ *  Last Updated on:  Mar 20, 2024
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2023 Fazecast, Inc.
+ * Copyright (C) 2012-2024 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -107,170 +107,173 @@ public class SerialPort
 	static private volatile boolean isShuttingDown = false;
 	static
 	{
-		// Determine the temporary file directories for native library storage
-		String[] architectures;
-		String libraryPath, libraryFileName;
-		final String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
-		final String OS = System.getProperty("os.name").toLowerCase();
-		final String arch = System.getProperty("os.arch").toLowerCase();
-		final File tempFileDirectory = new File(System.getProperty("java.io.tmpdir"), "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString);
-		final File userHomeDirectory = new File(System.getProperty("user.home"), ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString);
-		cleanUpDirectory(new File(tempFileDirectory, ".."));
-		cleanUpDirectory(new File(userHomeDirectory, ".."));
-
-		// Determine Operating System and architecture
-		if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
+		try
 		{
-			isAndroidDelete = true;
-			libraryPath = "Android";
-			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "arm64-v8a", "armeabi-v7a", "x86_64", "x86" };
-		}
-		else if (OS.contains("win"))
-		{
-			isWindows = true;
-			libraryPath = "Windows";
-			libraryFileName = "jSerialComm.dll";
-			architectures = new String[] { "aarch64", "armv7", "x86_64", "x86" };
-		}
-		else if (OS.contains("mac"))
-		{
-			libraryPath = "OSX";
-			libraryFileName = "libjSerialComm.jnilib";
-			architectures = new String[] { "aarch64", "x86_64", "x86" };
-		}
-		else if ((OS.contains("sunos")) || (OS.contains("solaris")))
-		{
-			libraryPath = "Solaris";
-			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "sparcv9_64", "sparcv8plus_32", "x86_64", "x86" };
-		}
-		else if (OS.contains("freebsd"))
-		{
-			libraryPath = "FreeBSD";
-			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "arm64", "x86_64", "x86" };
-		}
-		else if (OS.contains("openbsd"))
-		{
-			libraryPath = "OpenBSD";
-			libraryFileName = "libjSerialComm.so";
-			architectures = new String[] { "amd64", "x86" };
-		}
-		else if ((OS.contains("nix")) || (OS.contains("nux")))
-		{
-			libraryPath = "Linux";
-			libraryFileName = "libjSerialComm.so";
-			if (!System.getProperty("os.arch_full", "").isEmpty())
-				architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
-			else if (arch.contains("86") || arch.contains("amd"))
-				architectures = new String[] { "x86_64", "x86", "armv5", "armv6hf", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
+			// Determine the temporary file directories for native library storage
+			String[] architectures;
+			String libraryPath, libraryFileName;
+			final String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
+			final String OS = System.getProperty("os.name").toLowerCase();
+			final String arch = System.getProperty("os.arch").toLowerCase();
+			final File tempFileDirectory = new File(System.getProperty("java.io.tmpdir"), "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
+			final File userHomeDirectory = new File(System.getProperty("user.home"), ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
+			cleanUpDirectory(new File(tempFileDirectory, ".."));
+			cleanUpDirectory(new File(userHomeDirectory, ".."));
+	
+			// Determine Operating System and architecture
+			if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
+			{
+				isAndroidDelete = true;
+				libraryPath = "Android";
+				libraryFileName = "libjSerialComm.so";
+				architectures = new String[] { "arm64-v8a", "armeabi-v7a", "x86_64", "x86" };
+			}
+			else if (OS.contains("win"))
+			{
+				isWindows = true;
+				libraryPath = "Windows";
+				libraryFileName = "jSerialComm.dll";
+				architectures = new String[] { "aarch64", "armv7", "x86_64", "x86" };
+			}
+			else if (OS.contains("mac"))
+			{
+				libraryPath = "OSX";
+				libraryFileName = "libjSerialComm.jnilib";
+				architectures = new String[] { "aarch64", "x86_64", "x86" };
+			}
+			else if ((OS.contains("sunos")) || (OS.contains("solaris")))
+			{
+				libraryPath = "Solaris";
+				libraryFileName = "libjSerialComm.so";
+				architectures = new String[] { "sparcv9_64", "sparcv8plus_32", "x86_64", "x86" };
+			}
+			else if (OS.contains("freebsd"))
+			{
+				libraryPath = "FreeBSD";
+				libraryFileName = "libjSerialComm.so";
+				architectures = new String[] { "arm64", "x86_64", "x86" };
+			}
+			else if (OS.contains("openbsd"))
+			{
+				libraryPath = "OpenBSD";
+				libraryFileName = "libjSerialComm.so";
+				architectures = new String[] { "amd64", "x86" };
+			}
+			else if ((OS.contains("nix")) || (OS.contains("nux")))
+			{
+				libraryPath = "Linux";
+				libraryFileName = "libjSerialComm.so";
+				if (!System.getProperty("os.arch_full", "").isEmpty())
+					architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
+				else if (arch.contains("86") || arch.contains("amd"))
+					architectures = new String[] { "x86_64", "x86", "armv5", "armv6hf", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
+				else
+					architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
+			}
 			else
-				architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
-		}
-		else
-		{
-			System.err.println("This operating system is not supported by the jSerialComm library.");
-			libraryPath = libraryFileName = null;
-			architectures = null;
-			System.exit(-1);
-		}
-
-		// Load platform-specific binaries for non-Android systems
-		if (!isAndroid)
-		{
-			// Attempt to load from a manually-specified user location
-			boolean libraryLoaded = false;
-			Vector<String> errorMessages = new Vector<String>();
-			if (!manualLibraryPath.isEmpty())
 			{
-				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryPath + File.separator + architectures[i] + File.separator + libraryFileName).getAbsolutePath(), errorMessages);
-				if (!libraryLoaded)
-					libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryFileName).getAbsolutePath(), errorMessages);
+				System.err.println("This operating system is not supported by the jSerialComm library.");
+				libraryPath = libraryFileName = null;
+				architectures = null;
+				System.exit(-1);
 			}
-
-			// Attempt to load from the system-defined library location
-			try
+	
+			// Load platform-specific binaries for non-Android systems
+			if (!isAndroid)
 			{
-				System.loadLibrary("jSerialComm");
-				if (getNativeLibraryVersion().equals(versionString))
-					libraryLoaded = true;
-				else
+				// Attempt to load from a manually-specified user location
+				boolean libraryLoaded = false;
+				Vector<String> errorMessages = new Vector<String>();
+				if (!manualLibraryPath.isEmpty())
 				{
-					errorMessages.add("Native library in system path has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
-					uninitializeLibrary();
+					for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+						libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryPath + File.separator + architectures[i] + File.separator + libraryFileName).getCanonicalPath(), errorMessages);
+					if (!libraryLoaded)
+						libraryLoaded = loadNativeLibrary(new File(manualLibraryPath, libraryFileName).getCanonicalPath(), errorMessages);
 				}
-			}
-			catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); }
-			catch (Exception e) { errorMessages.add(e.getMessage()); }
-
-			// Attempt to load from an existing extracted location
-			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
-			{
-				File nativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
-				libraryLoaded = nativeLibrary.exists() && loadNativeLibrary(nativeLibrary.getAbsolutePath(), errorMessages);
-			}
-
-			// Attempt to load from the expected JAR location
-			deleteDirectory(new File(tempFileDirectory, ".."));
-			deleteDirectory(new File(userHomeDirectory, ".."));
-			for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
-			{
-				// Create a temporary working directory with open permissions
-				File tempNativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
-				if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
+	
+				// Attempt to load from the system-defined library location
+				try
 				{
-					tempNativeLibrary.getParentFile().setReadable(true, false);
-					tempNativeLibrary.getParentFile().setWritable(true, true);
-					tempNativeLibrary.getParentFile().setExecutable(true, false);
-				}
-				else
-					continue;
-
-				// Attempt to load the native jSerialComm library for any available architecture
-				for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
-				{
-					InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
-					if (fileContents != null)
-						try
-						{
-							// Copy the native library to the temporary working directory
-							tempNativeLibrary.delete();
-							FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
-							byte[] transferBuffer = new byte[4096];
-							int numBytesRead;
-							while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
-								destinationFileContents.write(transferBuffer, 0, numBytesRead);
-							destinationFileContents.close();
-							fileContents.close();
-							tempNativeLibrary.setReadable(true, false);
-							tempNativeLibrary.setWritable(false, false);
-							tempNativeLibrary.setExecutable(true, false);
-
-							// Attempt to load the native library
-							errorMessages.add("Loading for arch: " + architectures[i]);
-							libraryLoaded = loadNativeLibrary(tempNativeLibrary.getAbsolutePath(), errorMessages);
-							if (libraryLoaded)
-								errorMessages.add("Successfully loaded!");
-						}
-						catch (Exception e) { e.printStackTrace(); }
-				}
-
-				// Throw an error if unable to load any native libraries
-				if (!libraryLoaded)
-				{
-					tempNativeLibrary.delete();
-					if (attempt > 0)
+					System.loadLibrary("jSerialComm");
+					if (getNativeLibraryVersion().equals(versionString))
+						libraryLoaded = true;
+					else
 					{
-						StringBuilder errorMessage = new StringBuilder("Cannot load native library. Errors as follows:\n");
-						for (int i = 0; i < errorMessages.size(); ++i)
-							errorMessage.append('[').append(i+1).append("]: ").append(errorMessages.get(i)).append('\n');
-						throw new UnsatisfiedLinkError(errorMessage.toString());
+						errorMessages.add("Native library in system path has the incorrect version: " + getNativeLibraryVersion() + ", Expected " + versionString);
+						uninitializeLibrary();
+					}
+				}
+				catch (UnsatisfiedLinkError e) { errorMessages.add(e.getMessage()); }
+				catch (Exception e) { errorMessages.add(e.getMessage()); }
+	
+				// Attempt to load from an existing extracted location
+				for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+				{
+					File nativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
+					libraryLoaded = nativeLibrary.exists() && loadNativeLibrary(nativeLibrary.getCanonicalPath(), errorMessages);
+				}
+	
+				// Attempt to load from the expected JAR location
+				for (int attempt = 0; !libraryLoaded && (attempt < 2); ++attempt)
+				{
+					// Create a temporary working directory with open permissions
+					deleteDirectory(new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, "..").getCanonicalFile());
+					File tempNativeLibrary = new File((attempt == 0) ? tempFileDirectory : userHomeDirectory, libraryFileName);
+					if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
+					{
+						tempNativeLibrary.getParentFile().setReadable(true, false);
+						tempNativeLibrary.getParentFile().setWritable(true, true);
+						tempNativeLibrary.getParentFile().setExecutable(true, false);
+					}
+					else
+						continue;
+	
+					// Attempt to load the native jSerialComm library for any available architecture
+					for (int i = 0; !libraryLoaded && (i < architectures.length); ++i)
+					{
+						InputStream fileContents = SerialPort.class.getResourceAsStream("/" + libraryPath + "/" + architectures[i] + "/" + libraryFileName);
+						if (fileContents != null)
+							try
+							{
+								// Copy the native library to the temporary working directory
+								tempNativeLibrary.delete();
+								FileOutputStream destinationFileContents = new FileOutputStream(tempNativeLibrary);
+								byte[] transferBuffer = new byte[4096];
+								int numBytesRead;
+								while ((numBytesRead = fileContents.read(transferBuffer)) > 0)
+									destinationFileContents.write(transferBuffer, 0, numBytesRead);
+								destinationFileContents.close();
+								fileContents.close();
+								tempNativeLibrary.setReadable(true, false);
+								tempNativeLibrary.setWritable(false, false);
+								tempNativeLibrary.setExecutable(true, false);
+	
+								// Attempt to load the native library
+								errorMessages.add("Loading for arch: " + architectures[i]);
+								libraryLoaded = loadNativeLibrary(tempNativeLibrary.getCanonicalPath(), errorMessages);
+								if (libraryLoaded)
+									errorMessages.add("Successfully loaded!");
+							}
+							catch (Exception e) { e.printStackTrace(); }
+					}
+	
+					// Throw an error if unable to load any native libraries
+					if (!libraryLoaded)
+					{
+						tempNativeLibrary.delete();
+						if (attempt > 0)
+						{
+							StringBuilder errorMessage = new StringBuilder("Cannot load native library. Errors as follows:\n");
+							for (int i = 0; i < errorMessages.size(); ++i)
+								errorMessage.append('[').append(i+1).append("]: ").append(errorMessages.get(i)).append('\n');
+							throw new UnsatisfiedLinkError(errorMessage.toString());
+						}
 					}
 				}
 			}
 		}
+		catch (IOException e) { e.printStackTrace(); }
 
 		// Add a shutdown hook to ensure that all ports get closed
 		Runtime.getRuntime().addShutdownHook(SerialPortThreadFactory.get().newThread(new Runnable()
@@ -304,7 +307,7 @@ public class SerialPort
 	}
 
 	// Static recursive directory cleanup function
-	static private void cleanUpDirectory(File path)
+	static private void cleanUpDirectory(File path) throws IOException
 	{
 		// Clean up all files that are not in a directory named after the current library version
 		if (path.isDirectory())
@@ -313,14 +316,14 @@ public class SerialPort
 			if (files != null)
 				for (File file : files)
 					if (!file.getName().equals(versionString))
-						cleanUpDirectory(file);
+						cleanUpDirectory(file.getCanonicalFile());
 		}
-		if (!path.getName().equals(versionString))
+		if (!path.getName().equals(versionString) && !path.getName().equals(".."))
 			path.delete();
 	}
 
 	// Static recursive directory deletion function
-	static private void deleteDirectory(File path)
+	static private void deleteDirectory(File path) throws IOException
 	{
 		// Recursively delete all files and directories
 		if (path.isDirectory())
@@ -328,7 +331,7 @@ public class SerialPort
 			File[] files = path.listFiles();
 			if (files != null)
 				for (File file : files)
-					deleteDirectory(file);
+					deleteDirectory(file.getCanonicalFile());
 		}
 		path.delete();
 	}
