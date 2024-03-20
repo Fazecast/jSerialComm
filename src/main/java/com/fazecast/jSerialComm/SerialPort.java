@@ -659,41 +659,44 @@ public class SerialPort
 
 	/**
 	 * Returns whether the port is currently open and available for communication.
-	 * <p><b>Warning!</b> This method alone <i>might not</i> reliably indicate the unplugging of a USB serial port,
-	 * including USB ports on popular microcontrollers like Arduino and ESP32.
-	 * (ie, it'll return <i>true</i> after you open the port, then continue to return <i>true</i> even after the interface
-	 * has been unplugged from the USB port).
-	 * In order to detect the port's unplugging, add the following code to your program after opening the SerialPort:
-	 *	<pre>
-	 *	port.addDataListener(new SerialPortDataListener() {
-	 *	// (atOverride annotations omitted to avoid confusing Javadoc generator, but necessary in actual use)
-     *       public int getListeningEvents() {
-     *           return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED;
-	 *           // or, if you want to listen for multiple events (see warning below):
-	 *           // return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED | SerialPort.LISTENING_EVENT_DATA_RECEIVED
-     *       }
-     *       public void serialEvent(SerialPortEvent serialPortEvent) {
-     *           port.closePort();
-	 *           // or, if you're listening for two or more events:
-	 *           // if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
-	 *           //     port.closePort();
-	 *           // else if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_DATA_RECEIVED)
-	 *           //	... you get the idea
-     *       }
-     *   });
-	 *	</pre>
-	 *	Once the port has been closed by the event handler, isOpen() will return false, and you can periodically
-	 *  attempt to reopen it within your event loop without creating a new SerialPort object:
-	 *	<pre>
-	 *	if (port.isOpen() == false)
-	 *		port.open();
-	 *	</pre>
-	 *	Note that once a USB serial port has been unplugged and reconnected, it's unlikely (certain?) to
-	 *  not work again until the SerialPort object's close() and open() methods have both been called to
-	 *  re-establish the connection.
-	 *
-	 *  <p><b>WARNING!</b> There can be **only one** DataListener. To Listen for multiple SerialPortEvents,
-	 *  OR (|) them together in getListeningEvents(), and check to see which event fired in serialEvent().
+	 * <p>
+	 * <b>Warning!</b> This method alone will <b>not</b> reliably indicate the unplugging of a USB serial port,
+	 * including USB ports on popular microcontrollers like Arduino and ESP32. It will continue to return
+	 * <i>true</i> after you open the port until you explicitly close the port using {@link #closePort()},
+	 * even if the interface has been unplugged.
+	 * <p>
+	 * In order to detect when a port is unplugged, use the following code:
+	 * <p>
+	 * <pre>
+	 * port.addDataListener(new SerialPortDataListener() {
+	 *    {@literal @}Override
+	 *    public int getListeningEvents() {
+	 *       return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED;
+	 *       // or, if you want to listen for multiple events:
+	 *       // return SerialPort.LISTENING_EVENT_PORT_DISCONNECTED | SerialPort.LISTENING_EVENT_DATA_RECEIVED;
+	 *    }
+	 *    {@literal @}Override
+	 *    public void serialEvent(SerialPortEvent serialPortEvent) {
+	 *       if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+	 *          port.closePort();
+	 *       else if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_DATA_RECEIVED)
+	 *          // ... you get the idea
+	 *    }
+	 * });
+	 * </pre>
+	 * <p>
+	 * Once the port has been closed by the event handler, {@link #isOpen()} will return false,
+	 * and you can periodically attempt to reopen it within your event loop without creating a new
+	 * {@link SerialPort} object:
+	 * <p>
+	 * <pre>
+	 * if (!port.isOpen())
+	 *    port.open();
+	 * </pre>
+	 * <p>
+	 * Note that once a USB serial port has been unplugged and reconnected, it's unlikely to work again until the
+	 * port's {@link #closePort()} and {@link openPort(int, int, int)} methods have both been called to
+	 * re-establish the connection.
 	 *
 	 * @return Whether the port is opened.
 	 */
@@ -927,6 +930,7 @@ public class SerialPort
 	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
 	 * <p>
 	 * Only Windows and Linux-based operating systems are potentially able to return a correct value for this method. On other operating systems, this value is undefined.
+	 * 
 	 * @return The underlying device transmit buffer size.
 	 */
 	public final int getDeviceWriteBufferSize() { return sendDeviceQueueSize; }
@@ -935,26 +939,33 @@ public class SerialPort
 	 * Returns the underlying receive buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
 	 * <p>
 	 * Only Windows and Linux-based operating systems are potentially able to return a correct value for this method. On other operating systems, this value is undefined.
+	 * 
 	 * @return The underlying device receive buffer size.
 	 */
 	public final int getDeviceReadBufferSize() { return receiveDeviceQueueSize; }
 
 	/**
 	 * Sets the BREAK signal on the serial control line.
+	 * 
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setBreak() { return (portHandle != 0) && ((androidPort != null) ? androidPort.setBreak() : setBreak(portHandle)); }
 
 	/**
 	 * Clears the BREAK signal from the serial control line.
+	 * 
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearBreak() { return (portHandle != 0) && ((androidPort != null) ? androidPort.clearBreak() : clearBreak(portHandle)); }
 
 	/**
 	 * Asserts RTS by setting the line's state to 1.
-	 * <ul><li>On a "real" RS232 port, setting RTS causes the pin to output positive voltage.</li>
-	 * <li>With a typical USB-UART bridge (like the CP210x), the RTS pin is 'active low', so setting RTS causes the pin to go LOW.</li>
+	 * <p>
+	 * <ul>
+	 *   <li>On a "real" RS232 port, setting RTS causes the pin to output a positive voltage.</li>
+	 *   <li>With a typical USB-UART bridge (like the CP210x), the RTS pin is "active low," so setting RTS causes the pin to go LOW.</li>
+	 * </ul>
+	 * 
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setRTS()
@@ -965,8 +976,12 @@ public class SerialPort
 
 	/**
 	 * De-asserts RTS by clearing the line's state to 0.
-	 * <ul><li>On a "real" RS232 port, clearing RTS causes the pin to output negative voltage.</li>
-	 * <li>With a typical USB-UART bridge (like the CP210x), RTS is 'active low', so clearing RTS causes the pin to go HIGH.</li></ul>
+	 * <p>
+	 * <ul>
+	 *   <li>On a "real" RS232 port, clearing RTS causes the pin to output a negative voltage.</li>
+	 *   <li>With a typical USB-UART bridge (like the CP210x), RTS is "active low," so clearing RTS causes the pin to go HIGH.</li>
+	 * </ul>
+	 * 
 	 * @return true if successful, false if not.
 	 */
 	public final boolean clearRTS()
@@ -977,8 +992,12 @@ public class SerialPort
 
 	/**
 	 * Asserts DTR by setting the line's state to 1.
-	 * <ul><li>With a "real" RS232 port, asserting DTR causes the pin to output positive voltage.</li>
-	 * <li>With a typical USB-UART bridge (like the CP210x), DTR is 'active low', so setting DTR causes the pin to go LOW.</li></ul>
+	 * <p>
+	 * <ul>
+	 *   <li>On a "real" RS232 port, asserting DTR causes the pin to output a positive voltage.</li>
+	 *   <li>With a typical USB-UART bridge (like the CP210x), DTR is "active low," so setting DTR causes the pin to go LOW.</li>
+	 * </ul>
+	 * 
 	 * @return true if successful, false if not.
 	 */
 	public final boolean setDTR()
@@ -989,9 +1008,12 @@ public class SerialPort
 
 	/**
 	 * De-asserts DTR by clearing the line's state to 0.
-	 * <ul><li>On a "real" RS232 port, clearing DTR causes the pin to output negative voltage.</li>
-	 * <li>With a typical USB-UART bridge (like the CP210x), the DTR pin is 'active low', so clearing DTR causes the pin to go HIGH.</li>
+	 * <p>
+	 * <ul>
+	 *   <li>On a "real" RS232 port, clearing DTR causes the pin to output a negative voltage.</li>
+	 *   <li>With a typical USB-UART bridge (like the CP210x), the DTR pin is "active low," so clearing DTR causes the pin to go HIGH.</li>
 	 * </ul>
+	 * <p>
 	 * If you call this function <i>before</i> opening your port, it may help to mitigate a known problem with Arduino-based
 	 * devices resetting themselves upon a connection being made.
 	 *
@@ -1401,25 +1423,25 @@ public class SerialPort
 	 * Sets the desired baud rate for this serial port.
 	 * <p>
 	 * The default baud rate is 9600 baud.
-	 * <p>Note: Using baud rates above 230400 on <b>Apple Macintosh</b> computers requires additional
-	 * steps to enable their use that are beyond the scope of this Javadoc.</p>
-	 * <p>Note: for <b>USB serial adapters</b> (like the SiLabs CP210x family, commonly used with Arduino and ESP32 boards),
-	 * the baud rate set by a call to setBaudRate() dictates the baud rate on the TxD and RxD pins at the <i>other end</i> of the USB port,
-	 * and generally has <i>no effect</i> on the mode or transfer rate of bits across the USB bus itself.</p>
-	 * <ul><li>The actual <i>achievable</i> transfer rate MIGHT be limited by the USB transfer mode used by the kernel driver itself.</li>
-	 * <li>Many (though not necessarily ALL) USB-serial adapters use USB "control" transfers. Control transfers deliver a 64-byte payload
-	 * in each direction at 1 millisecond intervals.
-	 * This implicitly imposes an absolute speed limit of 64 x 8 x 1000 = 512kbps, minus any overhead related to communicating the state of DTR, RTS, etc.
-	 * Your interface might be different... but keep this in mind as a possibility if you notice that baudrates above 460kbps (or even 230kbps)
-	 * appear to be dropping bytes.</li>
-	 * <li>This doesn't mean you can't set a baudrate of "1mbps" (or 921kbps, or
-	 * some other baudrate supported at the other end of the serial adapter), but it DOES mean you'll probably have to implement
-	 * some form of flow control to avoid overflowing the USB-serial adapter's send buffer if you're filling it with
-	 * bytes faster than the host PC is polling for them.</li>
-	 * <li>Also, be aware that things like start/stop bits and parity are handled at the USB adapter's end. A byte might
-	 * require 10 clocks at your baudrate to transfer a start bit, 8 data bits, and a stop bit between the USB adapter's
-	 * TxD/RxD pins and whatever you connect to them, but the actual payload delivered across the USB bus will consume
-	 * only 8 bits per byte.</li>
+	 * <p>
+	 * Note: Using baud rates above 230400 on <b>Apple</b> computers requires additional
+	 * steps to enable their use that are beyond the scope of this Javadoc.
+	 * <p>
+	 * Note: For <b>USB serial adapters</b> (like the SiLabs CP210x family, commonly used with Arduino and ESP32 boards),
+	 * the baud rate set by a call to {@link #setBaudRate(int)} dictates the baud rate on the TxD and RxD pins at the
+	 * <i>other end</i> of the USB port, and generally has <i>no effect</i> on the mode or transfer rate of bits across the USB bus itself.
+	 * <ul>
+	 *   <li>The actual <i>achievable</i> transfer rate MIGHT be limited by the USB transfer mode used by the kernel driver itself.</li>
+	 *   <li>Many (though not necessarily ALL) USB-serial adapters use USB "control" transfers. Control transfers deliver a 64-byte payload
+	 *       in each direction at 1 millisecond intervals. This implicitly imposes an absolute speed limit of 64 x 8 x 1000 = 512kbps,
+	 *       minus any overhead related to communicating the state of DTR, RTS, etc. Your interface might be different, but keep this in
+	 *       mind as a possibility if you notice that baudrates above 460kbps (or even 230kbps) appear to be dropping bytes.</li>
+	 *   <li>This doesn't mean you can't set a baudrate of "1mbps" (or 921kbps, or some other baudrate supported at the other end of the
+	 *       serial adapter), but it DOES mean you'll probably have to implement some form of flow control to avoid overflowing the USB-serial
+	 *       adapter's send buffer if you're filling it with bytes faster than the host PC is polling for them.</li>
+	 *   <li>Also, be aware that things like start/stop bits and parity are handled at the USB adapter's end. A byte might require 10
+	 *       clock cycles at your baudrate to transfer a start bit, 8 data bits, and a stop bit between the USB adapter's TxD/RxD pins, and
+	 *       whatever you connect to them, but the actual payload delivered across the USB bus will consume only 8 bits per byte.</li>
 	 * </ul>
 	 *
 	 * @param newBaudRate The desired baud rate for this serial port.
