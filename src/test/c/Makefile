@@ -44,11 +44,18 @@ testEnumeratePosix : $(BUILD_DIR)/testEnumeratePosix.o $(BUILD_DIR)/PosixHelperF
 	$(LINK) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 testEnumerateWindows : $(BUILD_DIR)/testEnumerateWindows.obj $(BUILD_DIR)/WindowsHelperFunctions.obj
 	$(LINK_WIN) $(LDFLAGS_WIN) /OUT:$@.exe $^ $(LIBRARIES_WIN)
+testEventsWindows : $(BUILD_DIR)/testEventsWindows.obj $(BUILD_DIR)/WindowsHelperFunctions.obj
+	$(LINK_WIN) $(LDFLAGS_WIN) /OUT:$@.exe $^ $(LIBRARIES_WIN)
 testPollPosix : $(BUILD_DIR)/testPollPosix.o $(BUILD_DIR)/PosixHelperFunctions.o
 	$(LINK) $(LDFLAGS) $(LIBRARIES) -o $@ $^
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/testEnumerateWindows.obj : testEnumerateWindows.c
+	$(MKDIR) $(BUILD_DIR)
+	$(COPY) ../../main/c/Posix/*.h ../../main/c/
+	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -Fo$@
+	$(DELETE) ../../main/c/*.h
+$(BUILD_DIR)/testEventsWindows.obj : testEventsWindows.c
 	$(MKDIR) $(BUILD_DIR)
 	$(COPY) ../../main/c/Posix/*.h ../../main/c/
 	$(COMPILE_WIN) $(INCLUDES) $(CFLAGS_WIN) -c $< -Fo$@
