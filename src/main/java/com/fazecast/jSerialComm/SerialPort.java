@@ -103,7 +103,7 @@ public class SerialPort
 	static private final String versionString = "2.10.5";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
-	static private boolean isWindows = false, isAndroid = false, isAndroidDelete = false;
+	static private boolean isWindows = false, isAndroid = false, cleanUpOnShutdown = false, isAndroidDelete = false;
 	static private volatile boolean isShuttingDown = false;
 	static
 	{
@@ -272,31 +272,40 @@ public class SerialPort
 					}
 				}
 			}
+
+			// Add a shutdown hook to ensure that all ports get closed
+			Runtime.getRuntime().addShutdownHook(SerialPortThreadFactory.get().newThread(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					// Run any user-specified shutdown hooks
+					try {
+						for (Thread hook : shutdownHooks)
+						{
+							hook.start();
+							hook.join();
+						}
+					}
+					catch (InterruptedException ignored) {}
+	
+					// Un-initialize the native library
+					isShuttingDown = true;
+					if (!isAndroid)
+						uninitializeLibrary();
+					
+					// Optionally delete all native library files
+					if (cleanUpOnShutdown)
+						try
+						{
+							deleteDirectory(new File(tempFileDirectory, "..").getCanonicalFile());
+							deleteDirectory(new File(userHomeDirectory, "..").getCanonicalFile());
+						}
+						catch (IOException ignored) {}
+				}
+			}));
 		}
 		catch (IOException e) { e.printStackTrace(); }
-
-		// Add a shutdown hook to ensure that all ports get closed
-		Runtime.getRuntime().addShutdownHook(SerialPortThreadFactory.get().newThread(new Runnable()
-		{
-			@Override
-			public void run()
-			{
-				// Run any user-specified shutdown hooks
-				try {
-					for (Thread hook : shutdownHooks)
-					{
-						hook.start();
-						hook.join();
-					}
-				}
-				catch (InterruptedException ignored) {}
-
-				// Un-initialize the native library
-				isShuttingDown = true;
-				if (!isAndroid)
-					uninitializeLibrary();
-			}
-		}));
 	}
 
 	// Static symbolic link testing function
@@ -323,7 +332,7 @@ public class SerialPort
 	}
 
 	// Static recursive directory deletion function
-	static private void deleteDirectory(File path) throws IOException
+	static private void deleteDirectory(File path)
 	{
 		// Recursively delete all files and directories
 		if (path.isDirectory())
@@ -331,7 +340,7 @@ public class SerialPort
 			File[] files = path.listFiles();
 			if (files != null)
 				for (File file : files)
-					deleteDirectory(file.getCanonicalFile());
+					deleteDirectory(file);
 		}
 		path.delete();
 	}
@@ -418,6 +427,21 @@ public class SerialPort
 			catch (ClassNotFoundException e) {}
 		}
 		return false;
+	}
+	
+	/**
+	 * Causes the library to attempt to clean up after itself upon shutdown and automatically delete
+	 * all temporary files it may have created.
+	 * <p>
+	 * It is not recommended to use this function, as its use will increase the overhead of unpacking
+	 * the library and searching for the correct machine architecture every time the library is loaded;
+	 * however, if you have a specific need to ensure that temporary files are removed (for example, if
+	 * you are using a dynamically generated "App ID" with the "fazecast.jSerialComm.appid" Java
+	 * property, then this functionality might make sense.
+	 */
+	static public void autoCleanupAtShutdown()
+	{
+		cleanUpOnShutdown = true;
 	}
 
 	/**

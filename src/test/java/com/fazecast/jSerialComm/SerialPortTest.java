@@ -82,6 +82,7 @@ public class SerialPortTest
 	static public void main(String[] args)
 	{
 		System.out.println("\nUsing Library Version v" + SerialPort.getVersion());
+		SerialPort.autoCleanupAtShutdown();
 		SerialPort.addShutdownHook(new Thread() { public void run() { System.out.println("\nRunning shutdown hook"); } });
 		SerialPort[] ports = SerialPort.getCommPorts();
 		System.out.println("\nAvailable Ports:\n");
