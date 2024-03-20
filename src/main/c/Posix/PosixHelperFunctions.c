@@ -2,10 +2,10 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Dec 14, 2023
+ *  Last Updated on:  Mar 20, 2024
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2023 Fazecast, Inc.
+ * Copyright (C) 2012-2024 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -259,6 +259,11 @@ static char isPtyDevice(const char *deviceLink)
 		}
 	}
 	return isPtyDevice;
+}
+
+static char isBluetoothDevice(const char *deviceLink)
+{
+	return (strstr(deviceLink, "/rfcomm") != NULL);
 }
 
 static void getPortLocation(const char* portDirectory, char* portLocation, int physicalPortNumber)
@@ -626,7 +631,7 @@ void searchForComPorts(serialPortVector* comPorts)
 		closedir(directoryIterator);
 	}
 
-	// Search through the system DEV directory for PTY symlinks
+	// Search through the system DEV directory for Bluetooth devices and PTY symlinks
 	directoryIterator = opendir("/dev/");
 	if (directoryIterator)
 	{
@@ -645,6 +650,8 @@ void searchForComPorts(serialPortVector* comPorts)
 			strcat(fileName, directoryEntry->d_name);
 			if (isPtyDevice(fileName))
 				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", -1, -1);
+			else if (isBluetoothDevice(fileName))
+				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", -1, -1);
 
 			// Read next TTY directory entry
 			directoryEntry = readdir(directoryIterator);
