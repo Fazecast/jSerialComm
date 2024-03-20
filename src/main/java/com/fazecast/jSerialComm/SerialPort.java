@@ -412,8 +412,10 @@ public class SerialPort
 	 * from your Android application's "onCreate()" method.
 	 * 
 	 * @param androidApp The android.app.Application object for the current application.
+	 * @return Whether the library was able to successfully register itself with the Android context
 	 */
-	static public boolean setAndroidContext(Object androidApp) {
+	static public boolean setAndroidContext(Object androidApp)
+	{
 		if (isAndroid)
 		{
 			try
@@ -690,7 +692,6 @@ public class SerialPort
 	 * even if the interface has been unplugged.
 	 * <p>
 	 * In order to detect when a port is unplugged, use the following code:
-	 * <p>
 	 * <pre>
 	 * port.addDataListener(new SerialPortDataListener() {
 	 *    {@literal @}Override
@@ -712,7 +713,6 @@ public class SerialPort
 	 * Once the port has been closed by the event handler, {@link #isOpen()} will return false,
 	 * and you can periodically attempt to reopen it within your event loop without creating a new
 	 * {@link SerialPort} object:
-	 * <p>
 	 * <pre>
 	 * if (!port.isOpen())
 	 *    port.open();
@@ -984,7 +984,6 @@ public class SerialPort
 
 	/**
 	 * Asserts RTS by setting the line's state to 1.
-	 * <p>
 	 * <ul>
 	 *   <li>On a "real" RS232 port, setting RTS causes the pin to output a positive voltage.</li>
 	 *   <li>With a typical USB-UART bridge (like the CP210x), the RTS pin is "active low," so setting RTS causes the pin to go LOW.</li>
@@ -1000,7 +999,6 @@ public class SerialPort
 
 	/**
 	 * De-asserts RTS by clearing the line's state to 0.
-	 * <p>
 	 * <ul>
 	 *   <li>On a "real" RS232 port, clearing RTS causes the pin to output a negative voltage.</li>
 	 *   <li>With a typical USB-UART bridge (like the CP210x), RTS is "active low," so clearing RTS causes the pin to go HIGH.</li>
@@ -1016,7 +1014,6 @@ public class SerialPort
 
 	/**
 	 * Asserts DTR by setting the line's state to 1.
-	 * <p>
 	 * <ul>
 	 *   <li>On a "real" RS232 port, asserting DTR causes the pin to output a positive voltage.</li>
 	 *   <li>With a typical USB-UART bridge (like the CP210x), DTR is "active low," so setting DTR causes the pin to go LOW.</li>
@@ -1032,7 +1029,6 @@ public class SerialPort
 
 	/**
 	 * De-asserts DTR by clearing the line's state to 0.
-	 * <p>
 	 * <ul>
 	 *   <li>On a "real" RS232 port, clearing DTR causes the pin to output a negative voltage.</li>
 	 *   <li>With a typical USB-UART bridge (like the CP210x), the DTR pin is "active low," so clearing DTR causes the pin to go HIGH.</li>
