@@ -862,6 +862,30 @@ public class SerialPort
 	public final int bytesAwaitingWrite() { return (portHandle != 0) ? ((androidPort != null) ? androidPort.bytesAwaitingWrite() : bytesAwaitingWrite(portHandle)) : -1; }
 
 	/**
+	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
+	 * <p>
+	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToRead</i>. If not, a value of -2 will be returned.
+	 * <p>
+	 * In blocking-read mode, if no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully
+	 * read from the serial port. Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout
+	 * have elapsed, whichever comes first, regardless of the availability of more data.
+	 *
+	 * @param buffer The buffer into which the raw data is read.
+	 * @param bytesToRead The number of bytes to read from the serial port.
+	 * @param offset The read buffer index into which to begin storing data.
+	 * @return The number of bytes successfully read, -1 if there was a reading error, or -2 if there was a buffer-size error.
+	 */
+	public final int readBytes(byte[] buffer, int bytesToRead, int offset)
+	{
+		// Ensure that the buffer is large enough to hold the requested number of bytes
+		if (bytesToRead > (buffer.length - offset))
+			return -2;
+		
+		// Read all requested bytes from native code
+		return (portHandle != 0) ? ((androidPort != null) ? androidPort.readBytes(buffer, bytesToRead, offset, timeoutMode, readTimeout) : readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout)) : -1;
+	}
+
+	/**
 	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer.
 	 * <p>
 	 * The length of the byte buffer must be greater than or equal to the value passed in for <i>bytesToRead</i>
@@ -874,23 +898,41 @@ public class SerialPort
 	 * @param bytesToRead The number of bytes to read from the serial port.
 	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
 	 */
-	public final int readBytes(byte[] buffer, int bytesToRead) { return (portHandle != 0) ? ((androidPort != null) ? androidPort.readBytes(buffer, bytesToRead, 0, timeoutMode, readTimeout) : readBytes(portHandle, buffer, bytesToRead, 0, timeoutMode, readTimeout)) : -1; }
+	public final int readBytes(byte[] buffer, int bytesToRead) { return readBytes(buffer, bytesToRead, 0); }
 
 	/**
-	 * Reads up to <i>bytesToRead</i> raw data bytes from the serial port and stores them in the buffer starting at the indicated offset.
+	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port starting at the indicated offset.
 	 * <p>
-	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToRead</i>
+	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToWrite</i>. If not, a value of -2 will be returned.
 	 * <p>
-	 * In blocking-read mode, if no timeouts were specified or the read timeout was set to 0, this call will block until <i>bytesToRead</i> bytes of data have been successfully
-	 * read from the serial port. Otherwise, this method will return after <i>bytesToRead</i> bytes of data have been read or the number of milliseconds specified by the read timeout
-	 * have elapsed, whichever comes first, regardless of the availability of more data.
+	 * In blocking-write mode, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written to the serial port. Otherwise, this method will return
+	 * after <i>bytesToWrite</i> bytes of data have been written to the device driver's internal data buffer, which, in most cases, should be almost instantaneous unless the data
+	 * buffer is full.
 	 *
-	 * @param buffer The buffer into which the raw data is read.
-	 * @param bytesToRead The number of bytes to read from the serial port.
-	 * @param offset The read buffer index into which to begin storing data.
-	 * @return The number of bytes successfully read, or -1 if there was an error reading from the port.
+	 * @param buffer The buffer containing the raw data to write to the serial port.
+	 * @param bytesToWrite The number of bytes to write to the serial port.
+	 * @param offset The buffer index from which to begin writing to the serial port.
+	 * @return The number of bytes successfully written, -1 if there was a writing error, or -2 if there was a buffer-size error.
 	 */
-	public final int readBytes(byte[] buffer, int bytesToRead, int offset) { return (portHandle != 0) ? ((androidPort != null) ? androidPort.readBytes(buffer, bytesToRead, offset, timeoutMode, readTimeout) : readBytes(portHandle, buffer, bytesToRead, offset, timeoutMode, readTimeout)) : -1; }
+	public final int writeBytes(byte[] buffer, int bytesToWrite, int offset)
+	{
+		// Ensure that the buffer is large enough to write the requested number of bytes
+		if (bytesToWrite > (buffer.length - offset))
+			return -2;
+
+		// Write to the serial port until all bytes have been consumed
+		int totalNumWritten = 0;
+		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
+		{
+			int numWritten = (androidPort != null) ? androidPort.writeBytes(buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode) :
+				writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
+			if (numWritten > 0)
+				totalNumWritten += numWritten;
+			else
+				break;
+		}
+		return ((portHandle != 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
+	}
 
 	/**
 	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port.
@@ -905,52 +947,8 @@ public class SerialPort
 	 * @param bytesToWrite The number of bytes to write to the serial port.
 	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
 	 */
-	public final int writeBytes(byte[] buffer, int bytesToWrite)
-	{
-		// Write to the serial port until all bytes have been consumed
-		int totalNumWritten = 0;
-		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
-		{
-			int numWritten = (androidPort != null) ? androidPort.writeBytes(buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode) : 
-				writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, totalNumWritten, timeoutMode);
-			if (numWritten > 0)
-				totalNumWritten += numWritten;
-			else
-				break;
-		}
-		return ((portHandle != 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
-	}
+	public final int writeBytes(byte[] buffer, int bytesToWrite) { return writeBytes(buffer, bytesToWrite, 0); }
 
-	/**
-	 * Writes up to <i>bytesToWrite</i> raw data bytes from the buffer parameter to the serial port starting at the indicated offset.
-	 * <p>
-	 * The length of the byte buffer minus the offset must be greater than or equal to the value passed in for <i>bytesToWrite</i>
-	 * <p>
-	 * In blocking-write mode, this call will block until <i>bytesToWrite</i> bytes of data have been successfully written to the serial port. Otherwise, this method will return
-	 * after <i>bytesToWrite</i> bytes of data have been written to the device driver's internal data buffer, which, in most cases, should be almost instantaneous unless the data
-	 * buffer is full.
-	 *
-	 * @param buffer The buffer containing the raw data to write to the serial port.
-	 * @param bytesToWrite The number of bytes to write to the serial port.
-	 * @param offset The buffer index from which to begin writing to the serial port.
-	 * @return The number of bytes successfully written, or -1 if there was an error writing to the port.
-	 */
-	public final int writeBytes(byte[] buffer, int bytesToWrite, int offset)
-	{
-		// Write to the serial port until all bytes have been consumed
-		int totalNumWritten = 0;
-		while ((portHandle != 0) && (totalNumWritten != bytesToWrite))
-		{
-			int numWritten = (androidPort != null) ? androidPort.writeBytes(buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode) :
-				writeBytes(portHandle, buffer, bytesToWrite - totalNumWritten, offset + totalNumWritten, timeoutMode);
-			if (numWritten > 0)
-				totalNumWritten += numWritten;
-			else
-				break;
-		}
-		return ((portHandle != 0) && (totalNumWritten >= 0)) ? totalNumWritten : -1;
-	}
-	
 	/**
 	 * Returns the underlying transmit buffer size used by the serial port device driver. The device or operating system may choose to misrepresent this value.
 	 * <p>
