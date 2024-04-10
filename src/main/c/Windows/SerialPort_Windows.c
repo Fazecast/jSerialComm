@@ -2,10 +2,10 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Dec 14, 2023
+ *  Last Updated on:  Apr 10, 2024
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2023 Fazecast, Inc.
+ * Copyright (C) 2012-2024 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -52,6 +52,7 @@ jfieldID portDescriptionField;
 jfieldID vendorIdField;
 jfieldID productIdField;
 jfieldID serialNumberField;
+jfieldID manufacturerField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -79,6 +80,7 @@ jfieldID eventFlagsField;
 // Runtime-loadable DLL functions
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
+typedef int (__stdcall *FT_EEPROM_ReadFunction)(FT_HANDLE, void*, DWORD, char*, char*, char*, char*);
 typedef BOOL (__stdcall *SetupDiGetDevicePropertyWFunction)(HDEVINFO, PSP_DEVINFO_DATA, const DEVPROPKEY*, DEVPROPTYPE*, PBYTE, DWORD, PDWORD, DWORD);
 typedef BOOL (__stdcall *CancelIoExFunction)(HANDLE, LPOVERLAPPED);
 SetupDiGetDevicePropertyWFunction SetupDiGetDevicePropertyW = NULL;
@@ -217,6 +219,21 @@ static void enumeratePorts(void)
 					friendlyNameLength = comPortLength;
 				}
 
+				// Fetch the manufacturer of this device
+				DWORD manufacturerLength = 0;
+				wchar_t *manufacturerString = NULL;
+				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_MFG, NULL, NULL, 0, &manufacturerLength);
+				if (manufacturerLength && (manufacturerLength < 256))
+				{
+					manufacturerLength += sizeof(wchar_t);
+					manufacturerString = (wchar_t*)malloc(manufacturerLength);
+					if (!manufacturerString || !SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_MFG, NULL, (BYTE*)manufacturerString, manufacturerLength, NULL))
+					{
+						if (manufacturerString)
+							free(manufacturerString);
+					}
+				}
+
 				// Fetch the bus-reported device description
 				DWORD portDescriptionLength = 0;
 				wchar_t *portDescriptionString = NULL;
@@ -326,6 +343,8 @@ static void enumeratePorts(void)
 					free(comPort);
 					if (serialNumberString)
 						free(serialNumberString);
+					if (manufacturerString)
+						free(manufacturerString);
 					if (friendlyNameMemory)
 						free(friendlyNameString);
 					if (portDescriptionMemory)
@@ -356,13 +375,15 @@ static void enumeratePorts(void)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", vendorID, productID);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", manufacturerString ? manufacturerString : L"Unknown", vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
 				free(locationString);
 				if (serialNumberString)
 					free(serialNumberString);
+				if (manufacturerString)
+					free(manufacturerString);
 				if (friendlyNameMemory)
 					free(friendlyNameString);
 				if (portDescriptionMemory)
@@ -379,7 +400,8 @@ static void enumeratePorts(void)
 	{
 		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
 		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
-		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList)
+		FT_EEPROM_ReadFunction FT_EEPROM_Read = (FT_EEPROM_ReadFunction)GetProcAddress(ftdiLibInstance, "FT_EEPROM_Read");
+		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_EEPROM_Read)
 		{
 			DWORD numDevs;
 			if ((FT_CreateDeviceInfoList(&numDevs) == FT_OK) && (numDevs > 0))
@@ -430,7 +452,6 @@ static void enumeratePorts(void)
 										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].SerialNumber, -1, serialPorts.ports[j]->serialNumber, serialNumLength);
 									}
 									memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
-									break;
 								}
 						}
 						if (comPort)
@@ -475,7 +496,7 @@ static void enumeratePorts(void)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", -1, -1);
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", L"Unknown", -1, -1);
 			}
 		}
 
@@ -527,6 +548,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	productIdField = (*env)->GetFieldID(env, serialCommClass, "productID", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	serialNumberField = (*env)->GetFieldID(env, serialCommClass, "serialNumber", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	manufacturerField = (*env)->GetFieldID(env, serialCommClass, "manufacturer", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
@@ -647,6 +670,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->serialNumber, wcslen(serialPorts.ports[i]->serialNumber)));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, manufacturerField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->manufacturer, wcslen(serialPorts.ports[i]->manufacturer)));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -701,6 +726,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, manufacturerField, (*env)->NewString(env, (jchar*)port->manufacturer, wcslen(port->manufacturer)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -738,7 +768,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", L"Unknown", -1, -1);
+		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", L"Unknown", L"Unknown", -1, -1);
 	}
 	LeaveCriticalSection(&criticalSection);
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))

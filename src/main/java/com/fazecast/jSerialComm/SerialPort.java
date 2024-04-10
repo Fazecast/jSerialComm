@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Mar 20, 2024
+ *  Last Updated on:  Apr 10, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -524,6 +524,7 @@ public class SerialPort
 			serialPort.friendlyName = "User-Specified Port";
 			serialPort.portDescription = "User-Specified Port";
 			serialPort.serialNumber = "Unknown";
+			serialPort.manufacturer = "Unknown";
 			serialPort.portLocation = "0-0";
 			serialPort.retrievePortDetails();
 			return serialPort;
@@ -542,7 +543,7 @@ public class SerialPort
 	private volatile byte xonStartChar = 17, xoffStopChar = 19;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
-	private volatile String comPort, friendlyName, portDescription, portLocation, serialNumber;
+	private volatile String comPort, friendlyName, portDescription, portLocation, serialNumber, manufacturer;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
@@ -1087,13 +1088,14 @@ public class SerialPort
 
 	// SerialPort Constructors
 	private SerialPort() {}
-	private SerialPort(String port, String friendly, String description, String location, String serial, int vid, int pid)
+	private SerialPort(String port, String friendly, String description, String location, String serial, String manufacture, int vid, int pid)
 	{
 		comPort = port;
 		friendlyName = friendly;
 		portDescription = description;
 		portLocation = location;
 		serialNumber = serial;
+		manufacturer = manufacture;
 		vendorID = vid;
 		productID = pid;
 	}
@@ -1799,6 +1801,13 @@ public class SerialPort
 	 * @return The Serial Number of this serial port, or "Unknown" if it is not USB-based.
 	 */
 	public final String getSerialNumber() { return serialNumber; }
+
+	/**
+	 * Gets the Manufacturer for the serial port, assuming it is USB-based.
+	 * 
+	 * @return The Manufacturer of this serial port, or "Unknown" if it is not USB-based.
+	 */
+	public final String getManufacturer() { return manufacturer; }
 
 	/**
 	 * Gets the current baud rate of the serial port.

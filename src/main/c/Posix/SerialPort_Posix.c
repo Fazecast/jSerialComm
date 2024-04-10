@@ -2,10 +2,10 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 17, 2023
+ *  Last Updated on:  Apr 10, 2024
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2023 Fazecast, Inc.
+ * Copyright (C) 2012-2024 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -52,6 +52,7 @@ jfieldID portDescriptionField;
 jfieldID vendorIdField;
 jfieldID productIdField;
 jfieldID serialNumberField;
+jfieldID manufacturerField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -264,6 +265,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	serialNumberField = (*env)->GetFieldID(env, serialCommClass, "serialNumber", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	manufacturerField = (*env)->GetFieldID(env, serialCommClass, "manufacturer", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
@@ -397,6 +400,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, serialNumberField, (*env)->NewStringUTF(env, serialPorts.ports[i]->serialNumber));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, manufacturerField, (*env)->NewStringUTF(env, serialPorts.ports[i]->manufacturer));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -449,6 +454,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, manufacturerField, (*env)->NewStringUTF(env, port->manufacturer));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -488,7 +498,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", -1, -1);
+		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", "Unknown", -1, -1);
 	}
 	pthread_mutex_unlock(&criticalSection);
 	if (!port || (port->handle > 0))
