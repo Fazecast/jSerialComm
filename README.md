@@ -7,11 +7,24 @@ _A platform-independent serial port access library for Java._
 
 For usage examples, please refer to the [Usage wiki](https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples).
 
-If you intend to use the library in multiple applications simultaneously, please make sure
+If you intend to use the library in multiple applications simultaneously, you may need
 to set the ```fazecast.jSerialComm.appid``` property before accessing the SerialPort class
-so that applications don't accidentally delete each others' temporary files during boot-up:
+so that applications don't accidentally delete each others' temporary files during boot-up
+(**this should almost never be necessary**):
+
 ```
 System.setProperty("fazecast.jSerialComm.appid", "YOUR_APPLICATION_IDENTIFIER")
+```
+
+Alternately, if you plan to use the library within an Apache Tomcat application, please set
+the ```jSerialComm.library.randomizeNativeName``` property to true before accessing the
+SerialPort class to address an issue whereby the Tomcat bootloader tries to reinitialize
+the library multiple times. This can either be done using ```-DjSerialComm.library.randomizeNativeName="true"```
+as a command line parameter or by calling the following within your own application before
+using any SerialPort functionality:
+
+```
+System.setProperty("jSerialComm.library.randomizeNativeName", "true")
 ```
 
 In order to use the ```jSerialComm``` library in your own project, you must simply

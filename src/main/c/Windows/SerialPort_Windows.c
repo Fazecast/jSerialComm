@@ -775,7 +775,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	{
 		(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
 		checkJniError(env, __LINE__ - 1);
-		lastErrorLineNumber = __LINE__ - 3;
+		lastErrorLineNumber = __LINE__ - 4;
 		lastErrorNumber = (!port ? 1 : 2);
 		return 0;
 	}
