@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Apr 11, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -55,6 +55,7 @@ jfieldID serialNumberField;
 jfieldID manufacturerField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
+jfieldID allowOpenForEnumerationField;
 jfieldID isDtrEnabledField;
 jfieldID isRtsEnabledField;
 jfieldID autoFlushIOBuffersField;
@@ -78,6 +79,8 @@ jfieldID writeTimeoutField;
 jfieldID eventFlagsField;
 
 // Runtime-loadable DLL functions
+typedef int (__stdcall *FT_CloseFunction)(FT_HANDLE);
+typedef int (__stdcall *FT_OpenFunction)(int, FT_HANDLE*);
 typedef int (__stdcall *FT_CreateDeviceInfoListFunction)(LPDWORD);
 typedef int (__stdcall *FT_GetDeviceInfoListFunction)(FT_DEVICE_LIST_INFO_NODE*, LPDWORD);
 typedef int (__stdcall *FT_EEPROM_ReadFunction)(FT_HANDLE, void*, DWORD, char*, char*, char*, char*);
@@ -111,7 +114,7 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 }
 
 // Generalized port enumeration function
-static void enumeratePorts(void)
+static void enumeratePorts(JNIEnv *env, jclass serialComm)
 {
 	// Reset the enumerated flag on all non-open serial ports
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -398,9 +401,12 @@ static void enumeratePorts(void)
 	HINSTANCE ftdiLibInstance = LoadLibrary(TEXT("ftd2xx.dll"));
 	if (ftdiLibInstance != NULL)
 	{
+		FT_OpenFunction FT_Open = (FT_OpenFunction)GetProcAddress(ftdiLibInstance, "FT_Open");
+		FT_CloseFunction FT_Close = (FT_CloseFunction)GetProcAddress(ftdiLibInstance, "FT_Close");
 		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
 		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
 		FT_EEPROM_ReadFunction FT_EEPROM_Read = (FT_EEPROM_ReadFunction)GetProcAddress(ftdiLibInstance, "FT_EEPROM_Read");
+		unsigned char allowOpenForEnumeration = (*env)->GetStaticBooleanField(env, serialComm, allowOpenForEnumerationField);
 		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_EEPROM_Read)
 		{
 			DWORD numDevs;
@@ -433,25 +439,120 @@ static void enumeratePorts(void)
 							for (int j = 0; j < serialPorts.length; ++j)
 								if ((wcscmp(serialPorts.ports[j]->portPath + 4, comPort) == 0) && strlen(devInfo[i].Description))
 								{
-									// Update the port description
-									serialPorts.ports[j]->enumerated = 1;
-									size_t descLength = 8 + strlen(devInfo[i].Description);
-									wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
-									if (newMemory)
+									// Check whether we are allowed to open the port to complete enumeration
+									unsigned char successfullyEnumerated = 0;
+									if (allowOpenForEnumeration)
 									{
-										serialPorts.ports[j]->portDescription = newMemory;
-										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
+										// Open the port and read its configuration from EEPROM
+										FT_HANDLE ftHandle;
+										FT_EEPROM_HEADER ftEepromHeader = { .deviceType = devInfo[i].Type };
+										char manufacturer[64], manufacturerId[64], description[64], serialNumber[64];
+										if (FT_Open(0, &ftHandle) == FT_OK)
+										{
+											switch (devInfo[i].Type)
+											{
+												case FT_DEVICE_2232C:
+												{
+													FT_EEPROM_2232 ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												case FT_DEVICE_232R:
+												{
+													FT_EEPROM_232R ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												case FT_DEVICE_2232H:
+												{
+													FT_EEPROM_2232H ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												case FT_DEVICE_4232H:
+												{
+													FT_EEPROM_4232H ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												case FT_DEVICE_232H:
+												{
+													FT_EEPROM_232H ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												case FT_DEVICE_X_SERIES:
+												{
+													FT_EEPROM_X_SERIES ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+												default:
+												{
+													FT_EEPROM_232B ftDeviceHeader = { .common = ftEepromHeader };
+													successfullyEnumerated = (FT_EEPROM_Read(ftHandle, &ftDeviceHeader, sizeof(ftDeviceHeader), manufacturer, manufacturerId, description, serialNumber) == FT_OK);
+													break;
+												}
+											}
+											FT_Close(ftHandle);
+										}
+
+										// Update port details if enumeration was successful
+										if (successfullyEnumerated)
+										{
+											// Update the port description
+											serialPorts.ports[j]->enumerated = 1;
+											size_t descLength = 8 + strlen(description);
+											wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
+											if (newMemory)
+											{
+												serialPorts.ports[j]->portDescription = newMemory;
+												MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, description, -1, serialPorts.ports[j]->portDescription, descLength);
+											}
+
+											// Update the port serial number
+											size_t serialNumLength = 1 + strlen(serialNumber);
+											newMemory = (wchar_t*)realloc(serialPorts.ports[j]->serialNumber, serialNumLength*sizeof(wchar_t));
+											if (newMemory)
+											{
+												serialPorts.ports[j]->serialNumber = newMemory;
+												MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, serialNumber, -1, serialPorts.ports[j]->serialNumber, serialNumLength);
+											}
+
+											// Update the port manufacturer
+											size_t manufacturerLength = 1 + strlen(manufacturer);
+											newMemory = (wchar_t*)realloc(serialPorts.ports[j]->manufacturer, manufacturerLength*sizeof(wchar_t));
+											if (newMemory)
+											{
+												serialPorts.ports[j]->manufacturer = newMemory;
+												MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, manufacturer, -1, serialPorts.ports[j]->manufacturer, manufacturerLength);
+											}
+										}
 									}
 
-									// Update the port serial number
-									size_t serialNumLength = 1 + strlen(devInfo[i].SerialNumber);
-									newMemory = (wchar_t*)realloc(serialPorts.ports[j]->serialNumber, serialNumLength*sizeof(wchar_t));
-									if (newMemory)
+									// Take what we can get if unable to enumerate by opening the port
+									if (!successfullyEnumerated)
 									{
-										serialPorts.ports[j]->serialNumber = newMemory;
-										MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].SerialNumber, -1, serialPorts.ports[j]->serialNumber, serialNumLength);
+										// Update the port description
+										serialPorts.ports[j]->enumerated = 1;
+										size_t descLength = 8 + strlen(devInfo[i].Description);
+										wchar_t *newMemory = (wchar_t*)realloc(serialPorts.ports[j]->portDescription, descLength*sizeof(wchar_t));
+										if (newMemory)
+										{
+											serialPorts.ports[j]->portDescription = newMemory;
+											MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].Description, -1, serialPorts.ports[j]->portDescription, descLength);
+										}
+
+										// Update the port serial number
+										size_t serialNumLength = 1 + strlen(devInfo[i].SerialNumber);
+										newMemory = (wchar_t*)realloc(serialPorts.ports[j]->serialNumber, serialNumLength*sizeof(wchar_t));
+										if (newMemory)
+										{
+											serialPorts.ports[j]->serialNumber = newMemory;
+											MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, devInfo[i].SerialNumber, -1, serialPorts.ports[j]->serialNumber, serialNumLength);
+										}
+										memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
 									}
-									memcpy(serialPorts.ports[j]->ftdiSerialNumber, devInfo[i].SerialNumber, sizeof(serialPorts.ports[j]->ftdiSerialNumber));
 								}
 						}
 						if (comPort)
@@ -557,6 +658,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	disableConfigField = (*env)->GetFieldID(env, serialCommClass, "disableConfig", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	allowOpenForEnumerationField = (*env)->GetStaticFieldID(env, serialCommClass, "allowOpenForEnumeration", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	isDtrEnabledField = (*env)->GetFieldID(env, serialCommClass, "isDtrEnabled", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	isRtsEnabledField = (*env)->GetFieldID(env, serialCommClass, "isRtsEnabled", "Z");
@@ -651,7 +754,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	EnterCriticalSection(&criticalSection);
 
 	// Enumerate all ports on the current system
-	enumeratePorts();
+	enumeratePorts(env, serialComm);
 
 	// Get relevant SerialComm methods and fill in com port array
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialComm, 0);
@@ -698,7 +801,10 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	char continueRetrieval = 1;
 	EnterCriticalSection(&criticalSection);
 	if (!portsEnumerated)
-		enumeratePorts();
+	{
+	    jclass serialComm = (*env)->GetObjectClass(env, obj);
+		enumeratePorts(env, serialComm);
+	}
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
 		continueRetrieval = 0;

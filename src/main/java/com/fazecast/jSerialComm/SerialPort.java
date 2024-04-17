@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Apr 11, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -103,7 +103,8 @@ public class SerialPort
 	static private final String versionString = "2.10.5";
 	static private final String tmpdirAppIdProperty = "fazecast.jSerialComm.appid";
 	static private final List<Thread> shutdownHooks = new ArrayList<Thread>();
-	static private boolean isWindows = false, isAndroid = false, cleanUpOnShutdown = false, isAndroidDelete = false;
+	static private boolean cleanUpOnShutdown = false, allowOpenForEnumeration = false, isAndroidDelete = false;
+	static private boolean isWindows = false, isAndroid = false;
 	static private volatile boolean isShuttingDown = false;
 	static
 	{
@@ -446,6 +447,20 @@ public class SerialPort
 	static public void autoCleanupAtShutdown()
 	{
 		cleanUpOnShutdown = true;
+	}
+
+	/**
+	 * Allows the library to open a port during enumeration to retrieve additional details about its 
+	 * serial number, manufacturer, and description. Currently, this only affects enumeration of
+	 * FTDI-specific devices on Windows.
+	 * <p>
+	 * It is not recommended to use this function, as its use will increase the overhead of enumerating
+	 * devices on Windows; however, if you have a specific need to ensure that FTDI-specific device info
+	 * is returned by the library, then this functionality might make sense.
+	 */
+	static public void allowPortOpenForEnumeration()
+	{
+		allowOpenForEnumeration = true;
 	}
 
 	/**
