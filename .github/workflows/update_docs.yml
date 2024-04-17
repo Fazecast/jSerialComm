@@ -19,13 +19,15 @@ jobs:
           distribution: 'zulu'
           java-version: '11'
 
-      - name: Build library using Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         env:
           LIB_VERSION: ${{ steps.gitversion.outputs.version }}
         with:
           gradle-version: 8.1.1
-          arguments: build
+
+      - name: Build library using Gradle
+        run: gradle build
 
       - name: Check out library documentation
         uses: actions/checkout@v4
