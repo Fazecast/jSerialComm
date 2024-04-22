@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 11, 2024
+ *  Last Updated on:  Apr 22, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -43,6 +43,7 @@
 #include "WindowsHelperFunctions.h"
 
 // Cached class, method, and field IDs
+jclass serialCommClass;
 jclass jniErrorClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortHandleField;
@@ -114,7 +115,7 @@ static inline jboolean checkJniError(JNIEnv *env, int lineNumber)
 }
 
 // Generalized port enumeration function
-static void enumeratePorts(JNIEnv *env, jclass serialComm)
+static void enumeratePorts(JNIEnv *env)
 {
 	// Reset the enumerated flag on all non-open serial ports
 	for (int i = 0; i < serialPorts.length; ++i)
@@ -233,7 +234,10 @@ static void enumeratePorts(JNIEnv *env, jclass serialComm)
 					if (!manufacturerString || !SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_MFG, NULL, (BYTE*)manufacturerString, manufacturerLength, NULL))
 					{
 						if (manufacturerString)
+						{
 							free(manufacturerString);
+							manufacturerString = NULL;
+						}
 					}
 				}
 
@@ -406,7 +410,7 @@ static void enumeratePorts(JNIEnv *env, jclass serialComm)
 		FT_CreateDeviceInfoListFunction FT_CreateDeviceInfoList = (FT_CreateDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_CreateDeviceInfoList");
 		FT_GetDeviceInfoListFunction FT_GetDeviceInfoList = (FT_GetDeviceInfoListFunction)GetProcAddress(ftdiLibInstance, "FT_GetDeviceInfoList");
 		FT_EEPROM_ReadFunction FT_EEPROM_Read = (FT_EEPROM_ReadFunction)GetProcAddress(ftdiLibInstance, "FT_EEPROM_Read");
-		unsigned char allowOpenForEnumeration = (*env)->GetStaticBooleanField(env, serialComm, allowOpenForEnumerationField);
+		unsigned char allowOpenForEnumeration = (*env)->GetStaticBooleanField(env, serialCommClass, allowOpenForEnumerationField);
 		if (FT_CreateDeviceInfoList && FT_GetDeviceInfoList && FT_EEPROM_Read)
 		{
 			DWORD numDevs;
@@ -628,7 +632,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	jint jniVersion = JNI_VERSION_1_2;
 	if ((*jvm)->GetEnv(jvm, (void**)&env, jniVersion))
 		return JNI_ERR;
-	jclass serialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
+	serialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
 	if (!serialCommClass) return JNI_ERR;
 	jniErrorClass = (*env)->FindClass(env, "java/lang/Exception");
 	if (!jniErrorClass) return JNI_ERR;
@@ -754,7 +758,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 	EnterCriticalSection(&criticalSection);
 
 	// Enumerate all ports on the current system
-	enumeratePorts(env, serialComm);
+	enumeratePorts(env);
 
 	// Get relevant SerialComm methods and fill in com port array
 	jobjectArray arrayObject = (*env)->NewObjectArray(env, serialPorts.length, serialComm, 0);
@@ -801,10 +805,7 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	char continueRetrieval = 1;
 	EnterCriticalSection(&criticalSection);
 	if (!portsEnumerated)
-	{
-	    jclass serialComm = (*env)->GetObjectClass(env, obj);
-		enumeratePorts(env, serialComm);
-	}
+		enumeratePorts(env);
 	serialPort *port = fetchPort(&serialPorts, portName);
 	if (!port)
 		continueRetrieval = 0;

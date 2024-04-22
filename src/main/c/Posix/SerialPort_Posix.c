@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Apr 22, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -43,6 +43,7 @@
 #include "PosixHelperFunctions.h"
 
 // Cached class, method, and field IDs
+jclass serialCommClass;
 jclass jniErrorClass;
 jmethodID serialCommConstructor;
 jfieldID serialPortFdField;
@@ -243,7 +244,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	jint jniVersion = JNI_VERSION_1_2;
 	if ((*jvm)->GetEnv(jvm, (void**)&env, jniVersion))
 		return JNI_ERR;
-	jclass serialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
+	serialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
 	if (!serialCommClass) return JNI_ERR;
 	jniErrorClass = (*env)->FindClass(env, "java/lang/Exception");
 	if (!jniErrorClass) return JNI_ERR;
