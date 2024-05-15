@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 22, 2024
+ *  Last Updated on:  May 15, 2024
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2024 Fazecast, Inc.
@@ -268,12 +268,13 @@ static void enumeratePorts(JNIEnv *env)
 				}
 
 				// Fetch the physical location for this device
+				DWORD locationLength = 0;
 				wchar_t *locationString = NULL;
-				DWORD locationLength = 0, busNumber = -1, hubNumber = -1, portNumber = -1;
+				unsigned long busNumber = 0, hubNumber = 0, portNumber = 0;
 				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_BUSNUMBER, NULL, (BYTE*)&busNumber, sizeof(busNumber), NULL))
-					busNumber = -1;
+					busNumber = 0;
 				if (!SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_ADDRESS, NULL, (BYTE*)&portNumber, sizeof(portNumber), NULL))
-					portNumber = -1;
+					portNumber = 0;
 				SetupDiGetDeviceRegistryPropertyW(devList, &devInfoData, SPDRP_LOCATION_INFORMATION, NULL, NULL, 0, &locationLength);
 				if (locationLength && (locationLength < 256))
 				{
@@ -336,15 +337,9 @@ static void enumeratePorts(JNIEnv *env)
 					if (locationString)
 						free(locationString);
 				}
-				if (busNumber == -1)
-					busNumber = 0;
-				if (hubNumber == -1)
-					hubNumber = 0;
-				if (portNumber == -1)
-					portNumber = 0;
-				locationString = (wchar_t*)malloc(16*sizeof(wchar_t));
+				locationString = (wchar_t*)malloc(32*sizeof(wchar_t));
 				if (locationString)
-					_snwprintf_s(locationString, 16, 16, L"%d-%d.%d", busNumber, hubNumber, portNumber);
+					_snwprintf_s(locationString, 32, _TRUNCATE, L"%lu-%lu.%lu", busNumber, hubNumber, portNumber);
 				else
 				{
 					free(comPort);

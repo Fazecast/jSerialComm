@@ -8,7 +8,9 @@ LINK_X64            := x86_64-pc-win32-msvc-ld
 LINK_ARM            := arm-pc-win32-msvc-ld
 LINK_ARM64          := aarch64-pc-win32-msvc-ld
 CFLAGS              := -Os -flto
+CFLAGS_X86          := -O0
 LDFLAGS             := -flto -Wl,/DLL
+LDFLAGS_X86         := -Wl,/DLL
 JDK_HOME            := $(shell echo "`dirname $$(dirname $$(readlink -f $$(which javac)))`")
 INCLUDES            := -I"$(JDK_HOME)/include" -Iwin32
 LIBRARIES           := -lAdvAPI32 -lSetupAPI -lshell32
@@ -79,7 +81,7 @@ $(JAVA_CLASS_DIR) :
 
 # Build rules for all libraries
 $(BUILD_DIR)/x86/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx86)
-	$(LINK_X86) $(LDFLAGS) -o $@ $(OBJECTSx86) $(LIBRARIES)
+	$(LINK_X86) $(LDFLAGS_X86) -o $@ $(OBJECTSx86) $(LIBRARIES)
 $(BUILD_DIR)/x86_64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSx64)
 	$(LINK_X64) $(LDFLAGS) -o $@ $(OBJECTSx64) $(LIBRARIES)
 $(BUILD_DIR)/armv7/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm)
@@ -89,7 +91,7 @@ $(BUILD_DIR)/aarch64/$(LIBRARY_NAME) : $(JNI_HEADER) $(OBJECTSarm64)
 
 # Suffix rules to get from *.c -> *.o
 $(BUILD_DIR)/x86/%.o : %.c
-	$(COMPILE_X86) $(INCLUDES) $(CFLAGS) -c $< -o $@
+	$(COMPILE_X86) $(INCLUDES) $(CFLAGS_X86) -c $< -o $@
 $(BUILD_DIR)/x86_64/%.o : %.c
 	$(COMPILE_X64) $(INCLUDES) $(CFLAGS) -c $< -o $@
 $(BUILD_DIR)/armv7/%.o : %.c
