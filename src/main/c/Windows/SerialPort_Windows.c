@@ -1416,6 +1416,48 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 	return JNI_TRUE;
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean dtr, jboolean rts)
+{
+    serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+    HANDLE hComm = (HANDLE)(intptr_t)port->handle;
+
+    port->errorLineNumber = __LINE__ + 1;
+
+    DWORD funcFlags = 0;
+
+    // Unfortunately, Windows API doesn't offer atomic combined DTR/RTS control.
+    // So we must call EscapeCommFunction separately for each line.
+    // This still typically results in a single USB control transfer on Windows CDC drivers.
+
+    // Set or clear DTR
+    if (dtr) {
+        if (!EscapeCommFunction(hComm, SETDTR)) {
+            port->errorNumber = GetLastError();
+            return JNI_FALSE;
+        }
+    } else {
+        if (!EscapeCommFunction(hComm, CLRDTR)) {
+            port->errorNumber = GetLastError();
+            return JNI_FALSE;
+        }
+    }
+
+    // Set or clear RTS
+    if (rts) {
+        if (!EscapeCommFunction(hComm, SETRTS)) {
+            port->errorNumber = GetLastError();
+            return JNI_FALSE;
+        }
+    } else {
+        if (!EscapeCommFunction(hComm, CLRRTS)) {
+            port->errorNumber = GetLastError();
+            return JNI_FALSE;
+        }
+    }
+
+    return JNI_TRUE;
+}
+
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	DWORD modemStatus = 0;

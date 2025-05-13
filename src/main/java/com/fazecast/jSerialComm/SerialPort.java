@@ -852,6 +852,7 @@ public class SerialPort
 	private native boolean clearRTS(long portHandle);					// Clear RTS line to 0
 	private native boolean setDTR(long portHandle);						// Set DTR line to 1
 	private native boolean clearDTR(long portHandle);					// Clear DTR line to 0
+    private native boolean setDTRandRTS(long portHandle, boolean dtr, boolean rts);
 	private native boolean getCTS(long portHandle);						// Returns whether the CTS signal is 1
 	private native boolean getDSR(long portHandle);						// Returns whether the DSR signal is 1
 	private native boolean getDCD(long portHandle);						// Returns whether the DCD signal is 1
@@ -1061,7 +1062,21 @@ public class SerialPort
 		return (androidPort != null) ? androidPort.clearDTR() : ((portHandle == 0) || clearDTR(portHandle));
 	}
 
-	/**
+  /**
+   * Sets the DTR and RTS lines to the specified values.
+   * @param dtr - the desired state of the DTR line.
+   * @param rts - the desired state of the RTS line.
+   * @return true if successful, false if not.
+   */
+  public final boolean setDTRandRTS(boolean dtr, boolean rts)
+  {
+    isDtrEnabled = dtr;
+    isRtsEnabled = rts;
+    return (androidPort != null) ? androidPort.setDTRandRTS(dtr, rts) : ((portHandle == 0) || setDTRandRTS(portHandle, dtr, rts));
+  }
+
+
+  /**
 	 * Returns whether the CTS line is currently asserted.
 	 * @return Whether or not the CTS line is asserted.
 	 */

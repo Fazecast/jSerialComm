@@ -237,6 +237,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    setDTRandRTS
+ * Signature: (JZZ)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS
+  (JNIEnv *, jobject, jlong, jboolean, jboolean);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    getCTS
  * Signature: (J)Z
  */
