@@ -1065,9 +1065,9 @@ public class SerialPort
 	/**
 	 * Sets the DTR and RTS lines to the specified values.
 	 * @param dtr - the desired state of the DTR line.
-	* @param rts - the desired state of the RTS line.
-	* @return true if successful, false if not.
-	*/
+	 * @param rts - the desired state of the RTS line.
+	 * @return true if successful, false if not.
+	 */
 	public final boolean setDTRandRTS(boolean dtr, boolean rts)
 	{
 		isDtrEnabled = dtr;
