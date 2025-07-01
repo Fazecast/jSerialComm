@@ -94,7 +94,7 @@ CancelIoExFunction CancelIoEx = NULL;
 char portsEnumerated = 0;
 char classInitialized = 0;
 CRITICAL_SECTION criticalSection;
-const char nativeLibraryVersion[] = "2.11.1";
+const char nativeLibraryVersion[] = "2.11.2";
 serialPortVector serialPorts = { NULL, 0, 0 };
 
 // JNI exception handler

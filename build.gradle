@@ -17,7 +17,7 @@ dependencies {
 
 group = 'com.fazecast'
 archivesBaseName = 'jSerialComm'
-version = System.getenv("LIB_VERSION") ?: '2.11.1'
+version = System.getenv("LIB_VERSION") ?: '2.11.2'
 ext.moduleName = 'com.fazecast.jSerialComm'
 
 sourceCompatibility = 6
