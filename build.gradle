@@ -187,8 +187,8 @@ jreleaser {
           url = 'https://central.sonatype.com/api/v1/publisher'
           stagingRepository('build/staging-deploy')
           connectTimeout = 60
-          readTimeout = 600
-          retryDelay = 600
+          readTimeout = 120
+          retryDelay = 120
         }
       }
       nexus2 {
@@ -201,8 +201,8 @@ jreleaser {
           releaseRepository = true
           stagingRepository('build/staging-deploy')
           connectTimeout = 60
-          readTimeout = 600
-          transitionDelay = 600
+          readTimeout = 120
+          transitionDelay = 120
         }
       }
     }

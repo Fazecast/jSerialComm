@@ -68,12 +68,12 @@ jobs:
 
       - name: Update and publish Wiki SNAPSHOT link
         run: |
-          xmlResult=$(wget -qO- https://oss.sonatype.org/content/repositories/snapshots/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}-SNAPSHOT/maven-metadata.xml)
+          xmlResult=$(wget -qO- https://central.sonatype.com/repository/maven-snapshots/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}-SNAPSHOT/maven-metadata.xml)
           snapshot=$(echo $xmlResult | grep -o "<snapshot>.*</snapshot>")
           timestamp=$(echo $snapshot | grep -o "<timestamp>.*</timestamp>" | grep -o "[0-9][^<]*")
           buildNumber=$(echo $snapshot | grep -o "<buildNumber>.*</buildNumber>" | grep -o "[0-9][^<]*")
           cd markdown
-          sed -i "s@\*\*Snapshot Version\*\*:.*@\*\*Snapshot Version\*\*: \*${{ steps.gitversion.outputs.version }}-SNAPSHOT\* ([[Download JAR file here|https://oss.sonatype.org/content/repositories/snapshots/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}-SNAPSHOT/jSerialComm-${{ steps.gitversion.outputs.version }}-$timestamp-$buildNumber.jar]])@" Home.md
+          sed -i "s@\*\*Snapshot Version\*\*:.*@\*\*Snapshot Version\*\*: \*${{ steps.gitversion.outputs.version }}-SNAPSHOT\* ([[Download JAR file here|https://central.sonatype.com/repository/maven-snapshots/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}-SNAPSHOT/jSerialComm-${{ steps.gitversion.outputs.version }}-$timestamp-$buildNumber.jar]])@" Home.md
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
