@@ -8,7 +8,7 @@ buildscript {
 plugins {
   id 'maven-publish'
   id 'biz.aQute.bnd.builder' version '6.0.0'
-  id 'signing'
+  id 'org.jreleaser' version '1.19.0'
 }
 
 dependencies {
@@ -165,22 +165,37 @@ publishing {
   
   repositories {
     maven {
-      name = "OSSRH"
-      def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-      def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+      def releasesRepoUrl = layout.buildDirectory.dir('staging-deploy')
+      def snapshotsRepoUrl = "https://central.sonatype.com/repository/maven-snapshots/"
       url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-      credentials {
-        username = project.findProperty("ossrhUsername") ?: System.getenv("MAVEN_USERNAME")
-        password = project.findProperty("ossrhPassword") ?: System.getenv("MAVEN_PASSWORD")
-      }
+      //credentials {
+      //  username = project.findProperty("JRELEASER_MAVENCENTRAL_USERNAME") ?: System.getenv("JRELEASER_MAVENCENTRAL_USERNAME")
+      //  password = project.findProperty("JRELEASER_MAVENCENTRAL_PASSWORD") ?: System.getenv("JRELEASER_MAVENCENTRAL_PASSWORD")
+      //}
     }
   }
 }
 
-signing {
-  def signingKey = System.getenv("SIGNING_KEY")
-  def signingPassword = System.getenv("SIGNING_PASSWORD")
-  if (signingKey && signingPassword)
-    useInMemoryPgpKeys(signingKey, signingPassword)
-  sign publishing.publications.maven
+jreleaser {
+  signing {
+    active = 'ALWAYS'
+    armored = true
+    verify = false
+  }
+  environment {
+    variables 'gradle.properties'
+  }
+  deploy {
+    maven {
+      mavenCentral {
+        sonatype {
+          active = 'ALWAYS'
+          url = 'https://central.sonatype.com/api/v1/publisher'
+          applyMavenCentralRules = true
+          snapshotSupported = true
+          stagingRepository('build/staging-deploy')
+        }
+      }
+    }
+  }
 }
