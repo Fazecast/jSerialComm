@@ -2,10 +2,10 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 22, 2024
+ *  Last Updated on:  Jul 01, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -526,14 +526,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 		pthread_mutex_unlock(&criticalSection);
 
 		// Quickly set the desired RTS/DTR line status immediately upon opening
-		if (isDtrEnabled)
-			Java_com_fazecast_jSerialComm_SerialPort_setDTR(env, obj, (jlong)(intptr_t)port);
-		else
-			Java_com_fazecast_jSerialComm_SerialPort_clearDTR(env, obj, (jlong)(intptr_t)port);
-		if (isRtsEnabled)
-			Java_com_fazecast_jSerialComm_SerialPort_setRTS(env, obj, (jlong)(intptr_t)port);
-		else
-			Java_com_fazecast_jSerialComm_SerialPort_clearRTS(env, obj, (jlong)(intptr_t)port);
+		Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS(env, obj, (jlong)(intptr_t)port, isDtrEnabled, isRtsEnabled);
 
 		// Ensure that multiple root users cannot access the device simultaneously
 		if (!disableExclusiveLock && flock(port->handle, LOCK_EX | LOCK_NB))
@@ -1068,9 +1061,9 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListenin
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCSBRK))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1080,9 +1073,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNI
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCCBRK))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1093,9 +1086,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS(JNIEn
 {
 	const int modemBits = TIOCM_RTS;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCMBIS, &modemBits))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1106,9 +1099,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 {
 	const int modemBits = TIOCM_RTS;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCMBIC, &modemBits))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1119,9 +1112,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEn
 {
 	const int modemBits = TIOCM_DTR;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCMBIS, &modemBits))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1132,9 +1125,9 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 {
 	const int modemBits = TIOCM_DTR;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-	port->errorLineNumber = __LINE__ + 1;
 	if (ioctl(port->handle, TIOCMBIC, &modemBits))
 	{
+		port->errorLineNumber = __LINE__ - 2;
 		port->errorNumber = errno;
 		return JNI_FALSE;
 	}
@@ -1143,29 +1136,35 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean dtr, jboolean rts)
 {
-  struct serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
-  int status;
+	int modemBits = 0;
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 
-  // Read current status
-  if (ioctl(port->handle, TIOCMGET, &status)) {
-    port->errorNumber = errno;
-    return JNI_FALSE;
-  }
+	// Read current modem bits
+	if (ioctl(port->handle, TIOCMGET, &modemBits))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = errno;
+		return JNI_FALSE;
+	}
 
-  // Modify bits
-  if (dtr) status |= TIOCM_DTR;
-  else     status &= ~TIOCM_DTR;
+	// Modify bits
+	if (dtr)
+		modemBits |= TIOCM_DTR;
+	else
+		modemBits &= ~TIOCM_DTR;
+	if (rts)
+		modemBits |= TIOCM_RTS;
+	else
+		modemBits &= ~TIOCM_RTS;
 
-  if (rts) status |= TIOCM_RTS;
-  else     status &= ~TIOCM_RTS;
-
-  // Write combined status
-  if (ioctl(port->handle, TIOCMSET, &status)) {
-    port->errorNumber = errno;
-    return JNI_FALSE;
-  }
-
-  return JNI_TRUE;
+	// Write combined bits
+	if (ioctl(port->handle, TIOCMSET, &modemBits))
+	{
+		port->errorLineNumber = __LINE__ - 2;
+		port->errorNumber = errno;
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
