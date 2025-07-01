@@ -98,7 +98,7 @@ jobs:
       - name: Update and publish Wiki release link
         run: |
           cd markdown
-          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://oss.sonatype.org/service/local/repositories/releases/content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])@" Home.md
+          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://repo1.maven.org/maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])@" Home.md
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
