@@ -38,16 +38,18 @@ jobs:
           gradle-version: 8.14.2
 
       - name: Build library using Gradle
-        run: gradle build
+        run: gradle publish
         env:
           LIB_VERSION: ${{ steps.gitversion.outputs.version }}
 
       - name: Publish library using Gradle
-        run: gradle publish
+        run: gradle jreleaserDeploy
         env:
           LIB_VERSION: ${{ steps.gitversion.outputs.version }}
           JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
           JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          JRELEASER_NEXUS2_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          JRELEASER_NEXUS2_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
