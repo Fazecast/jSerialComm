@@ -219,6 +219,7 @@ public abstract class AndroidPort
 	public abstract boolean clearRTS();
 	public abstract boolean setDTR();
 	public abstract boolean clearDTR();
+	public abstract boolean setDTRandRTS(boolean dtr, boolean rts);
 	public abstract boolean getCTS();
 	public abstract boolean getDSR();
 	public abstract boolean getDCD();

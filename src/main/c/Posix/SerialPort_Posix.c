@@ -1141,6 +1141,33 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNI
 	return JNI_TRUE;
 }
 
+JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean dtr, jboolean rts)
+{
+  struct serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+  int status;
+
+  // Read current status
+  if (ioctl(port->handle, TIOCMGET, &status)) {
+    port->errorNumber = errno;
+    return JNI_FALSE;
+  }
+
+  // Modify bits
+  if (dtr) status |= TIOCM_DTR;
+  else     status &= ~TIOCM_DTR;
+
+  if (rts) status |= TIOCM_RTS;
+  else     status &= ~TIOCM_RTS;
+
+  // Write combined status
+  if (ioctl(port->handle, TIOCMSET, &status)) {
+    port->errorNumber = errno;
+    return JNI_FALSE;
+  }
+
+  return JNI_TRUE;
+}
+
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	int modemBits = 0;
