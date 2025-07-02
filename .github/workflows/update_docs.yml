@@ -18,25 +18,19 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '11'
+          cache: maven
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.14.2
+      - name: Build library documentation using Maven
+        run: ./mvnw versions:set -DnewVersion=${{ steps.gitversion.outputs.version }} && ./mvnw clean javadoc:javadoc
 
-      - name: Build library using Gradle
-        run: gradle build
-        env:
-          LIB_VERSION: ${{ steps.gitversion.outputs.version }}
-
-      - name: Check out library documentation
+      - name: Check out existing library documentation
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: documentation
 
       - name: Update Javadoc library documentation
-        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s@content/com/fazecast/jSerialComm/[^\"]*@content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv target/javadoc/apidocs documentation/javadoc && sed -i "s@maven2/com/fazecast/jSerialComm/[^\"]*@maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@develop

@@ -14,9 +14,7 @@ src/main/resources
 .mtj.tmp/
 
 # Package Files #
-*.jar
-*.war
-*.ear
+target/
 
 # Allow Android JAR
 !android.jar
@@ -29,6 +27,10 @@ src/main/resources
 gradle.properties
 build.gradle.private
 build.gradle.private.android
+
+# Maven Files #
+.mvn/
+credentials/
 
 # Eclipse Files #
 .settings

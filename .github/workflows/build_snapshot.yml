@@ -38,27 +38,15 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '11'
+          cache: maven
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.14.2
-
-      - name: Build SNAPSHOT using Gradle
-        run: gradle publish
+      - name: Build and publish SNAPSHOT using Maven
+        run: ./mvnw versions:set -DnewVersion=${{ steps.gitversion.outputs.version }}-SNAPSHOT && ./mvnw clean deploy -DskipTests
         env:
-          LIB_VERSION: ${{ steps.gitversion.outputs.version }}-SNAPSHOT
-
-      - name: Publish SNAPSHOT using Gradle
-        run: gradle jreleaserDeploy
-        env:
-          LIB_VERSION: ${{ steps.gitversion.outputs.version }}-SNAPSHOT
-          JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
-          JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
-          JRELEASER_NEXUS2_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
-          JRELEASER_NEXUS2_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
-          JRELEASER_GPG_SECRET_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          JRELEASER_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+          MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          SIGN_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          SIGN_KEY_PASS: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: Check out Wiki source data
         uses: actions/checkout@v4

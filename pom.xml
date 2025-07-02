@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <name>jSerialComm</name>
+  <groupId>com.fazecast</groupId>
+  <artifactId>jSerialComm</artifactId>
+  <version>2.11.3</version>
+  <description>A platform-independent serial communications library for Java.</description>
+  <url>http://fazecast.github.io/jSerialComm/</url>
+  <organization>
+    <name>Fazecast, Inc.</name>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>GNU Lesser GPL, Version 3</name>
+      <url>http://www.gnu.org/licenses/lgpl.html</url>
+    </license>
+    <license>
+      <name>Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>hedgecrw</id>
+      <name>Will Hedgecock</name>
+      <email>will.hedgecock@fazecast.com</email>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/Fazecast/jSerialComm.git</connection>
+    <developerConnection>scm:git:https://github.com/Fazecast/jSerialComm.git</developerConnection>
+    <url>https://github.com/Fazecast/jSerialComm</url>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>local-maven-repo</id>
+      <url>file:///${project.basedir}/local-maven-repo</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.fazecast</groupId>
+      <artifactId>android</artifactId>
+      <version>1.7.0</version>
+    </dependency>
+  </dependencies>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.0</version>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <configuration>
+              <release>6</release>
+              <debug>false</debug>
+              <excludes>
+                <exclude>module-info.java</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>java9-compile</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>module-info.java</include>
+              </includes>
+              <release>9</release>
+              <debug>false</debug>
+              <multiReleaseOutput>true</multiReleaseOutput>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.11.2</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <outputDirectory>${project.build.directory}/javadoc</outputDirectory>
+          <linksource>${include.source}</linksource>
+          <show>protected</show>
+          <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
+          <source>8</source>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.2</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Multi-Release>true</Multi-Release>
+              <Automatic-Module-Name>${project.groupId}.${project.artifactId}</Automatic-Module-Name>
+              <Bundle-Description>Java Serial Communications Library</Bundle-Description>
+              <Bundle-ManifestVersion>2</Bundle-ManifestVersion>
+              <Bundle-Name>${project.name}</Bundle-Name>
+              <Bundle-SymbolicName>${project.groupId}.${project.artifactId}</Bundle-SymbolicName>
+              <Bundle-Vendor>${project.organization.name}</Bundle-Vendor>
+              <Bundle-Version>${project.version}</Bundle-Version>
+              <Export-Package>${project.groupId}.${project.artifactId};version="${project.version}"</Export-Package>
+              <Implementation-Title>${project.name}: Java Serial Communications Library</Implementation-Title>
+              <Implementation-Vendor>${project.organization.name}</Implementation-Vendor>
+              <Implementation-Version>${project.version}</Implementation-Version>
+              <Private-Package>Android,Android.arm64-v8a,Android.armeabi-v7a,Android.x86,Android.x86_64,FreeBSD.arm64,FreeBSD.x86,FreeBSD.x86_64,Linux.armv5,Linux.armv6hf,Linux.armv7hf,Linux.armv8_32,Linux.armv8_64,Linux.ppc64le,Linux.x86,Linux.x86_64,OSX.aarch64,OSX.x86,OSX.x86_64,OpenBSD.amd64,OpenBSD.x86,Solaris.sparcv8plus_32,Solaris.sparcv9_64,Solaris.x86,Solaris.x86_64,Windows.aarch64,Windows.armv7,Windows.x86,Windows.x86_64,com.fazecast.jSerialComm.android</Private-Package>
+              <Require-Capability>osgi.ee;filter:="(&amp;(osgi.ee=JavaSE)(version=1.6))"</Require-Capability>
+              <Sealed>true</Sealed>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.simplify4u.plugins</groupId>
+        <artifactId>sign-maven-plugin</artifactId>
+        <version>1.1.0</version>
+        <executions>
+          <execution>
+              <id>sign-artifacts</id>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+              <configuration>
+                <serverId>signing-key</serverId>
+              </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.8.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+          <waitUntil>published</waitUntil>
+          <deploymentName>${project.groupId}-${project.artifactId}-${project.version}</deploymentName>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

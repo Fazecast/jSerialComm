@@ -31,16 +31,10 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '11'
+          cache: maven
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.14.2
-
-      - name: Build library using Gradle
-        run: gradle publish
-        env:
-          LIB_VERSION: ${{ steps.gitversion.outputs.version }}
+      - name: Build library using Maven
+        run: ./mvnw versions:set -DnewVersion=${{ steps.gitversion.outputs.version }} && ./mvnw clean package
 
       - name: Generate changelog
         id: changelog
@@ -56,20 +50,20 @@ jobs:
           tag: "v${{ steps.gitversion.outputs.version }}"
           body: ${{ steps.changelog.outputs.changelog }}
           commit: "master"
-          artifacts: "build/libs/jSerialComm-${{ steps.gitversion.outputs.version }}.jar"
+          artifacts: "target/jSerialComm-${{ steps.gitversion.outputs.version }}.jar"
           generateReleaseNotes: false
           prerelease: false
           makeLatest: true
           draft: true
 
-      - name: Check out library documentation
+      - name: Check out existing library documentation
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: documentation
 
       - name: Update Javadoc library documentation
-        run: rm -rf documentation/binaries/* documentation/javadoc && mv build/docs/javadoc documentation/ && sed -i "s@content/com/fazecast/jSerialComm/[^\"]*@content/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv target/javadoc/apidocs documentation/javadoc && sed -i "s@maven2/com/fazecast/jSerialComm/[^\"]*@maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
 
       - name: Publish new library documentation
         uses: s0/git-publish-subdir-action@develop
@@ -89,7 +83,7 @@ jobs:
       - name: Update and publish Wiki release link
         run: |
           cd markdown
-          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://repo1.maven.org/maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])@" Home.md
+          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://repo1.maven.org/maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])<br />@" Home.md
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
