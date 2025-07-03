@@ -1,4 +1,9 @@
 name: Release to Maven Central
+permissions:
+  actions: read
+  contents: write
+  deployments: write
+  pages: write
 
 on: [workflow_dispatch]
 

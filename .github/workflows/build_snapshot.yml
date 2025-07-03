@@ -1,4 +1,9 @@
 name: Generate Snapshot
+permissions:
+  actions: read
+  contents: write
+  deployments: write
+  pages: write
 
 on:
   push:
