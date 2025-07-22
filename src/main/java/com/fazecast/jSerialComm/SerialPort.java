@@ -511,6 +511,7 @@ public class SerialPort
 
 		// Correct port descriptor, if needed
 		libraryLock.lock();
+		final String originalPortDescriptor = portDescriptor;
 		try
 		{
 			// Resolve home directory ~
@@ -546,7 +547,7 @@ public class SerialPort
 			serialPort.retrievePortDetails();
 			return serialPort;
 		}
-		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + portDescriptor, e); }
+		catch (Exception e) { throw new SerialPortInvalidPortException("Unable to create a serial port object from the invalid port descriptor: " + originalPortDescriptor, e); }
 		finally { libraryLock.unlock(); }
 	}
 
