@@ -43,8 +43,8 @@
 #include "WindowsHelperFunctions.h"
 
 // Cached class, method, and field IDs
-jclass serialCommClass;
-jclass jniErrorClass;
+jclass serialCommClass = NULL;
+jclass jniErrorClass = NULL;
 jmethodID serialCommConstructor;
 jfieldID serialPortHandleField;
 jfieldID comPortField;
