@@ -627,9 +627,13 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	jint jniVersion = JNI_VERSION_1_2;
 	if ((*jvm)->GetEnv(jvm, (void**)&env, jniVersion))
 		return JNI_ERR;
-	serialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
+	jclass localSerialCommClass = (*env)->FindClass(env, "com/fazecast/jSerialComm/SerialPort");
+	if (!localSerialCommClass) return JNI_ERR;
+	serialCommClass = (*env)->NewGlobalRef(env, localSerialCommClass);
 	if (!serialCommClass) return JNI_ERR;
-	jniErrorClass = (*env)->FindClass(env, "java/lang/Exception");
+	jclass localJniErrorClass = (*env)->FindClass(env, "java/lang/Exception");
+	if (!localJniErrorClass) return JNI_ERR;
+	jniErrorClass = (*env)->NewGlobalRef(env, localJniErrorClass);
 	if (!jniErrorClass) return JNI_ERR;
 
 	// Cache Java fields as global references
@@ -730,6 +734,17 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserved)
 	for (int i = 0; i < serialPorts.length; ++i)
 		if (serialPorts.ports[i]->handle != INVALID_HANDLE_VALUE)
 			Java_com_fazecast_jSerialComm_SerialPort_closePortNative(env, jniErrorClass, (jlong)(intptr_t)serialPorts.ports[i]);
+
+	if (serialCommClass)
+	{
+		(*env)->DeleteGlobalRef(env, serialCommClass);
+		serialCommClass = NULL;
+	}
+	if (jniErrorClass)
+	{
+		(*env)->DeleteGlobalRef(env, jniErrorClass);
+		jniErrorClass = NULL;
+	}
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_uninitializeLibrary(JNIEnv *env, jclass serialComm)
