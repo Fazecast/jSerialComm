@@ -564,6 +564,7 @@ public class SerialPort
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
+	private volatile boolean rs485ModeControlEnabled = true;
 	private final ReentrantLock configurationLock = new ReentrantLock(true);
 
 	/**
@@ -1711,6 +1712,37 @@ public class SerialPort
 			rs485RxDuringTx = rxDuringTx;
 			rs485DelayBefore = delayBeforeSendMicroseconds;
 			rs485DelayAfter = delayAfterSendMicroseconds;
+
+			if (portHandle != 0)
+			{
+				if (safetySleepTimeMS > 0)
+					try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
+				return (androidPort != null) ? androidPort.configPort(this) : configPort(portHandle);
+			}
+			return true;
+		}
+		finally { configurationLock.unlock(); }
+	}
+
+	/**
+	 * Disables RS-485 mode control for the device.
+	 * <p>
+	 * Please note that this is only effective on Linux.
+	 * <p>
+	 * This function forces RS-485 mode to stay untouched, regardless of the current setting of RS-485 mode.
+	 * This is useful for devices that do not support RS-485 mode control via software, or for devices
+	 * that operate in RS-485 mode by default and should not be changed.
+	 * <p>
+	 * This function is necessary, for drivers that don't handle <i>TIOCGRS485</i> properly.
+	 *
+	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
+	 */
+	public final boolean disableRs485ModeControl()
+	{
+		configurationLock.lock();
+		try
+		{
+			rs485ModeControlEnabled = false;
 
 			if (portHandle != 0)
 			{
