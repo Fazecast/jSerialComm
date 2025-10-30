@@ -114,16 +114,16 @@ public class SerialPort
 			String[] architectures;
 			String libraryPath, libraryFileName, extractedFileName;
 			final String manualLibraryPath = System.getProperty("jSerialComm.library.path", "");
-			final String OS = System.getProperty("os.name").toLowerCase();
-			final String arch = System.getProperty("os.arch").toLowerCase();
-			final File tempFileDirectory = new File(System.getProperty("java.io.tmpdir"), "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
-			final File userHomeDirectory = new File(System.getProperty("user.home"), ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
+			final String OS = System.getProperty("os.name", "").toLowerCase();
+			final String arch = System.getProperty("os.arch", "").toLowerCase();
+			final File tempFileDirectory = new File(System.getProperty("java.io.tmpdir", OS.contains("win") ? "C:\\Temp" : "/tmp"), "jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
+			final File userHomeDirectory = new File(System.getProperty("user.home", OS.contains("win") ? "C:\\Temp" : "/tmp"), ".jSerialComm" + File.separator + System.getProperty(tmpdirAppIdProperty, ".") + File.separator + versionString).getCanonicalFile();
 			final boolean randomizeNativeName = System.getProperty("jSerialComm.library.randomizeNativeName", "false").equalsIgnoreCase("true");
 			cleanUpDirectory(new File(tempFileDirectory, ".."));
 			cleanUpDirectory(new File(userHomeDirectory, ".."));
 
 			// Determine Operating System and architecture
-			if (System.getProperty("java.vm.vendor").toLowerCase().contains("android"))
+			if (System.getProperty("java.vm.vendor", "").toLowerCase().contains("android"))
 			{
 				isAndroidDelete = true;
 				libraryPath = "Android";
@@ -516,7 +516,7 @@ public class SerialPort
 		{
 			// Resolve home directory ~
 			if (portDescriptor.startsWith("~" + File.separator))
-				portDescriptor = System.getProperty("user.home") + portDescriptor.substring(1);
+				portDescriptor = System.getProperty("user.home", "/tmp") + portDescriptor.substring(1);
 
 			// See what kind of descriptor was passed in
 			if (isWindows)
