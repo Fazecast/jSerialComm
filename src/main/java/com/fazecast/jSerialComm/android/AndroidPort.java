@@ -25,6 +25,7 @@
 
 package com.fazecast.jSerialComm.android;
 
+import android.os.Build;
 import com.fazecast.jSerialComm.SerialPort;
 
 import android.app.Application;
@@ -43,7 +44,7 @@ import android.util.Log;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.util.*;
 
 public abstract class AndroidPort
 {
@@ -104,58 +105,92 @@ public abstract class AndroidPort
 	// Port enumeration method
 	public static SerialPort[] getCommPortsNative()
 	{
-		// Ensure that the Android application context has been specified 
-		if (context == null)
-			throw new RuntimeException("The Android application context must be specified using 'setAndroidContext()' before making any jSerialComm library calls.");
+        if (context == null) {
+            throw new RuntimeException("The Android application context must be specified using 'setAndroidContext()' before making any jSerialComm library calls.");
+        }
 
-		// Ensure that the device has a USB Manager
-		if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST))
-			return new SerialPort[0];
+        if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST)) {
+            return new SerialPort[0];
+        }
 
-		// Register a listener to handle permission request responses
-		if (permissionIntent == null) {
-			permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
-			IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-			context.registerReceiver(usbReceiver, filter);
-		}
+        if (permissionIntent == null) {
+            Intent permIntent = new Intent(ACTION_USB_PERMISSION).setPackage(context.getPackageName());
 
-		// Enumerate all serial ports on the device
-		usbManager = (UsbManager)context.getApplicationContext().getSystemService(Context.USB_SERVICE);
-		HashMap<String, UsbDevice> deviceList = usbManager.getDeviceList();
-		SerialPort[] portsList = new SerialPort[deviceList.size()];
+            int piFlags = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Required on S+ because the system fills in extras on the broadcast
+                piFlags |= PendingIntent.FLAG_MUTABLE;
+            }
 
-		// Create and return the SerialPort port listing
-		int i = 0;
-		for (UsbDevice device : deviceList.values()) {
-			// TODO: Determine the type of port
-			AndroidPort androidPort = null;
+            permissionIntent = PendingIntent.getBroadcast(context, 0, permIntent, piFlags);
 
-			// Create a new serial port object and add it to the port listing
-			SerialPort serialPort = null;
-			try {
-				Constructor<SerialPort> serialPortConstructor = SerialPort.class.getDeclaredConstructor(String.class, String.class, String.class, String.class, String.class, int.class, int.class);
-				serialPortConstructor.setAccessible(true);
-				serialPort = serialPortConstructor.newInstance("COM" + (i+1), device.getDeviceName(), device.getProductName(), device.getSerialNumber(), device.getSerialNumber(), device.getVendorId(), device.getProductId());
-				Field privateAndroidPort = SerialPort.class.getDeclaredField("androidPort");
-				privateAndroidPort.setAccessible(true);
-				privateAndroidPort.set(serialPort, androidPort);
-				portsList[i++] = serialPort;
-			} catch (Exception e) {
-				e.printStackTrace();
-				continue;
-			}
+            IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+            filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+            // (Optional) If you want to handle auto-request on attach, also:
+            // filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
 
-			Log.i("jSerialComm", "System Port Name: " + serialPort.getSystemPortName());
-			Log.i("jSerialComm", "System Port Path: " + serialPort.getSystemPortPath());
-			Log.i("jSerialComm", "Descriptive Port Name: " + serialPort.getDescriptivePortName());
-			Log.i("jSerialComm", "Port Description: " + serialPort.getPortDescription());
-			Log.i("jSerialComm", "Serial Number: " + serialPort.getSerialNumber());
-			Log.i("jSerialComm", "Location: " + serialPort.getPortLocation());
-			Log.i("jSerialComm", "Vendor ID: " + serialPort.getVendorID());
-			Log.i("jSerialComm", "Product ID: " + serialPort.getProductID());
-		}
-		return portsList;
+            context.registerReceiver(usbReceiver, filter);
+        }
+
+        usbManager = (UsbManager) context.getApplicationContext().getSystemService(Context.USB_SERVICE);
+        HashMap<String, UsbDevice> deviceList = usbManager.getDeviceList();
+
+        Set<Integer> pendingPermissionDeviceIds = new HashSet<>();
+
+        List<SerialPort> ports = new ArrayList<>(deviceList.size());
+
+        for (UsbDevice device : deviceList.values()) {
+            // If we already have permission, build the SerialPort immediately
+            if (usbManager.hasPermission(device)) {
+                try {
+                    AndroidPort androidPort = null;
+
+                    Constructor<SerialPort> serialPortConstructor =
+                            SerialPort.class.getDeclaredConstructor(String.class, String.class, String.class, String.class, String.class, int.class, int.class);
+                    serialPortConstructor.setAccessible(true);
+
+                    SerialPort serialPort = serialPortConstructor.newInstance(
+                            "COM" + (ports.size() + 1),
+                            device.getDeviceName(),
+                            device.getProductName(),
+                            device.getSerialNumber(),
+                            device.getSerialNumber(),
+                            device.getVendorId(),
+                            device.getProductId()
+                    );
+
+                    Field privateAndroidPort = SerialPort.class.getDeclaredField("androidPort");
+                    privateAndroidPort.setAccessible(true);
+                    privateAndroidPort.set(serialPort, androidPort);
+
+                    ports.add(serialPort);
+
+                    Log.i("jSerialComm", "System Port Name: " + serialPort.getSystemPortName());
+                    Log.i("jSerialComm", "System Port Path: " + serialPort.getSystemPortPath());
+                    Log.i("jSerialComm", "Descriptive Port Name: " + serialPort.getDescriptivePortName());
+                    Log.i("jSerialComm", "Port Description: " + serialPort.getPortDescription());
+                    Log.i("jSerialComm", "Serial Number: " + serialPort.getSerialNumber());
+                    Log.i("jSerialComm", "Location: " + serialPort.getPortLocation());
+                    Log.i("jSerialComm", "Vendor ID: " + serialPort.getVendorID());
+                    Log.i("jSerialComm", "Product ID: " + serialPort.getProductID());
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                // No permission yet → request it (S+ needs a mutable PendingIntent)
+                if (!pendingPermissionDeviceIds.contains(device.getDeviceId())) {
+                    try {
+                        usbManager.requestPermission(device, permissionIntent);
+                        pendingPermissionDeviceIds.add(device.getDeviceId());
+                    } catch (Exception e) {
+                        Log.w("jSerialComm", "Failed to request permission for deviceId=" + device.getDeviceId(), e);
+                    }
+                }
+            }
+        }
+
+        return ports.toArray(new SerialPort[0]);
 	}
 
 	// Native port opening method
