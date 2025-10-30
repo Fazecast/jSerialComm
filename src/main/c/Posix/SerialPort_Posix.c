@@ -69,6 +69,7 @@ jfieldID sendDeviceQueueSizeField;
 jfieldID receiveDeviceQueueSizeField;
 jfieldID disableExclusiveLockField;
 jfieldID requestElevatedPermissionsField;
+jfieldID rs485ModeControlEnabledField;
 jfieldID rs485ModeField;
 jfieldID rs485ActiveHighField;
 jfieldID rs485EnableTerminationField;
@@ -299,6 +300,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	requestElevatedPermissionsField = (*env)->GetFieldID(env, serialCommClass, "requestElevatedPermissions", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	rs485ModeField = (*env)->GetFieldID(env, serialCommClass, "rs485Mode", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	rs485ModeControlEnabledField = (*env)->GetFieldID(env, serialCommClass, "rs485ModeControlEnabled", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	rs485ActiveHighField = (*env)->GetFieldID(env, serialCommClass, "rs485ActiveHigh", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
@@ -590,6 +593,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
+	unsigned char rs485ModeControlEnabled = (*env)->GetBooleanField(env, obj, rs485ModeControlEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
@@ -670,35 +675,38 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		(*env)->SetIntField(env, obj, receiveDeviceQueueSizeField, receiveDeviceQueueSize);
 		if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 
-		// Attempt to set the requested RS-485 mode
-		struct serial_rs485 rs485Conf = { 0 };
-		if (!ioctl(port->handle, TIOCGRS485, &rs485Conf))
-		{
-			if (rs485ModeEnabled)
-				rs485Conf.flags |= SER_RS485_ENABLED;
-			else
-				rs485Conf.flags &= ~SER_RS485_ENABLED;
-			if (rs485ActiveHigh)
+		// Configure RS-485 mode if requested
+		if (rs485ModeControlEnabled) {
+			// Attempt to set the requested RS-485 mode
+			struct serial_rs485 rs485Conf = { 0 };
+			if (!ioctl(port->handle, TIOCGRS485, &rs485Conf))
 			{
-				rs485Conf.flags |= SER_RS485_RTS_ON_SEND;
-				rs485Conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
+				if (rs485ModeEnabled)
+					rs485Conf.flags |= SER_RS485_ENABLED;
+				else
+					rs485Conf.flags &= ~SER_RS485_ENABLED;
+				if (rs485ActiveHigh)
+				{
+					rs485Conf.flags |= SER_RS485_RTS_ON_SEND;
+					rs485Conf.flags &= ~(SER_RS485_RTS_AFTER_SEND);
+				}
+				else
+				{
+					rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
+					rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
+				}
+				if (rs485RxDuringTx)
+					rs485Conf.flags |= SER_RS485_RX_DURING_TX;
+				else
+					rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
+				if (rs485EnableTermination)
+					rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
+				else
+					rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
+				rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
+				rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
+				ioctl(port->handle, TIOCSRS485, &rs485Conf);
 			}
-			else
-			{
-				rs485Conf.flags &= ~(SER_RS485_RTS_ON_SEND);
-				rs485Conf.flags |= SER_RS485_RTS_AFTER_SEND;
-			}
-			if (rs485RxDuringTx)
-				rs485Conf.flags |= SER_RS485_RX_DURING_TX;
-			else
-				rs485Conf.flags &= ~(SER_RS485_RX_DURING_TX);
-			if (rs485EnableTermination)
-				rs485Conf.flags |= SER_RS485_TERMINATE_BUS;
-			else
-				rs485Conf.flags &= ~(SER_RS485_TERMINATE_BUS);
-			rs485Conf.delay_rts_before_send = rs485DelayBefore / 1000;
-			rs485Conf.delay_rts_after_send = rs485DelayAfter / 1000;
-			ioctl(port->handle, TIOCSRS485, &rs485Conf);
 		}
 
 #else
