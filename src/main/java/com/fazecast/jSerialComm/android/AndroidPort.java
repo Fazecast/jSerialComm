@@ -117,10 +117,11 @@ public abstract class AndroidPort
             Intent permIntent = new Intent(ACTION_USB_PERMISSION).setPackage(context.getPackageName());
 
             int piFlags = 0;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // TODO: NEED TO UPDATE android.jar BECAUSE THE FOLLOWING IS NOT DEFINED IN CURRENT VERSION
+            /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 // Required on S+ because the system fills in extras on the broadcast
                 piFlags |= PendingIntent.FLAG_MUTABLE;
-            }
+            }*/
 
             permissionIntent = PendingIntent.getBroadcast(context, 0, permIntent, piFlags);
 
@@ -135,9 +136,9 @@ public abstract class AndroidPort
         usbManager = (UsbManager) context.getApplicationContext().getSystemService(Context.USB_SERVICE);
         HashMap<String, UsbDevice> deviceList = usbManager.getDeviceList();
 
-        Set<Integer> pendingPermissionDeviceIds = new HashSet<>();
+        Set<Integer> pendingPermissionDeviceIds = new HashSet<Integer>();
 
-        List<SerialPort> ports = new ArrayList<>(deviceList.size());
+        List<SerialPort> ports = new ArrayList<SerialPort>(deviceList.size());
 
         for (UsbDevice device : deviceList.values()) {
             // If we already have permission, build the SerialPort immediately
@@ -178,7 +179,7 @@ public abstract class AndroidPort
                     e.printStackTrace();
                 }
             } else {
-                // No permission yet → request it (S+ needs a mutable PendingIntent)
+                // No permission yet, request it (S+ needs a mutable PendingIntent)
                 if (!pendingPermissionDeviceIds.contains(device.getDeviceId())) {
                     try {
                         usbManager.requestPermission(device, permissionIntent);
