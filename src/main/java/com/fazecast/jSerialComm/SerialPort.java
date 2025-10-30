@@ -2,10 +2,10 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Apr 11, 2024
+ *  Last Updated on:  Oct 30, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -226,7 +226,7 @@ public class SerialPort
 					if (tempNativeLibrary.getParentFile().exists() || tempNativeLibrary.getParentFile().mkdirs())
 					{
 						tempNativeLibrary.getParentFile().setReadable(true, false);
-						tempNativeLibrary.getParentFile().setWritable(true, true);
+						tempNativeLibrary.getParentFile().setWritable(true, false);
 						tempNativeLibrary.getParentFile().setExecutable(true, false);
 					}
 					else
@@ -249,7 +249,7 @@ public class SerialPort
 								destinationFileContents.close();
 								fileContents.close();
 								tempNativeLibrary.setReadable(true, false);
-								tempNativeLibrary.setWritable(false, false);
+								tempNativeLibrary.setWritable(true, false);
 								tempNativeLibrary.setExecutable(true, false);
 
 								// Attempt to load the native library
@@ -1734,7 +1734,7 @@ public class SerialPort
 	 * This is useful for devices that do not support RS-485 mode control via software, or for devices
 	 * that operate in RS-485 mode by default and should not be changed.
 	 * <p>
-	 * This function is necessary, for drivers that don't handle <i>TIOCGRS485</i> properly.
+	 * This function is necessary for Linux drivers that don't handle <i>TIOCGRS485</i> properly.
 	 *
 	 * @return Whether the port configuration is valid or disallowed on this system (only meaningful after the port is already opened).
 	 */
