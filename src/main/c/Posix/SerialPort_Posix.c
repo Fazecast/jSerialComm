@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 01, 2025
+ *  Last Updated on:  Oct 31, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -593,8 +593,6 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char rs485ModeEnabled = (*env)->GetBooleanField(env, obj, rs485ModeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	unsigned char rs485ModeControlEnabled = (*env)->GetBooleanField(env, obj, rs485ModeControlEnabledField);
-	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isDtrEnabled = (*env)->GetBooleanField(env, obj, isDtrEnabledField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
@@ -604,6 +602,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	char xoffStopChar = (*env)->GetByteField(env, obj, xoffStopCharField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 #if defined(__linux__)
+	unsigned char rs485ModeControlEnabled = (*env)->GetBooleanField(env, obj, rs485ModeControlEnabledField);
+	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int sendDeviceQueueSize = (*env)->GetIntField(env, obj, sendDeviceQueueSizeField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	int receiveDeviceQueueSize = (*env)->GetIntField(env, obj, receiveDeviceQueueSizeField);
@@ -807,10 +807,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 		}
 		else
 		{
-			struct timeval currentTime;
-			gettimeofday(&currentTime, NULL);
-			struct timespec timeoutTime = { .tv_sec = 1 + currentTime.tv_sec, .tv_nsec = currentTime.tv_usec * 1000 };
+#if defined(__ANDROID__)
+			struct timespec timeoutTime;
+			clock_gettime(CLOCK_REALTIME, &timeoutTime);
+			timeoutTime.tv_sec += 1;
 			pthread_cond_timedwait(&port->eventReceived, &port->eventMutex, &timeoutTime);
+#elif defined(__APPLE__)
+			struct timespec timeoutTime = { .tv_sec = 1, .tv_nsec = 0 };
+			pthread_cond_timedwait_relative_np(&port->eventReceived, &port->eventMutex, &timeoutTime);
+#else
+			struct timespec timeoutTime;
+			clock_gettime(CLOCK_MONOTONIC, &timeoutTime);
+			timeoutTime.tv_sec += 1;
+			pthread_cond_timedwait(&port->eventReceived, &port->eventMutex, &timeoutTime);
+#endif
 			if (port->event)
 			{
 				event = port->event;
@@ -947,13 +957,14 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	else if ((timeoutMode & com_fazecast_jSerialComm_SerialPort_TIMEOUT_READ_BLOCKING) > 0)		// Blocking mode, but not indefinitely
 	{
 		// Get current system time
-		struct timeval expireTime = { 0 }, currTime = { 0 };
-		gettimeofday(&expireTime, NULL);
-		expireTime.tv_usec += (readTimeout * 1000);
-		if (expireTime.tv_usec > 1000000)
+		struct timespec expireTime, currTime;
+		clock_gettime(CLOCK_MONOTONIC, &expireTime);
+		expireTime.tv_sec += (readTimeout / 1000);
+		expireTime.tv_nsec += ((readTimeout % 1000) * 1000000);
+		if (expireTime.tv_nsec >= 1000000000)
 		{
-			expireTime.tv_sec += (expireTime.tv_usec * 0.000001);
-			expireTime.tv_usec = (expireTime.tv_usec % 1000000);
+			expireTime.tv_sec += 1;
+			expireTime.tv_nsec -= 1000000000;
 		}
 
 		// While there are more bytes we are supposed to read and the timeout has not elapsed
@@ -974,8 +985,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 			bytesRemaining -= numBytesRead;
 
 			// Get current system time
-			gettimeofday(&currTime, NULL);
-		} while ((bytesRemaining > 0) && ((expireTime.tv_sec > currTime.tv_sec) || ((expireTime.tv_sec == currTime.tv_sec) && (expireTime.tv_usec > currTime.tv_usec))));
+			clock_gettime(CLOCK_MONOTONIC, &currTime);
+		} while ((bytesRemaining > 0) && ((expireTime.tv_sec > currTime.tv_sec) || ((expireTime.tv_sec == currTime.tv_sec) && (expireTime.tv_nsec > currTime.tv_nsec))));
 	}
 	else		// Semi- or non-blocking specified
 	{

@@ -2,10 +2,10 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Oct 31, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -63,8 +63,8 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	pthread_mutex_init(&port->eventMutex, NULL);
 	pthread_condattr_t conditionVariableAttributes;
 	pthread_condattr_init(&conditionVariableAttributes);
-#if !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__ANDROID__)
-	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_REALTIME);
+#if !defined(__APPLE__) && !defined(__ANDROID__)
+	pthread_condattr_setclock(&conditionVariableAttributes, CLOCK_MONOTONIC);
 #endif
 	pthread_cond_init(&port->eventReceived, &conditionVariableAttributes);
 	pthread_condattr_destroy(&conditionVariableAttributes);
@@ -137,6 +137,13 @@ void cleanUpVector(serialPortVector* vector)
 	vector->length = vector->capacity = 0;
 }
 
+// Linux-specific functionality
+#if defined(__linux__)
+
+#include <linux/serial.h>
+#include <asm/ioctls.h>
+#include "termios2.h"
+
 // Common string storage functionality
 typedef struct stringVector
 {
@@ -175,13 +182,6 @@ static void freeStringVector(stringVector* vector)
 	vector->strings = NULL;
 	vector->length = vector->capacity = 0;
 }
-
-// Linux-specific functionality
-#if defined(__linux__)
-
-#include <linux/serial.h>
-#include <asm/ioctls.h>
-#include "termios2.h"
 
 static void retrievePhysicalPortPrefixes(stringVector* prefixes)
 {
