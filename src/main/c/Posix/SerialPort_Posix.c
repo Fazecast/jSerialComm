@@ -771,7 +771,7 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	{
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 		port->errorNumber = lastErrorNumber = errno;
-		return JNI_FALSE;
+		return disableConfig ? JNI_TRUE : JNI_FALSE;
 	}
 	return JNI_TRUE;
 }
