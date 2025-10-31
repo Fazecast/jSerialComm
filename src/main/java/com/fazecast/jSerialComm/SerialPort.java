@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 30, 2025
+ *  Last Updated on:  Oct 31, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -637,6 +637,7 @@ public class SerialPort
 			portHandle = (androidPort != null) ? androidPort.openPortNative(this) : openPortNative();
 			if ((portHandle != 0) && (serialEventListener != null))
 				serialEventListener.startListening();
+			autoFlushIOBuffers = false;
 			return (portHandle != 0);
 		}
 		finally { configurationLock.unlock(); }
@@ -1296,9 +1297,10 @@ public class SerialPort
 		configurationLock.lock();
 		try
 		{
-			autoFlushIOBuffers = true;
 			if (portHandle != 0)
 				return (androidPort != null) ? androidPort.flushRxTxBuffers() : flushRxTxBuffers(portHandle);
+			else
+				autoFlushIOBuffers = true;
 			return true;
 		}
 		finally { configurationLock.unlock(); }
