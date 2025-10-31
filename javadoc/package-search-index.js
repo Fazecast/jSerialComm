@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"com.fazecast.jSerialComm"},{"l":"com.fazecast.jSerialComm.android"}]
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"com.fazecast.jSerialComm"}]
