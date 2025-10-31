@@ -1285,6 +1285,9 @@ public class SerialPort
 	 * Note that flushing serial buffers will always work on real serial ports; however, many USB-to-serial converters
 	 * do not accurately implement this functionality, so the flushing may not always work as expected, especially immediately
 	 * after opening a new port.
+	 * <p>
+	 * Also note that "flushing" in this context means "clearing". Any untransmitted data will be erased from
+	 * the device driver's transmit buffer and will not be sent or received.
 	 * 
 	 * @return Whether the IO buffers were (or will be) successfully flushed.
 	 */
