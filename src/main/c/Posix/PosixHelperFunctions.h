@@ -2,10 +2,10 @@
  * PosixHelperFunctions.h
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Oct 31, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -28,7 +28,6 @@
 
 // Serial port JNI header file
 #include <pthread.h>
-#include <termios.h>
 #include "com_fazecast_jSerialComm_SerialPort.h"
 
 // Serial port data structure
@@ -97,6 +96,8 @@ typedef int baud_rate;
 // Apple-specific functionality
 #elif defined(__APPLE__)
 
+#include <termios.h>
+
 #define fdatasync fsync
 
 typedef speed_t baud_rate;
@@ -106,7 +107,8 @@ typedef speed_t baud_rate;
 
 // Common Posix functionality
 void searchForComPorts(serialPortVector* comPorts);
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options);
 int verifyAndSetUserPortGroup(const char *portFile);
+baud_rate getBaudRateCode(baud_rate baudRate);
+int setCustomBaudRate(int portFD, baud_rate baudRate);
 
 #endif		// #ifndef __POSIX_HELPER_FUNCTIONS_HEADER_H__

@@ -142,7 +142,13 @@ void cleanUpVector(serialPortVector* vector)
 
 #include <linux/serial.h>
 #include <asm/ioctls.h>
-#include "termios2.h"
+#include <asm/termios.h>
+
+#if defined (__powerpc__) || defined (__powerpc64__)
+#define TCSETS2 TCSETS
+#define TCGETS2 TCGETS
+#define termios2 termios
+#endif
 
 // Common string storage functionality
 typedef struct stringVector
@@ -686,7 +692,7 @@ void searchForComPorts(serialPortVector* comPorts)
 	free(line);
 }
 
-static baud_rate getBaudRateCode(baud_rate baudRate)
+baud_rate getBaudRateCode(baud_rate baudRate)
 {
 	// Translate a raw baud rate into a system-specified one
 	switch (baudRate)
@@ -838,41 +844,28 @@ static baud_rate getBaudRateCode(baud_rate baudRate)
 		default:
 			return 0;
 	}
-
-	return 0;
 }
 
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
+int setCustomBaudRate(int portFD, baud_rate baudRate)
 {
-	// Set options using different methodologies based on availability of baud rate settings
-	int retVal = -1;
-	baud_rate baudRateCode = getBaudRateCode(baudRate);
-	if (baudRateCode)
+	// Utilize newer termios2 structure for custom baud rates
+	struct termios2 options;
+	int retVal = ioctl(portFD, TCGETS2, &options);
+	if (!retVal)
 	{
-		// Directly set baud rate and apply all configuration options
-		cfsetispeed(options, baudRateCode);
-		cfsetospeed(options, baudRateCode);
-		retVal = tcsetattr(portFD, TCSANOW, options);
-	}
-	else
-	{
-		// Copy termios info into newer termios2 data structure
-		struct termios2 options2 = { 0 };
-		options2.c_cflag = (options->c_cflag & ~(CBAUD | CBAUDEX)) | BOTHER;
-		options2.c_iflag = options->c_iflag;
-		options2.c_oflag = options->c_oflag;
-		options2.c_lflag = options->c_lflag;
-		options2.c_line = options->c_line;
-		options2.c_ispeed = baudRate;
-		options2.c_ospeed = baudRate;
-		memcpy(options2.c_cc, options->c_cc, K_NCCS * sizeof(cc_t));
-		retVal = ioctl(portFD, T2CSANOW, &options2);
+		options.c_cflag &= ~CBAUD;
+		options.c_cflag |= BOTHER;
+		options.c_ispeed = baudRate;
+		options.c_ospeed = baudRate;
+		retVal = ioctl(portFD, TCSETS2, &options);
 	}
 	return retVal;
 }
 
 // Solaris-specific functionality
 #elif defined(__sun__)
+
+#include <termios.h>
 
 void searchForComPorts(serialPortVector* comPorts)
 {
@@ -1054,28 +1047,14 @@ baud_rate getBaudRateCode(baud_rate baudRate)
 		case 460800:
 			return B460800;
 		default:
-			return 0;
+			return B38400;
 	}
-
-	return 0;
 }
 
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
+int setCustomBaudRate(int portFD, baud_rate baudRate)
 {
-	// Set options using different methodologies based on availability of baud rate settings
-	baud_rate baudRateCode = getBaudRateCode(baudRate);
-	if (baudRateCode)
-	{
-		// Directly set baud rate and apply all configuration options
-		cfsetispeed(options, baudRateCode);
-		cfsetospeed(options, baudRateCode);
-	}
-	else
-	{
-		cfsetispeed(options, B38400);
-		cfsetospeed(options, B38400);
-	}
-	return tcsetattr(portFD, TCSANOW, options);
+	// No-op on this operating system
+	return 0;
 }
 
 // FreeBSD-specific functionality
@@ -1280,12 +1259,16 @@ void searchForComPorts(serialPortVector* comPorts)
 	}
 }
 
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
+baud_rate getBaudRateCode(baud_rate baudRate)
 {
-	// Directly set baud rate and apply all configuration options
-	cfsetispeed(options, baudRate);
-	cfsetospeed(options, baudRate);
-	return tcsetattr(portFD, TCSANOW, options);
+	// Baud rates are set directly with no explicit codes
+	return baudRate;
+}
+
+int setCustomBaudRate(int portFD, baud_rate baudRate)
+{
+	// No-op on this operating system
+	return 0;
 }
 
 // OpenBSD-specific functionality
@@ -1470,12 +1453,16 @@ void searchForComPorts(serialPortVector* comPorts)
 	}
 }
 
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
+baud_rate getBaudRateCode(baud_rate baudRate)
 {
-	// Directly set baud rate and apply all configuration options
-	cfsetispeed(options, baudRate);
-	cfsetospeed(options, baudRate);
-	return tcsetattr(portFD, TCSANOW, options);
+	// Baud rates are set directly with no explicit codes
+	return baudRate;
+}
+
+int setCustomBaudRate(int portFD, baud_rate baudRate)
+{
+	// No-op on this operating system
+	return 0;
 }
 
 // Apple-specific functionality
@@ -1487,6 +1474,7 @@ int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
 #include <IOKit/serial/IOSerialKeys.h>
 #include <IOKit/serial/ioss.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 void searchForComPorts(serialPortVector* comPorts)
 {
@@ -1720,28 +1708,17 @@ baud_rate getBaudRateCode(baud_rate baudRate)
 	return 0;
 }
 
-int setConfigOptions(int portFD, baud_rate baudRate, struct termios *options)
+int setCustomBaudRate(int portFD, baud_rate baudRate)
 {
-	// Set options using different methodologies based on availability of baud rate settings
-	int retVal = -1;
-	baud_rate baudRateCode = getBaudRateCode(baudRate);
-	if (baudRateCode)
-	{
-		// Directly set baud rate and apply all configuration options
-		cfsetispeed(options, baudRateCode);
-		cfsetospeed(options, baudRateCode);
-		retVal = tcsetattr(portFD, TCSANOW, options);
-	}
-	else
-	{
-		// Use OSX-specific ioctls to set a custom baud rate
-		cfsetispeed(options, B9600);
-		cfsetospeed(options, B9600);
-		unsigned long microseconds = 1000;
-		retVal = tcsetattr(portFD, TCSANOW, options) & ioctl(portFD, IOSSIOSPEED, &baudRate);
-		if (retVal == 0)
-			retVal = ioctl(portFD, IOSSDATALAT, &microseconds);
-	}
+	// Use OSX-specific ioctls to set a custom baud rate
+	struct termios options;
+	tcgetattr(portFD, &options);
+	cfsetispeed(&options, B9600);
+	cfsetospeed(&options, B9600);
+	unsigned long microseconds = 1000;
+	int retVal = tcsetattr(portFD, TCSANOW, &options) & ioctl(portFD, IOSSIOSPEED, &baudRate);
+	if (retVal == 0)
+		retVal = ioctl(portFD, IOSSDATALAT, &microseconds);
 	return retVal;
 }
 

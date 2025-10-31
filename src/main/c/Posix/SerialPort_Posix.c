@@ -33,6 +33,7 @@
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 #if defined(__linux__)
@@ -767,7 +768,20 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 		port->errorNumber = lastErrorNumber = errno;
 		return JNI_FALSE;
 	}
-	if (setConfigOptions(port->handle, baudRate, &options))
+	baud_rate baudRateCode = getBaudRateCode(baudRate);
+	if (baudRateCode)
+	{
+		cfsetispeed(&options, baudRateCode);
+		cfsetospeed(&options, baudRateCode);
+	}
+	if (tcsetattr(port->handle, TCSANOW, &options))
+	{
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = errno;
+		if (!disableConfig)
+			return JNI_FALSE;
+	}
+	if (!baudRateCode && setCustomBaudRate(port->handle, baudRate))
 	{
 		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
 		port->errorNumber = lastErrorNumber = errno;
