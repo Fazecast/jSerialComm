@@ -28,6 +28,6 @@
  * Java serial communications library.
  *
  * @author Will Hedgecock &lt;will.hedgecock@fazecast.com&gt;
- * @version 2.11.3
+ * @version 2.11.4
  */
 package com.fazecast.jSerialComm;
