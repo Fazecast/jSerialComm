@@ -157,27 +157,34 @@
       </plugin>
 
       <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.3</version>
-        <configuration>
-          <descriptors>
-            <descriptor>src/assembly/assembly.xml</descriptor>
-          </descriptors>
-        </configuration>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.7.3</version>
         <executions>
           <execution>
-            <id>make-assembly</id>
-            <phase>package</phase>
+            <id>flatten</id>
+            <phase>process-resources</phase>
             <goals>
-              <goal>single</goal>
+              <goal>flatten</goal>
             </goals>
             <configuration>
-              <archive>
-                <manifest>
-                  <mainClass>com.fazecast.jSerialComm.SerialPortTest</mainClass>
-                </manifest>
-              </archive>
+              <outputDirectory>target</outputDirectory>
+              <flattenedPomFilename>deploy-pom.xml</flattenedPomFilename>
+              <updatePomFile>true</updatePomFile>
+              <flattenMode>oss</flattenMode>
+              <pomElements>
+                <repositories>remove</repositories>
+                <dependencies>remove</dependencies>
+                <build>remove</build>
+              </pomElements>
             </configuration>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -213,4 +220,42 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>testing</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>2.3</version>
+            <configuration>
+              <descriptors>
+                <descriptor>src/assembly/assembly.xml</descriptor>
+              </descriptors>
+            </configuration>
+            <executions>
+              <execution>
+                <id>make-assembly</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>single</goal>
+                </goals>
+                <configuration>
+                  <archive>
+                    <manifest>
+                      <mainClass>com.fazecast.jSerialComm.SerialPortTest</mainClass>
+                    </manifest>
+                  </archive>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
