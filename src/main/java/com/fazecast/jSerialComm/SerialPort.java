@@ -135,7 +135,12 @@ public class SerialPort
 				isWindows = true;
 				libraryPath = "Windows";
 				libraryFileName = "jSerialComm.dll";
-				architectures = new String[] { "aarch64", "armv7", "x86_64", "x86" };
+				if (!System.getProperty("os.arch_full", "").isEmpty())
+					architectures = new String[] { System.getProperty("os.arch_full").toLowerCase() };
+				else if (arch.contains("86") || arch.contains("amd"))
+					architectures = new String[] { "x86_64", "x86", "aarch64", "armv7" };
+				else
+					architectures = new String[] { "aarch64", "armv7", "x86_64", "x86" };
 			}
 			else if (OS.contains("mac"))
 			{
