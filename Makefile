@@ -3,6 +3,9 @@ clean:
 	./mvnw clean
 	@rm -f dependency-reduced-pom.xml
 
+bump:
+	$(MAKE) -C toolchain bump
+
 native:
 	$(MAKE) -C toolchain make
 

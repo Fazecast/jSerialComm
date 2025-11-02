@@ -2020,6 +2020,10 @@ public class SerialPort
 								((SerialPortMessageListenerWithExceptions)userDataListener).catchException(e);
 						}
 					}
+					if (androidPort != null)
+						androidPort.setEventListeningStatus(false);
+					else
+						setEventListeningStatus(portHandle, false);
 				}
 			});
 			serialEventThread.start();
@@ -2136,7 +2140,11 @@ public class SerialPort
 				}
 			}
 			if (eventListenerRunning && !isShuttingDown && (event != SerialPort.LISTENING_EVENT_TIMED_OUT))
+			{
 				userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, event));
+				if (event == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+					eventListenerRunning = false;
+			}
 		}
 	}
 

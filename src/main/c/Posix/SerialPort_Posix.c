@@ -1083,9 +1083,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListenin
 	else if (port->eventListenerUsesThreads)
 	{
 		port->eventListenerUsesThreads = 0;
-		pthread_cancel(port->eventsThread1);
+		if (port->eventsThread1)
+			pthread_cancel(port->eventsThread1);
 		port->eventsThread1 = 0;
-		pthread_cancel(port->eventsThread2);
+		if (port->eventsThread2)
+			pthread_cancel(port->eventsThread2);
 		port->eventsThread2 = 0;
 	}
 #endif // #if defined(__linux__)
