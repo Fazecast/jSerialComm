@@ -976,8 +976,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
 	BYTE isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	if (checkJniError(env, __LINE__ - 1)) return JNI_FALSE;
-	BYTE stopBits = (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS;
-	BYTE parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? NOPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? ODDPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? EVENPARITY : (parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? MARKPARITY : SPACEPARITY;
+	BYTE stopBits = (stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : ((stopBitsInt == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS);
+	BYTE parity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? NOPARITY : ((parityInt == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? ODDPARITY : ((parityInt == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? EVENPARITY : ((parityInt == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? MARKPARITY : SPACEPARITY)));
 	BOOL isParity = (parityInt == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? FALSE : TRUE;
 	BOOL CTSEnabled = (((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED) > 0) ||
 			((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) > 0));
@@ -989,20 +989,21 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 	BOOL XonXoffInEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED) > 0);
 	BOOL XonXoffOutEnabled = ((flowControl & com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED) > 0);
 
+	// Retrieve existing port configuration
+	DCB dcbSerialParams;
+	memset(&dcbSerialParams, 0, sizeof(DCB));
+	dcbSerialParams.DCBlength = sizeof(DCB);
+	SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize);
+	if (!GetCommState(port->handle, &dcbSerialParams))
+	{
+		port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
+		port->errorNumber = lastErrorNumber = GetLastError();
+		return JNI_FALSE;
+	}
+
 	// Configure port parameters if not explicitly disabled
 	if (!disableConfig)
 	{
-		// Retrieve existing port configuration
-		DCB dcbSerialParams;
-		memset(&dcbSerialParams, 0, sizeof(DCB));
-		dcbSerialParams.DCBlength = sizeof(DCB);
-		if (!SetupComm(port->handle, receiveDeviceQueueSize, sendDeviceQueueSize) || !GetCommState(port->handle, &dcbSerialParams))
-		{
-			port->errorLineNumber = lastErrorLineNumber = __LINE__ - 2;
-			port->errorNumber = lastErrorNumber = GetLastError();
-			return JNI_FALSE;
-		}
-
 		// Set updated port parameters
 		dcbSerialParams.BaudRate = baudRate;
 		dcbSerialParams.ByteSize = byteSize;
@@ -1033,6 +1034,27 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 			port->errorNumber = lastErrorNumber = GetLastError();
 			return JNI_FALSE;
 		}
+	}
+	else
+	{
+		// Update the Java-side port configuration values
+		(*env)->SetIntField(env, obj, baudRateField, (int)dcbSerialParams.BaudRate);
+		(*env)->SetIntField(env, obj, dataBitsField, (int)dcbSerialParams.ByteSize);
+		(*env)->SetIntField(env, obj, stopBitsField, (dcbSerialParams.StopBits == ONESTOPBIT) ? com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT : ((dcbSerialParams.StopBits == ONE5STOPBITS) ? com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS : com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS));
+		if (dcbSerialParams.fParity)
+			(*env)->SetIntField(env, obj, parityField, (dcbSerialParams.Parity == NOPARITY) ? com_fazecast_jSerialComm_SerialPort_NO_PARITY : ((dcbSerialParams.Parity == ODDPARITY) ? com_fazecast_jSerialComm_SerialPort_ODD_PARITY : ((dcbSerialParams.Parity == EVENPARITY) ? com_fazecast_jSerialComm_SerialPort_EVEN_PARITY : ((dcbSerialParams.Parity == MARKPARITY) ? com_fazecast_jSerialComm_SerialPort_MARK_PARITY : com_fazecast_jSerialComm_SerialPort_SPACE_PARITY))));
+		else
+			(*env)->SetIntField(env, obj, parityField, com_fazecast_jSerialComm_SerialPort_NO_PARITY);
+		(*env)->SetByteField(env, obj, xonStartCharField, dcbSerialParams.XonChar);
+		(*env)->SetByteField(env, obj, xoffStopCharField, dcbSerialParams.XoffChar);
+		int flowControl = (dcbSerialParams.fInX ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED : 0) | (dcbSerialParams.fOutX ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED : 0) |
+				(dcbSerialParams.fOutxCtsFlow ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED : 0) | (dcbSerialParams.fOutxDsrFlow ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DSR_ENABLED : 0) |
+				((dcbSerialParams.fDtrControl == DTR_CONTROL_HANDSHAKE) ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_DTR_ENABLED : 0) |
+				((dcbSerialParams.fRtsControl == RTS_CONTROL_HANDSHAKE) ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED : 0);
+		(*env)->SetIntField(env, obj, flowControlField, flowControl);
+		(*env)->SetBooleanField(env, obj, isDtrEnabledField, dcbSerialParams.fDtrControl == DTR_CONTROL_ENABLE);
+		(*env)->SetBooleanField(env, obj, isRtsEnabledField, dcbSerialParams.fRtsControl == RTS_CONTROL_ENABLE);
+		(*env)->SetBooleanField(env, obj, rs485ModeField, dcbSerialParams.fRtsControl == RTS_CONTROL_TOGGLE);
 	}
 
 	// Get event flags from the Java class

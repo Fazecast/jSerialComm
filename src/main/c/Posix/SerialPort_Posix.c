@@ -734,6 +734,21 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_configPort(J
 
 #endif
 	}
+	else
+	{
+		// Update the Java-side port configuration values
+		(*env)->SetIntField(env, obj, dataBitsField, (options.c_cflag & CS5) ? 5 : ((options.c_cflag & CS6) ? 6 : ((options.c_cflag & CS7) ? 7 : 8)));
+		(*env)->SetIntField(env, obj, stopBitsField, (options.c_cflag & CSTOPB) ? com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS : com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT);
+		(*env)->SetIntField(env, obj, parityField, ((options.c_cflag & (PARENB | CMSPAR | PARODD)) == (PARENB | CMSPAR | PARODD)) ? com_fazecast_jSerialComm_SerialPort_MARK_PARITY : (((options.c_cflag & (PARENB | CMSPAR)) == (PARENB | CMSPAR)) ? com_fazecast_jSerialComm_SerialPort_SPACE_PARITY : (((options.c_cflag & (PARENB | PARODD)) == (PARENB | PARODD)) ? com_fazecast_jSerialComm_SerialPort_ODD_PARITY : ((options.c_cflag & PARENB) ? com_fazecast_jSerialComm_SerialPort_EVEN_PARITY : com_fazecast_jSerialComm_SerialPort_NO_PARITY))));
+		(*env)->SetByteField(env, obj, xonStartCharField, options.c_cc[VSTART]);
+		(*env)->SetByteField(env, obj, xoffStopCharField, options.c_cc[VSTOP]);
+		int flowControl = ((options.c_cflag & CRTSCTS) ? (com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_CTS_ENABLED | com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_RTS_ENABLED) : 0) |
+				((options.c_iflag & IXOFF) ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_IN_ENABLED : 0) |
+				((options.c_iflag & IXON) ? com_fazecast_jSerialComm_SerialPort_FLOW_CONTROL_XONXOFF_OUT_ENABLED : 0);
+		(*env)->SetIntField(env, obj, flowControlField, flowControl);
+		(*env)->SetBooleanField(env, obj, isDtrEnabledField, (options.c_cflag & CRTSCTS) > 0);
+		(*env)->SetBooleanField(env, obj, isRtsEnabledField, (options.c_cflag & CRTSCTS) > 0);
+	}
 
 	// Configure the serial port read and write timeouts
 	int flags = 0;

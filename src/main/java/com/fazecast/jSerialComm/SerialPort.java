@@ -614,7 +614,7 @@ public class SerialPort
 				Process process = null;
 				try
 				{
-					process = Runtime.getRuntime().exec("su");
+					process = Runtime.getRuntime().exec(new String[]{"su"});
 					DataOutputStream writer = new DataOutputStream(process.getOutputStream());
 					writer.writeBytes("chmod 666 " + comPort + "\n");
 					writer.writeBytes("exit\n");
