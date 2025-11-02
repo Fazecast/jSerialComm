@@ -55,6 +55,7 @@ jfieldID vendorIdField;
 jfieldID productIdField;
 jfieldID serialNumberField;
 jfieldID manufacturerField;
+jfieldID isSymlinkField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID isDtrEnabledField;
@@ -270,6 +271,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	manufacturerField = (*env)->GetFieldID(env, serialCommClass, "manufacturer", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	isSymlinkField = (*env)->GetFieldID(env, serialCommClass, "isPathSymlink", "Z");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	eventListenerRunningField = (*env)->GetFieldID(env, serialCommClass, "eventListenerRunning", "Z");
@@ -411,6 +414,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetBooleanField(env, serialCommObject, isSymlinkField, serialPorts.ports[i]->isSymlink);
+		if (checkJniError(env, __LINE__ - 1)) break;
 
 		// Add new SerialComm object to array
 		(*env)->SetObjectArrayElement(env, arrayObject, i, serialCommObject);
@@ -503,7 +508,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", "Unknown", -1, -1);
+		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", "Unknown", -1, -1, 0);
 	}
 	pthread_mutex_unlock(&criticalSection);
 	if (!port || (port->handle > 0))

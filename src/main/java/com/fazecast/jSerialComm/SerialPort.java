@@ -2,7 +2,7 @@
  * SerialPort.java
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 31, 2025
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -570,7 +570,7 @@ public class SerialPort
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
-	private volatile boolean rs485ModeControlEnabled = true;
+	private volatile boolean rs485ModeControlEnabled = true, isPathSymlink = false;
 	private final ReentrantLock configurationLock = new ReentrantLock(true);
 
 	/**
@@ -1880,6 +1880,13 @@ public class SerialPort
 	 * @return The Manufacturer of this serial port, or "Unknown" if it is not USB-based.
 	 */
 	public final String getManufacturer() { return manufacturer; }
+	
+	/**
+	 * Returns whether the system path for the serial port is a symlink.
+	 * 
+	 * @return Whether the system path of this serial port is a symlink.
+	 */
+	public final boolean isSymlink() { return isPathSymlink; }
 
 	/**
 	 * Gets the current baud rate of the serial port.

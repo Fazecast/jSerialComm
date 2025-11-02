@@ -38,7 +38,7 @@
 #include "PosixHelperFunctions.h"
 
 // Common serial port storage functionality
-serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, const char* serialNumber, const char* manufacturer, int vid, int pid)
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, const char* serialNumber, const char* manufacturer, int vid, int pid, char isSymlink)
 {
 	// Allocate memory for the new SerialPort storage structure
 	if (vector->capacity == vector->length)
@@ -74,6 +74,7 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	port->enumerated = 1;
 	port->vendorID = vid;
 	port->productID = pid;
+	port->isSymlink = isSymlink;
 	port->portPath = (char*)malloc(strlen(key) + 1);
 	port->portLocation = (char*)malloc(strlen(location) + 1);
 	port->friendlyName = (char*)malloc(strlen(friendlyName) + 1);
@@ -639,7 +640,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						// Add the port to the list of available ports
 						strcpy(friendlyName, "Physical Port ");
 						strcat(friendlyName, directoryEntry->d_name+3);
-						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation, "Unknown", "Unknown", -1, -1);
+						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation, "Unknown", "Unknown", -1, -1, 0);
 					}
 					close(fd);
 				}
@@ -673,7 +674,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					strcpy(interfaceDescription, friendlyName);
 
 				// Add the port to the list of available ports
-				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, vendorID, productID);
+				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, vendorID, productID, 0);
 			}
 
 			// Read next TTY directory entry
@@ -700,23 +701,18 @@ void searchForComPorts(serialPortVector* comPorts)
 			strcpy(fileName, "/dev/");
 			strcat(fileName, directoryEntry->d_name);
 			if (isPtyDevice(fileName))
-				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", -1, -1);
+				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", -1, -1, 0);
 			else if (isBluetoothDevice(fileName))
-				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", -1, -1);
+				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", -1, -1, 0);
 			else
 			{
 				// Copy symlinked port details from its existing TTY enumeration
 				char *symlink = isSymlinkedTtyDevice(fileName);
 				if (symlink)
 				{
-					serialPort *port = fetchPort(comPorts, symlink);
+					const serialPort *port = fetchPort(comPorts, symlink);
 					if (port)
-					{
-						char *newFriendlyName = (char*)malloc(strlen(port->friendlyName) + 11);
-						strcpy(newFriendlyName, "Symlinked ");
-						strcat(newFriendlyName, port->friendlyName);
-						pushBack(comPorts, fileName, newFriendlyName, port->portDescription, port->portLocation, port->serialNumber, port->manufacturer, port->vendorID, port->productID);
-					}
+						pushBack(comPorts, fileName, port->friendlyName, port->portDescription, port->portLocation, port->serialNumber, port->manufacturer, port->vendorID, port->productID, 1);
 					free(symlink);
 				}
 			}
@@ -947,7 +943,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode))
-						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", "Unknown", "Unknown", -1, -1);
+						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", "Unknown", "Unknown", -1, -1, S_ISLNK(fileStats.st_mode));
 
 					// Clean up memory
 					free(friendlyName);
@@ -993,7 +989,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode))
-						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", "Unknown", "Unknown", -1, -1);
+						pushBack(comPorts, systemName, friendlyName, friendlyName, "0-0", "Unknown", "Unknown", -1, -1, S_ISLNK(fileStats.st_mode));
 
 					// Clean up memory
 					free(friendlyName);
@@ -1286,7 +1282,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						struct stat fileStats;
 						stat(systemName, &fileStats);
 						if (!S_ISDIR(fileStats.st_mode))
-							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID);
+							pushBack(comPorts, systemName, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID, S_ISLNK(fileStats.st_mode));
 
 						// Clean up memory
 						free(friendlyName);
@@ -1482,7 +1478,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					struct stat fileStats;
 					stat(systemName, &fileStats);
 					if (!S_ISDIR(fileStats.st_mode) && isUSB)
-						pushBack(comPorts, systemName, friendlyName, description, portLocation, serialNumber, manufacturer, vendorID, productID);
+						pushBack(comPorts, systemName, friendlyName, description, portLocation, serialNumber, manufacturer, vendorID, productID, S_ISLNK(fileStats.st_mode));
 				}
 
 				// Clean up memory
@@ -1643,7 +1639,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID);
+			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID, 0);
 
 		// Check if dialin port is already enumerated
 		port = fetchPort(comPorts, comPortTty);
@@ -1666,7 +1662,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID);
+			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, vendorID, productID, 0);
 		IOObjectRelease(serialPort);
 	}
 	IOObjectRelease(serialPortIterator);
