@@ -7,6 +7,15 @@ _A platform-independent serial port access library for Java._
 
 For usage examples, please refer to the [Usage wiki](https://github.com/Fazecast/jSerialComm/wiki/Usage-Examples).
 
+Starting with Java version 24 and later, additional restrictions have been
+placed on applications that make calls to native code. To allow your Java application
+to use the jSerialComm library, you may need to pass one of the following
+command-line flags to your application invocation:
+
+* ``--enable-native-access=com.fazecast.jSerialComm``: to allow native code access only to jSerialComm
+* ``--enable-native-access=ALL-UNNAMED``: to allow native code access to all libraries used by your app.
+
+
 If you intend to use the library in multiple applications simultaneously, you may need
 to set the ```fazecast.jSerialComm.appid``` property before accessing the SerialPort class
 so that applications don't accidentally delete each others' temporary files during boot-up
