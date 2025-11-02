@@ -112,6 +112,50 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	return port;
 }
 
+void replaceDetails(serialPort* port, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, const wchar_t* deviceDriver, int vid, int pid)
+{
+	// Update the storage structure
+	port->enumerated = 1;
+	port->vendorID = vid;
+	port->productID = pid;
+	wchar_t *newMemory = (wchar_t*)realloc(port->portLocation, (wcslen(location)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->portLocation = newMemory;
+		wcscpy_s(port->portLocation, wcslen(location)+1, location);
+	}
+	newMemory = (wchar_t*)realloc(port->friendlyName, (wcslen(friendlyName)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->friendlyName = newMemory;
+		wcscpy_s(port->friendlyName, wcslen(friendlyName)+1, friendlyName);
+	}
+	newMemory = (wchar_t*)realloc(port->serialNumber, (wcslen(serialNumber)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->serialNumber = newMemory;
+		wcscpy_s(port->serialNumber, wcslen(serialNumber)+1, serialNumber);
+	}
+	newMemory = (wchar_t*)realloc(port->manufacturer, (wcslen(manufacturer)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->manufacturer = newMemory;
+		wcscpy_s(port->manufacturer, wcslen(manufacturer)+1, manufacturer);
+	}
+	newMemory = (wchar_t*)realloc(port->deviceDriver, (wcslen(deviceDriver)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->deviceDriver = newMemory;
+		wcscpy_s(port->deviceDriver, wcslen(deviceDriver)+1, deviceDriver);
+	}
+	newMemory = (wchar_t*)realloc(port->portDescription, (wcslen(description)+1)*sizeof(wchar_t));
+	if (newMemory)
+	{
+		port->portDescription = newMemory;
+		wcscpy_s(port->portDescription, wcslen(description)+1, description);
+	}
+}
+
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key)
 {
 	// Retrieve the serial port specified by the passed-in key

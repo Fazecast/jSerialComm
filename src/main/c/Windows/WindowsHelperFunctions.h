@@ -47,6 +47,7 @@ typedef struct serialPortVector
 	int length, capacity;
 } serialPortVector;
 serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, const wchar_t* deviceDriver, int vid, int pid);
+void replaceDetails(serialPort* port, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, const wchar_t* deviceDriver, int vid, int pid);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);

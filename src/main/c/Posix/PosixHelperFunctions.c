@@ -96,6 +96,51 @@ serialPort* pushBack(serialPortVector* vector, const char* key, const char* frie
 	return port;
 }
 
+void replaceDetails(serialPort* port, const char* friendlyName, const char* description, const char* location, const char* serialNumber, const char* manufacturer, const char* deviceDriver, int vid, int pid, char isSymlink)
+{
+	// Update the storage structure
+	port->enumerated = 1;
+	port->vendorID = vid;
+	port->productID = pid;
+	port->isSymlink = isSymlink;
+	char *newMemory = (char*)realloc(port->portLocation, strlen(location) + 1);
+	if (newMemory)
+	{
+		port->portLocation = newMemory;
+		strcpy(port->portLocation, location);
+	}
+	newMemory = (char*)realloc(port->friendlyName, strlen(friendlyName) + 1);
+	if (newMemory)
+	{
+		port->friendlyName = newMemory;
+		strcpy(port->friendlyName, friendlyName);
+	}
+	newMemory = (char*)realloc(port->serialNumber, strlen(serialNumber) + 1);
+	if (newMemory)
+	{
+		port->serialNumber = newMemory;
+		strcpy(port->serialNumber, serialNumber);
+	}
+	newMemory = (char*)realloc(port->manufacturer, strlen(manufacturer) + 1);
+	if (newMemory)
+	{
+		port->manufacturer = newMemory;
+		strcpy(port->manufacturer, manufacturer);
+	}
+	newMemory = (char*)realloc(port->deviceDriver, strlen(deviceDriver) + 1);
+	if (newMemory)
+	{
+		port->deviceDriver = newMemory;
+		strcpy(port->deviceDriver, deviceDriver);
+	}
+	newMemory = (char*)realloc(port->portDescription, strlen(description) + 1);
+	if (newMemory)
+	{
+		port->portDescription = newMemory;
+		strcpy(port->portDescription, description);
+	}
+}
+
 serialPort* fetchPort(serialPortVector* vector, const char* key)
 {
 	for (int i = 0; i < vector->length; ++i)
@@ -565,21 +610,11 @@ void searchForComPorts(serialPortVector* comPorts)
 			serialPort *port = fetchPort(comPorts, portDevPath);
 			if (port)
 			{
-				// See if the device has changed locations
-				int oldLength = strlen(port->portLocation);
-				int newLength = strlen(portLocation);
-				if (oldLength != newLength)
+				if (isPhysical)
+					replaceDetails(port, port->friendlyName, port->portDescription, portLocation, port->serialNumber, port->manufacturer, port->deviceDriver, port->vendorID, port->productID, port->isSymlink);
+				else
 				{
-					port->portLocation = (char*)realloc(port->portLocation, newLength + 1);
-					strcpy(port->portLocation, portLocation);
-				}
-				else if (memcmp(port->portLocation, portLocation, newLength))
-					strcpy(port->portLocation, portLocation);
-
-				// Update descriptors if this is not a physical port
-				if (!isPhysical)
-				{
-					// Update the device's registered friendly name
+					// See if the device has a registered friendly name
 					friendlyName[0] = '\0';
 					sprintf(basePathEnd, "../product");
 					FILE *input = fopen(fileName, "rb");
@@ -591,15 +626,6 @@ void searchForComPorts(serialPortVector* comPorts)
 					}
 					if (friendlyName[0] == '\0')
 						assignFriendlyName(portDevPath, friendlyName);
-					oldLength = strlen(port->friendlyName);
-					newLength = strlen(friendlyName);
-					if (oldLength != newLength)
-					{
-						port->friendlyName = (char*)realloc(port->friendlyName, newLength + 1);
-						strcpy(port->friendlyName, friendlyName);
-					}
-					else if (memcmp(port->friendlyName, friendlyName, newLength))
-						strcpy(port->friendlyName, friendlyName);
 
 					// Attempt to read the bus-reported device description
 					interfaceDescription[0] = '\0';
@@ -613,15 +639,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					}
 					if (interfaceDescription[0] == '\0')
 						strcpy(interfaceDescription, friendlyName);
-					oldLength = strlen(port->portDescription);
-					newLength = strlen(interfaceDescription);
-					if (oldLength != newLength)
-					{
-						port->portDescription = (char*)realloc(port->portDescription, newLength + 1);
-						strcpy(port->portDescription, interfaceDescription);
-					}
-					else if (memcmp(port->portDescription, interfaceDescription, newLength))
-						strcpy(port->portDescription, interfaceDescription);
+					replaceDetails(port, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, "TODO", vendorID, productID, 0);
 				}
 
 				// Continue port enumeration

@@ -364,25 +364,7 @@ static void enumeratePorts(JNIEnv *env)
 				// Check if port is already enumerated
 				serialPort *port = fetchPort(&serialPorts, comPortString);
 				if (port)
-				{
-					// See if device has changed locations
-					port->enumerated = 1;
-					int oldLength = 1 + wcslen(port->portLocation);
-					int newLength = 1 + wcslen(locationString);
-					if (oldLength != newLength)
-					{
-						wchar_t *newMemory = (wchar_t*)realloc(port->portLocation, newLength * sizeof(wchar_t));
-						if (newMemory)
-						{
-							port->portLocation = newMemory;
-							wcscpy_s(port->portLocation, newLength, locationString);
-						}
-						else
-							wcscpy_s(port->portLocation, oldLength, locationString);
-					}
-					else if (wcscmp(port->portLocation, locationString))
-						wcscpy_s(port->portLocation, newLength, locationString);
-				}
+					replaceDetails(port, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", manufacturerString ? manufacturerString : L"Unknown", driverString ? driverString : L"Unknown", vendorID, productID);
 				else
 					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", manufacturerString ? manufacturerString : L"Unknown", driverString ? driverString : L"Unknown", vendorID, productID);
 
