@@ -2,7 +2,7 @@
  * SerialPort_Posix.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Oct 31, 2025
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -55,6 +55,7 @@ jfieldID vendorIdField;
 jfieldID productIdField;
 jfieldID serialNumberField;
 jfieldID manufacturerField;
+jfieldID deviceDriverField;
 jfieldID isSymlinkField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
@@ -271,6 +272,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	manufacturerField = (*env)->GetFieldID(env, serialCommClass, "manufacturer", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	deviceDriverField = (*env)->GetFieldID(env, serialCommClass, "deviceDriver", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	isSymlinkField = (*env)->GetFieldID(env, serialCommClass, "isPathSymlink", "Z");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
@@ -410,6 +413,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, manufacturerField, (*env)->NewStringUTF(env, serialPorts.ports[i]->manufacturer));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, deviceDriverField, (*env)->NewStringUTF(env, serialPorts.ports[i]->deviceDriver));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -469,6 +474,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, deviceDriverField, (*env)->NewStringUTF(env, port->deviceDriver));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -508,7 +518,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", "Unknown", -1, -1, 0);
+		port = pushBack(&serialPorts, portName, "User-Specified Port", "User-Specified Port", "0-0", "Unknown", "Unknown", "Unknown", -1, -1, 0);
 	}
 	pthread_mutex_unlock(&criticalSection);
 	if (!port || (port->handle > 0))

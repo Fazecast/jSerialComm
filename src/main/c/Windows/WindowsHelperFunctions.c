@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.c
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -37,7 +37,7 @@
 #include "WindowsHelperFunctions.h"
 
 // Common storage functionality
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, int vid, int pid)
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, const wchar_t* deviceDriver, int vid, int pid)
 {
 	// Allocate memory for the new SerialPort storage structure
 	unsigned char containsSlashes = ((key[0] == L'\\') && (key[1] == L'\\') && (key[2] == L'.') && (key[3] == L'\\'));
@@ -69,8 +69,9 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	port->friendlyName = (wchar_t*)malloc((wcslen(friendlyName)+1)*sizeof(wchar_t));
 	port->serialNumber = (wchar_t*)malloc((wcslen(serialNumber)+1)*sizeof(wchar_t));
 	port->manufacturer = (wchar_t*)malloc((wcslen(manufacturer)+1)*sizeof(wchar_t));
+	port->deviceDriver = (wchar_t*)malloc((wcslen(deviceDriver)+1)*sizeof(wchar_t));
 	port->portDescription = (wchar_t*)malloc((wcslen(description)+1)*sizeof(wchar_t));
-	if (!port->portPath || !port->portLocation || !port->friendlyName || !port->serialNumber || !port->manufacturer || !port->portDescription)
+	if (!port->portPath || !port->portLocation || !port->friendlyName || !port->serialNumber || !port->manufacturer || !port->deviceDriver || !port->portDescription)
 	{
 		// Clean up memory associated with the port
 		vector->length--;
@@ -84,6 +85,8 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 			free(port->serialNumber);
 		if (port->manufacturer)
 			free(port->manufacturer);
+		if (port->deviceDriver)
+			free(port->deviceDriver);
 		if (port->portDescription)
 			free(port->portDescription);
 		free(port);
@@ -103,6 +106,7 @@ serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t
 	wcscpy_s(port->portDescription, wcslen(description)+1, description);
 	wcscpy_s(port->serialNumber, wcslen(serialNumber)+1, serialNumber);
 	wcscpy_s(port->manufacturer, wcslen(manufacturer)+1, manufacturer);
+	wcscpy_s(port->deviceDriver, wcslen(deviceDriver)+1, deviceDriver);
 
 	// Return the newly created serial port structure
 	return port;
@@ -126,6 +130,7 @@ void removePort(serialPortVector* vector, serialPort* port)
 	free(port->friendlyName);
 	free(port->serialNumber);
 	free(port->manufacturer);
+	free(port->deviceDriver);
 	free(port->portDescription);
 
 	// Move up all remaining ports in the serial port listing

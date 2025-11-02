@@ -37,7 +37,7 @@ typedef struct serialPort
 	pthread_cond_t eventReceived;
 	pthread_t eventsThread1, eventsThread2;
 	char *portPath, *friendlyName, *portDescription, *portLocation;
-	char *serialNumber, *manufacturer, isSymlink;
+	char *serialNumber, *manufacturer, *deviceDriver, isSymlink;
 	int errorLineNumber, errorNumber, handle, eventsMask, event, vendorID, productID;
 	volatile char enumerated, eventListenerRunning, eventListenerUsesThreads;
 } serialPort;
@@ -48,7 +48,7 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, const char* serialNumber, const char* manufacturer, int vid, int pid, char isSymlink);
+serialPort* pushBack(serialPortVector* vector, const char* key, const char* friendlyName, const char* description, const char* location, const char* serialNumber, const char* manufacturer, const char* deviceDriver, int vid, int pid, char isSymlink);
 serialPort* fetchPort(serialPortVector* vector, const char* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);

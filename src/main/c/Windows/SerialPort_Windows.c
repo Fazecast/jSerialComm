@@ -2,7 +2,7 @@
  * SerialPort_Windows.c
  *
  *       Created on:  Feb 25, 2012
- *  Last Updated on:  Jul 01, 2025
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -54,6 +54,7 @@ jfieldID vendorIdField;
 jfieldID productIdField;
 jfieldID serialNumberField;
 jfieldID manufacturerField;
+jfieldID deviceDriverField;
 jfieldID eventListenerRunningField;
 jfieldID disableConfigField;
 jfieldID allowOpenForEnumerationField;
@@ -241,6 +242,10 @@ static void enumeratePorts(JNIEnv *env)
 					}
 				}
 
+				// Fetch the device driver loaded for this device
+				wchar_t *driverString = NULL;
+				// TODO:
+
 				// Fetch the bus-reported device description
 				DWORD portDescriptionLength = 0;
 				wchar_t *portDescriptionString = NULL;
@@ -347,6 +352,8 @@ static void enumeratePorts(JNIEnv *env)
 						free(serialNumberString);
 					if (manufacturerString)
 						free(manufacturerString);
+					if (driverString)
+						free(driverString);
 					if (friendlyNameMemory)
 						free(friendlyNameString);
 					if (portDescriptionMemory)
@@ -377,7 +384,7 @@ static void enumeratePorts(JNIEnv *env)
 						wcscpy_s(port->portLocation, newLength, locationString);
 				}
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", manufacturerString ? manufacturerString : L"Unknown", vendorID, productID);
+					pushBack(&serialPorts, comPortString, friendlyNameString, portDescriptionString, locationString, serialNumberString ? serialNumberString : L"Unknown", manufacturerString ? manufacturerString : L"Unknown", driverString ? driverString : L"Unknown", vendorID, productID);
 
 				// Clean up memory and reset device info structure
 				free(comPort);
@@ -386,6 +393,8 @@ static void enumeratePorts(JNIEnv *env)
 					free(serialNumberString);
 				if (manufacturerString)
 					free(manufacturerString);
+				if (driverString)
+					free(driverString);
 				if (friendlyNameMemory)
 					free(friendlyNameString);
 				if (portDescriptionMemory)
@@ -596,7 +605,7 @@ static void enumeratePorts(JNIEnv *env)
 				if (port)
 					port->enumerated = 1;
 				else
-					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", L"Unknown", -1, -1);
+					pushBack(&serialPorts, comPortString, friendlyNameString, L"Virtual Serial Port", L"X-X.X", L"Unknown", L"Unknown", L"Unknown", -1, -1);
 			}
 		}
 
@@ -654,6 +663,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	serialNumberField = (*env)->GetFieldID(env, serialCommClass, "serialNumber", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	manufacturerField = (*env)->GetFieldID(env, serialCommClass, "manufacturer", "Ljava/lang/String;");
+	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
+	deviceDriverField = (*env)->GetFieldID(env, serialCommClass, "deviceDriver", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	portLocationField = (*env)->GetFieldID(env, serialCommClass, "portLocation", "Ljava/lang/String;");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
@@ -789,6 +800,8 @@ JNIEXPORT jobjectArray JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCommP
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetObjectField(env, serialCommObject, manufacturerField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->manufacturer, wcslen(serialPorts.ports[i]->manufacturer)));
 		if (checkJniError(env, __LINE__ - 1)) break;
+		(*env)->SetObjectField(env, serialCommObject, deviceDriverField, (*env)->NewString(env, (jchar*)serialPorts.ports[i]->deviceDriver, wcslen(serialPorts.ports[i]->deviceDriver)));
+		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, vendorIdField, serialPorts.ports[i]->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) break;
 		(*env)->SetIntField(env, serialCommObject, productIdField, serialPorts.ports[i]->productID);
@@ -848,6 +861,11 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	}
 	if (continueRetrieval)
 	{
+		(*env)->SetObjectField(env, obj, deviceDriverField, (*env)->NewString(env, (jchar*)port->deviceDriver, wcslen(port->deviceDriver)));
+		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
+	}
+	if (continueRetrieval)
+	{
 		(*env)->SetIntField(env, obj, vendorIdField, port->vendorID);
 		if (checkJniError(env, __LINE__ - 1)) continueRetrieval = 0;
 	}
@@ -885,7 +903,7 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	if (!port)
 	{
 		// Create port representation and add to serial port listing
-		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", L"Unknown", L"Unknown", -1, -1);
+		port = pushBack(&serialPorts, portName, L"User-Specified Port", L"User-Specified Port", L"0-0", L"Unknown", L"Unknown", L"Unknown", -1, -1);
 	}
 	LeaveCriticalSection(&criticalSection);
 	if (!port || (port->handle != INVALID_HANDLE_VALUE))

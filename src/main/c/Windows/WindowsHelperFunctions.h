@@ -2,10 +2,10 @@
  * WindowsHelperFunctions.h
  *
  *       Created on:  May 05, 2015
- *  Last Updated on:  Apr 10, 2024
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2012-2024 Fazecast, Inc.
+ * Copyright (C) 2012-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -33,7 +33,8 @@
 typedef struct serialPort
 {
 	void *handle;
-	wchar_t *portPath, *friendlyName, *portDescription, *portLocation, *serialNumber, *manufacturer;
+	wchar_t *portPath, *friendlyName, *portDescription, *portLocation;
+	wchar_t *serialNumber, *manufacturer, *deviceDriver;
 	int errorLineNumber, errorNumber, vendorID, productID;
 	volatile char enumerated, eventListenerRunning;
 	char ftdiSerialNumber[16];
@@ -45,7 +46,7 @@ typedef struct serialPortVector
 	serialPort **ports;
 	int length, capacity;
 } serialPortVector;
-serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, int vid, int pid);
+serialPort* pushBack(serialPortVector* vector, const wchar_t* key, const wchar_t* friendlyName, const wchar_t* description, const wchar_t* location, const wchar_t* serialNumber, const wchar_t* manufacturer, const wchar_t* deviceDriver, int vid, int pid);
 serialPort* fetchPort(serialPortVector* vector, const wchar_t* key);
 void removePort(serialPortVector* vector, serialPort* port);
 void cleanUpVector(serialPortVector* vector);

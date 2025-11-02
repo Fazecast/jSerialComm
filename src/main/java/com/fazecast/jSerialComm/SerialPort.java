@@ -548,6 +548,7 @@ public class SerialPort
 			serialPort.portDescription = "User-Specified Port";
 			serialPort.serialNumber = "Unknown";
 			serialPort.manufacturer = "Unknown";
+			serialPort.deviceDriver = "Unknown";
 			serialPort.portLocation = "0-0";
 			serialPort.retrievePortDetails();
 			return serialPort;
@@ -566,7 +567,7 @@ public class SerialPort
 	private volatile byte xonStartChar = 17, xoffStopChar = 19;
 	private volatile SerialPortDataListener userDataListener = null;
 	private volatile SerialPortEventListener serialEventListener = null;
-	private volatile String comPort, friendlyName, portDescription, portLocation, serialNumber, manufacturer;
+	private volatile String comPort, friendlyName, portDescription, portLocation, serialNumber, manufacturer, deviceDriver;
 	private volatile boolean eventListenerRunning = false, disableConfig = false, disableExclusiveLock = false;
 	private volatile boolean rs485Mode = false, rs485ActiveHigh = true, rs485RxDuringTx = false, rs485EnableTermination = false;
 	private volatile boolean isRtsEnabled = true, isDtrEnabled = true, autoFlushIOBuffers = false, requestElevatedPermissions = false;
@@ -1125,7 +1126,7 @@ public class SerialPort
 
 	// SerialPort Constructors
 	private SerialPort() {}
-	private SerialPort(String port, String friendly, String description, String location, String serial, String manufacture, int vid, int pid)
+	private SerialPort(String port, String friendly, String description, String location, String serial, String manufacture, String driver, int vid, int pid)
 	{
 		comPort = port;
 		friendlyName = friendly;
@@ -1133,6 +1134,7 @@ public class SerialPort
 		portLocation = location;
 		serialNumber = serial;
 		manufacturer = manufacture;
+		deviceDriver = driver;
 		vendorID = vid;
 		productID = pid;
 	}
@@ -1852,6 +1854,12 @@ public class SerialPort
 	 * @return The physical port location in the form "BUS-[HUB1.HUB2.etc]PORT_NUMBER".
 	 */
 	public final String getPortLocation() { return portLocation; }
+	
+	/** Gets the name of the device driver currently loaded to interface with the serial port, assuming it is USB-based.
+	 * 
+	 * @return The device driver currently loaded for this serial port, or "Unknown" if it is not USB-based.
+	 */
+	public final String getDeviceDriver() { return deviceDriver; }
 
 	/**
 	 * Gets the 16-bit Vendor Identification number for the serial port, assuming it is USB-based.
