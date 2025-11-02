@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Oct 31, 2025
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -268,6 +268,37 @@ static char isPtyDevice(const char *deviceLink)
 		}
 	}
 	return isPtyDevice;
+}
+
+static char* isSymlinkedTtyDevice(const char *deviceLink)
+{
+	// Attempt to read the path that the potential TTY device link points to
+	struct stat fileInfo;
+	char *symlink = NULL;
+	if ((lstat(deviceLink, &fileInfo) == 0) && fileInfo.st_size && ((fileInfo.st_mode & S_IFMT) == S_IFLNK))
+	{
+		ssize_t bufferSize = fileInfo.st_size + 1;
+		symlink = (char*)malloc(bufferSize);
+		if (symlink)
+		{
+			ssize_t symlinkSize = readlink(deviceLink, symlink, bufferSize);
+			if (symlinkSize >= 0)
+			{
+				symlink[symlinkSize] = '\0';
+				if (!strstr(symlink, "dev/tty"))
+				{
+					free(symlink);
+					symlink = NULL;
+				}
+			}
+			else
+			{
+				free(symlink);
+				symlink = NULL;
+			}
+		}
+	}
+	return symlink;
 }
 
 static char isBluetoothDevice(const char *deviceLink)
@@ -651,7 +682,7 @@ void searchForComPorts(serialPortVector* comPorts)
 		closedir(directoryIterator);
 	}
 
-	// Search through the system DEV directory for Bluetooth devices and PTY symlinks
+	// Search through the system DEV directory for Bluetooth and PTY devices and symlinks
 	directoryIterator = opendir("/dev/");
 	if (directoryIterator)
 	{
@@ -672,6 +703,23 @@ void searchForComPorts(serialPortVector* comPorts)
 				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", -1, -1);
 			else if (isBluetoothDevice(fileName))
 				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", -1, -1);
+			else
+			{
+				// Copy symlinked port details from its existing TTY enumeration
+				char *symlink = isSymlinkedTtyDevice(fileName);
+				if (symlink)
+				{
+					serialPort *port = fetchPort(comPorts, symlink);
+					if (port)
+					{
+						char *newFriendlyName = (char*)malloc(strlen(port->friendlyName) + 11);
+						strcpy(newFriendlyName, "Symlinked ");
+						strcat(newFriendlyName, port->friendlyName);
+						pushBack(comPorts, fileName, newFriendlyName, port->portDescription, port->portLocation, port->serialNumber, port->manufacturer, port->vendorID, port->productID);
+					}
+					free(symlink);
+				}
+			}
 
 			// Read next TTY directory entry
 			directoryEntry = readdir(directoryIterator);
