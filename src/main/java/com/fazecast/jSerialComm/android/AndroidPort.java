@@ -2,10 +2,10 @@
  * AndroidPort.java
  *
  *       Created on:  Feb 15, 2022
- *  Last Updated on:  Jul 27, 2023
+ *  Last Updated on:  Nov 02, 2025
  *           Author:  Will Hedgecock
  *
- * Copyright (C) 2022-2023 Fazecast, Inc.
+ * Copyright (C) 2022-2025 Fazecast, Inc.
  *
  * This file is part of jSerialComm.
  *
@@ -262,6 +262,7 @@ public abstract class AndroidPort
 	public abstract boolean getDTR();
 	public abstract boolean getRTS();
 	public abstract boolean getRI();
+	public abstract void quickConfig(SerialPort serialPort, int newDataBits, int newStopBits, int newParity);
 	public abstract int getLastErrorLocation();
 	public abstract int getLastErrorCode();
 }

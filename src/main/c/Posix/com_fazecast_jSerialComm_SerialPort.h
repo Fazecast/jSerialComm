@@ -293,6 +293,14 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI
 
 /*
  * Class:     com_fazecast_jSerialComm_SerialPort
+ * Method:    quickConfig
+ * Signature: (JIII)V
+ */
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_quickConfig
+  (JNIEnv *, jobject, jlong, jint, jint, jint);
+
+/*
+ * Class:     com_fazecast_jSerialComm_SerialPort
  * Method:    getLastErrorLocation
  * Signature: (J)I
  */

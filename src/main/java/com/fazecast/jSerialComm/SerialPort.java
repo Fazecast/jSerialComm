@@ -868,6 +868,7 @@ public class SerialPort
 	private native boolean getDTR(long portHandle);						// Returns whether the DTR signal is 1
 	private native boolean getRTS(long portHandle);						// Returns whether the RTS signal is 1
 	private native boolean getRI(long portHandle);						// Returns whether the RI signal is 1
+	private native void quickConfig(long portHandle, int newDataBits, int newStopBits, int newParity);  // Quick-sets the configuration of an already-opened port
 	private native int getLastErrorLocation(long portHandle);			// Returns the source code line location of the latest native code error
 	private native int getLastErrorCode(long portHandle);				// Returns the errno value of the latest native code error
 
@@ -1670,6 +1671,51 @@ public class SerialPort
 			return true;
 		}
 		finally { configurationLock.unlock(); }
+	}
+
+	/**
+	 * Quickly sets the port configuration for parity, data bits, and stop bits.
+	 * <p>
+	 * This function is intended to be used on an already-opened port to rapidly change the
+	 * port configuration used for communication. It is optimized to switch as quickly as
+	 * possible, with minimal error checking.
+	 * <p>
+	 * If you do not need rapid switching, it is highly suggested to use the standard,
+	 * non-quick serial port configuration functions instead.
+	 * <p>
+	 * Built-in stop-bit constants should be used in this method ({@link SerialPort#ONE_STOP_BIT},
+	 * {@link SerialPort#ONE_POINT_FIVE_STOP_BITS}, {@link SerialPort#TWO_STOP_BITS}).
+	 * <p>
+	 * Note that {@link SerialPort#ONE_POINT_FIVE_STOP_BITS} stop bits may not be available on non-Windows systems.
+	 * <p>
+	 * Built-in parity constants should also be used. Acceptable values are {@link SerialPort#NO_PARITY},
+	 * {@link SerialPort#EVEN_PARITY}, {@link SerialPort#ODD_PARITY}, {@link SerialPort#MARK_PARITY},
+	 * and {@link SerialPort#SPACE_PARITY}.
+	 *
+	 * @param newDataBits The desired number of data bits per word.
+	 * @param newStopBits The desired number of stop bits per word.
+	 * @param newParity The desired parity scheme to be used.
+	 * @see SerialPort#ONE_STOP_BIT
+	 * @see SerialPort#ONE_POINT_FIVE_STOP_BITS
+	 * @see SerialPort#TWO_STOP_BITS
+	 * @see SerialPort#NO_PARITY
+	 * @see SerialPort#EVEN_PARITY
+	 * @see SerialPort#ODD_PARITY
+	 * @see SerialPort#MARK_PARITY
+	 * @see SerialPort#SPACE_PARITY
+	 */
+	public final void quickSetConfig(int newDataBits, int newStopBits, int newParity)
+	{
+		if (portHandle != 0)
+		{
+			if (androidPort != null)
+				androidPort.quickConfig(this, newDataBits, newStopBits, newParity);
+			else
+				quickConfig(portHandle, newDataBits, newStopBits, newParity);
+		}
+		dataBits = newDataBits;
+		stopBits = newStopBits;
+		parity = newParity;
 	}
 
 	/**

@@ -1501,6 +1501,22 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv
 	return GetCommModemStatus(((serialPort*)(intptr_t)serialPortPointer)->handle, &modemStatus) && (modemStatus & MS_RING_ON);
 }
 
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_quickConfig(JNIEnv *env, jobject obj, jlong serialPortPointer, jint newDataBits, jint newStopBits, jint newParity)
+{
+	void *portHandle = ((serialPort*)(intptr_t)serialPortPointer)->handle;
+	DCB dcbSerialParams;
+	memset(&dcbSerialParams, 0, sizeof(DCB));
+	dcbSerialParams.DCBlength = sizeof(DCB);
+	if (GetCommState(portHandle, &dcbSerialParams))
+	{
+		dcbSerialParams.ByteSize = (BYTE)newDataBits;
+		dcbSerialParams.StopBits = (newStopBits == com_fazecast_jSerialComm_SerialPort_ONE_STOP_BIT) ? ONESTOPBIT : ((newStopBits == com_fazecast_jSerialComm_SerialPort_ONE_POINT_FIVE_STOP_BITS) ? ONE5STOPBITS : TWOSTOPBITS);
+		dcbSerialParams.Parity = (newParity == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? NOPARITY : ((newParity == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? ODDPARITY : ((newParity == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? EVENPARITY : ((newParity == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? MARKPARITY : SPACEPARITY)));
+		dcbSerialParams.fParity = (newParity == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? FALSE : TRUE;
+		SetCommState(portHandle, &dcbSerialParams);
+	}
+}
+
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorLocation(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	return serialPortPointer ? ((serialPort*)(intptr_t)serialPortPointer)->errorLineNumber : lastErrorLineNumber;

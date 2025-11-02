@@ -1268,6 +1268,26 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv
 	return (ioctl(((serialPort*)(intptr_t)serialPortPointer)->handle, TIOCMGET, &modemBits) == 0) && (modemBits & TIOCM_RI);
 }
 
+JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_quickConfig(JNIEnv *env, jobject obj, jlong serialPortPointer, jint newDataBits, jint newStopBits, jint newParity)
+{
+	struct termios options;
+	int portHandle = ((serialPort*)(intptr_t)serialPortPointer)->handle;
+	if (!tcgetattr(portHandle, &options))
+	{
+		options.c_cflag &= ~(CS5 | CS6 | CS7 | CS8 | CSTOPB | PARENB | CMSPAR | PARODD);
+		options.c_iflag &= ~(ISTRIP | INPCK | IGNPAR);
+		options.c_cflag |= ((newDataBits == 5) ? CS5 : (newDataBits == 6) ? CS6 : (newDataBits == 7) ? CS7 : CS8);
+		options.c_cflag |= ((newParity == com_fazecast_jSerialComm_SerialPort_NO_PARITY) ? 0 : (newParity == com_fazecast_jSerialComm_SerialPort_ODD_PARITY) ? (PARENB | PARODD) : (newParity == com_fazecast_jSerialComm_SerialPort_EVEN_PARITY) ? PARENB : (newParity == com_fazecast_jSerialComm_SerialPort_MARK_PARITY) ? (PARENB | CMSPAR | PARODD) : (PARENB | CMSPAR));
+		if (newStopBits == com_fazecast_jSerialComm_SerialPort_TWO_STOP_BITS)
+			options.c_cflag |= CSTOPB;
+		if (newDataBits < 8)
+			options.c_iflag |= ISTRIP;
+		if (newParity)
+			options.c_iflag |= (INPCK | IGNPAR);
+		tcsetattr(portHandle, TCSANOW, &options);
+	}
+}
+
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_getLastErrorLocation(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	return serialPortPointer ? ((serialPort*)(intptr_t)serialPortPointer)->errorLineNumber : lastErrorLineNumber;
