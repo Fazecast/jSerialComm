@@ -1177,7 +1177,7 @@ char getPortDetails(const char *deviceName, char* portLocation, int* vendorID, i
 {
 	// Attempt to locate the device in sysctl
 	size_t bufferSize = 1024;
-	char *stdOutResult = (char*)malloc(bufferSize), *deviceLocation = NULL, *deviceInfo = NULL;
+	char *stdOutResult = (char*)malloc(bufferSize), *deviceLocation = NULL, *deviceInfo = NULL, *driverName = NULL;
 	snprintf(stdOutResult, bufferSize, "sysctl -a | grep \"ttyname: %s\"", deviceName);
 	FILE *pipe = popen(stdOutResult, "r");
 	if (pipe)
@@ -1187,14 +1187,18 @@ char getPortDetails(const char *deviceName, char* portLocation, int* vendorID, i
 			deviceLocation = stdOutResult;
 			*(strstr(deviceLocation, "ttyname:") - 1) = '\0';
 			deviceInfo = (char*)malloc(strlen(deviceLocation) + 12);
+			driverName = (char*)malloc(strlen(deviceLocation) + 12);
 			strcpy(deviceInfo, deviceLocation);
+			strcpy(driverName, deviceLocation);
 			strcat(deviceLocation, ".%location");
 			strcat(deviceInfo, ".%pnpinfo");
+			strcat(driverName, ".%driver");
 		}
 		pclose(pipe);
 	}
 	strcpy(serialNumber, "Unknown");
 	strcpy(manufacturer, "Unknown");
+	strcpy(deviceDriver, "Unknown");
 
 	// Parse port location
 	if (deviceLocation)
@@ -1269,12 +1273,32 @@ char getPortDetails(const char *deviceName, char* portLocation, int* vendorID, i
 		}
 		free(temp);
 	}
-	// TODO: DEVICE DRIVER
+
+	// Parse device driver
+	if (driverName)
+	{
+		char *temp = (char*)malloc(64);
+		sprintf(temp, "sysctl -a | grep \"%s\"", driverName);
+		pipe = popen(temp, "r");
+		if (pipe)
+		{
+			while (fgets(stdOutResult, bufferSize, pipe))
+				if (strstr(stdOutResult, ": "))
+				{
+					strcpy(deviceDriver, strstr(stdOutResult, ": ") + 2);
+					break;
+				}
+			pclose(pipe);
+		}
+		free(temp);
+	}
 
 	// Clean up memory and return result
 	free(stdOutResult);
 	if (deviceInfo)
 		free(deviceInfo);
+	if (driverName)
+		free(driverName);
 	return (deviceLocation ? 1 : 0);
 }
 
@@ -1389,6 +1413,7 @@ char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* frie
 	size_t bufferSize = 1024;
 	strcpy(serialNumber, "Unknown");
 	strcpy(manufacturer, "Unknown");
+	strcpy(deviceDriver, "Unknown");
 	char *stdOutResult = (char*)malloc(bufferSize), *device = (char*)malloc(64);
 	snprintf(stdOutResult, bufferSize, "dmesg | grep ucom%s | tail -1", usbDeviceFile + 1);
 	FILE *pipe = popen(stdOutResult, "r");
@@ -1469,7 +1494,6 @@ char getUsbPortDetails(const char* usbDeviceFile, char* portLocation, char* frie
 		}
 		free(usbFile);
 	}
-	// TODO: DEVICE DRIVER
 
 	// Clean up memory and return result
 	free(device);
@@ -1700,7 +1724,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, "TODO", vendorID, productID, 0);
+			pushBack(comPorts, comPortCu, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, "Unknown", vendorID, productID, 0);
 
 		// Check if dialin port is already enumerated
 		port = fetchPort(comPorts, comPortTty);
@@ -1723,7 +1747,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			}
 		}
 		else
-			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, "TODO", vendorID, productID, 0);
+			pushBack(comPorts, comPortTty, friendlyName, friendlyName, portLocation, serialNumber, manufacturer, "Unknown", vendorID, productID, 0);
 		IOObjectRelease(serialPort);
 	}
 	IOObjectRelease(serialPortIterator);

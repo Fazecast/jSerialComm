@@ -141,7 +141,9 @@ static void enumeratePorts(JNIEnv *env)
 			DWORD devInterfaceIndex = 0;
 			DEVPROPTYPE devInfoPropType;
 			SP_DEVINFO_DATA devInfoData;
+			SP_DRVINFO_DATA_W driverInfoData;
 			devInfoData.cbSize = sizeof(devInfoData);
+			driverInfoData.cbSize = sizeof(driverInfoData);
 			while (SetupDiEnumDeviceInfo(devList, devInterfaceIndex++, &devInfoData))
 			{
 				// Attempt to determine the device's Vendor ID and Product ID
@@ -243,8 +245,7 @@ static void enumeratePorts(JNIEnv *env)
 				}
 
 				// Fetch the device driver loaded for this device
-				wchar_t *driverString = NULL;
-				// TODO:
+				wchar_t *driverString = SetupDiGetSelectedDriverW(devList, &devInfoData, &driverInfoData) ? driverInfoData.Description : NULL;
 
 				// Fetch the bus-reported device description
 				DWORD portDescriptionLength = 0;
@@ -352,8 +353,6 @@ static void enumeratePorts(JNIEnv *env)
 						free(serialNumberString);
 					if (manufacturerString)
 						free(manufacturerString);
-					if (driverString)
-						free(driverString);
 					if (friendlyNameMemory)
 						free(friendlyNameString);
 					if (portDescriptionMemory)
@@ -375,8 +374,6 @@ static void enumeratePorts(JNIEnv *env)
 					free(serialNumberString);
 				if (manufacturerString)
 					free(manufacturerString);
-				if (driverString)
-					free(driverString);
 				if (friendlyNameMemory)
 					free(friendlyNameString);
 				if (portDescriptionMemory)
