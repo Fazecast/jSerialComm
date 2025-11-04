@@ -6,7 +6,7 @@
   <name>jSerialComm</name>
   <groupId>com.fazecast</groupId>
   <artifactId>jSerialComm</artifactId>
-  <version>2.11.4</version>
+  <version>2.12.0</version>
   <description>A platform-independent serial communications library for Java.</description>
   <url>http://fazecast.github.io/jSerialComm/</url>
   <organization>
