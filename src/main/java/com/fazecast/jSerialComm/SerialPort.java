@@ -729,9 +729,9 @@ public class SerialPort
 	 *    }
 	 *    {@literal @}Override
 	 *    public void serialEvent(SerialPortEvent serialPortEvent) {
-	 *       if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+	 *       if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
 	 *          port.closePort();
-	 *       else if (serialPortEvent.getEventType() == SerialPort.LISTENING_EVENT_DATA_RECEIVED)
+	 *       else if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_DATA_RECEIVED) > 0)
 	 *          // ... you get the idea
 	 *    }
 	 * });
@@ -742,8 +742,11 @@ public class SerialPort
 	 * {@link SerialPort} object:
 	 * <pre>
 	 * if (!port.isOpen())
-	 *    port.open();
+	 *    port.openPort();
 	 * </pre>
+	 * <p>
+	 * Note that you <b>CANNOT</b> call <code>port.openPort()</code> from within the <code>serialEvent()</code>
+	 * handler. Port re-opening <b>must</b> be done within your own application context.
 	 * <p>
 	 * Note that once a USB serial port has been unplugged and reconnected, it's unlikely to work again until the
 	 * port's {@link #closePort()} and {@link openPort(int, int, int)} methods have both been called to
@@ -1153,6 +1156,9 @@ public class SerialPort
 	 * <p>
 	 * Only one listener can be registered at a time; however, that listener can be used to detect multiple types of serial port events.
 	 * Refer to {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, {@link SerialPortMessageListener}, and {@link SerialPortMessageListenerWithExceptions} for more information.
+	 * <p>
+	 * Note that if you register to listen for {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED} events, you <b>CANNOT</b> call <code>openPort()</code> to re-open a disconnected port from within the <code>serialEvent()</code>
+	 * handler. Port re-opening <b>must</b> be done within your own application context.
 	 *
 	 * @param listener A {@link SerialPortDataListener}, {@link SerialPortDataListenerWithExceptions}, {@link SerialPortPacketListener}, {@link SerialPortMessageListener}, or {@link SerialPortMessageListenerWithExceptions} implementation to be used for event-based serial port communications.
 	 * @return Whether the listener was successfully registered with the serial port.
@@ -2207,9 +2213,17 @@ public class SerialPort
 			}
 			if (eventListenerRunning && !isShuttingDown && (event != SerialPort.LISTENING_EVENT_TIMED_OUT))
 			{
-				userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, event));
-				if (event == SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)
+				// If disconnected, invoke the user data listener from a new thread to allow them to close the port without blocking
+				if ((event & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
+				{
 					eventListenerRunning = false;
+					SerialPortThreadFactory.get().newThread(new Runnable() {
+						@Override
+						public void run() { userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, SerialPort.LISTENING_EVENT_PORT_DISCONNECTED)); }
+					}).start();
+				}
+				else
+					userDataListener.serialEvent(new SerialPortEvent(SerialPort.this, event));
 			}
 		}
 	}

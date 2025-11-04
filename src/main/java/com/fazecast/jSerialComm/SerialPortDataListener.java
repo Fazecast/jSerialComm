@@ -53,7 +53,8 @@ public interface SerialPortDataListener extends EventListener
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_SOFTWARE_OVERRUN_ERROR}<br>
 	 * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{@link SerialPort#LISTENING_EVENT_PARITY_ERROR}<br>
 	 * <p>
-	 * Two or more events may be OR'd together to listen for multiple events; however, if {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} is OR'd with {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}, the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} flag will take precedence.
+	 * Two or more events may be OR'd together to listen for multiple events; however, if {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} is OR'd with
+	 * {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED}, the {@link SerialPort#LISTENING_EVENT_DATA_RECEIVED} flag will take precedence.
 	 * <p>
 	 * Note that event-based <i>write</i> callbacks are only supported on Windows operating systems. As such, the {@link SerialPort#LISTENING_EVENT_DATA_WRITTEN}
 	 * event will never be called on a non-Windows system.
@@ -83,7 +84,23 @@ public interface SerialPortDataListener extends EventListener
 	/**
 	 * Called whenever one or more of the serial port events specified by the {@link #getListeningEvents()} method occurs.
 	 * <p>
-	 * Note that your implementation of this function should always perform as little data processing as possible, as the speed at which this callback will fire is at the mercy of the underlying operating system. If you need to collect a large amount of data, application-level buffering should be implemented and data processing should occur on a separate thread.
+	 * Note that your implementation of this function should always perform as little data processing as possible,
+	 * as the speed at which this callback will fire is at the mercy of the underlying operating system. If you need to collect a large amount of data,
+	 * application-level buffering should be implemented and data processing should occur on a separate thread.
+	 * <p>
+	 * Also note that if you are listening for multiple types of events (for instance, {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} and
+	 * {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}) at the same time, this callback <i>may<i> be invoked only once for multiple event
+	 * types. As such, you should test for your event of interest by bit-masking and not by testing for equivalence. The following code shows
+	 * the correct way to do this:
+	 * <pre>
+	 * {@literal @}Override
+	 * public void serialEvent(SerialPortEvent serialPortEvent) {
+	 *    if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
+	 *       port.closePort();
+	 *    else if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_DATA_AVAILABLE) > 0)
+	 *       // ... you get the idea
+	 * }
+	 * </pre>
 	 * 
 	 * @param event A {@link SerialPortEvent} object containing information and/or data about the serial events that occurred.
 	 * @see SerialPortEvent

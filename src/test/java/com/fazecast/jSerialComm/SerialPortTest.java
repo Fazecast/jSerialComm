@@ -280,7 +280,7 @@ public class SerialPortTest
 			public void serialEvent(SerialPortEvent event)
 			{
 				System.out.println("Received event type: " + event.toString());
-				if (event.getEventType() == SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
+				if ((event.getEventType() & SerialPort.LISTENING_EVENT_DATA_AVAILABLE) > 0)
 				{
 					byte[] buffer = new byte[event.getSerialPort().bytesAvailable()];
 					event.getSerialPort().readBytes(buffer, buffer.length);
@@ -302,20 +302,29 @@ public class SerialPortTest
 		ubxPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_BLOCKING, 0, 0);
 		ubxPort.addDataListener(new SerialPortDataListener() {
 			@Override
-			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_AVAILABLE; }
+			public int getListeningEvents() { return SerialPort.LISTENING_EVENT_DATA_AVAILABLE | SerialPort.LISTENING_EVENT_PORT_DISCONNECTED; }
 			@Override
 			public void serialEvent(SerialPortEvent event)
 			{
 				SerialPort comPort = event.getSerialPort();
-				System.out.println("Available: " + comPort.bytesAvailable() + " bytes.");
-				byte[] newData = new byte[comPort.bytesAvailable()];
-				int numRead = comPort.readBytes(newData, newData.length);
-				System.out.println("Read " + numRead + " bytes.");
+				if ((event.getEventType() & SerialPort.LISTENING_EVENT_DATA_AVAILABLE) > 0)
+				{
+					System.out.println("Available: " + comPort.bytesAvailable() + " bytes.");
+					byte[] newData = new byte[comPort.bytesAvailable()];
+					int numRead = comPort.readBytes(newData, newData.length);
+					System.out.println("Read " + numRead + " bytes.");
+				}
+				else if ((event.getEventType() & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
+				{
+					System.out.println("Serial port was physically disconnected!");
+					System.out.println("\nClosing from within event callback: " + comPort.closePort());
+				}
 			}
 		});
 		try { Thread.sleep(10000); } catch (Exception e) {}
 		ubxPort.removeDataListener();
-		System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
+		if (ubxPort.isOpen())
+			System.out.println("\nClosing " + ubxPort.getDescriptivePortName() + ": " + ubxPort.closePort());
 
 		/*System.out.println("\n\nAttempting to read from two serial ports simultaneously\n");
 		System.out.println("\nAvailable Ports:\n");
