@@ -2,7 +2,7 @@
  * PosixHelperFunctions.c
  *
  *       Created on:  Mar 10, 2015
- *  Last Updated on:  Nov 02, 2025
+ *  Last Updated on:  Nov 04, 2025
  *           Author:  Will Hedgecock
  *
  * Copyright (C) 2012-2025 Fazecast, Inc.
@@ -414,6 +414,35 @@ static void getPortLocation(const char* portDirectory, char* portLocation, int p
 	free(busnumFile);
 }
 
+static void getDriverName(const char* directoryToSearch, char* driverName)
+{
+	// Open the directory
+	DIR *directoryIterator = opendir(directoryToSearch);
+	if (!directoryIterator)
+		return;
+
+	// Read all sub-directories in the current directory
+	struct dirent *directoryEntry = readdir(directoryIterator);
+	while (directoryEntry)
+	{
+		// Check if entry is a valid sub-directory
+		if (directoryEntry->d_name[0] != '.')
+		{
+			// Get the readable part of the driver name
+			char *startingPoint = strchr(directoryEntry->d_name, ':');
+			if (startingPoint != NULL)
+				strcpy(driverName, startingPoint+1);
+			else
+				strcpy(driverName, directoryEntry->d_name);
+			break;
+		}
+		directoryEntry = readdir(directoryIterator);
+	}
+
+	// Close the directory
+	closedir(directoryIterator);
+}
+
 static void assignFriendlyName(const char* portDevPath, char* friendlyName)
 {
 	// Manually assign a friendly name if the port type is known from its name
@@ -467,7 +496,7 @@ static void assignFriendlyName(const char* portDevPath, char* friendlyName)
 	}
 }
 
-static void getUsbDetails(const char* fileName, char* basePathEnd, int* vendorID, int* productID, char* serialNumber, char* manufacturer)
+static void getUsbDetails(const char* fileName, char* basePathEnd, int* vendorID, int* productID, char* serialNumber, char* manufacturer, char* driverName)
 {
 	// Attempt to read the Vendor ID
 	char *temp = (char*)malloc(8);
@@ -512,6 +541,11 @@ static void getUsbDetails(const char* fileName, char* basePathEnd, int* vendorID
 		manufacturer[strcspn(manufacturer, "\r\n")] = 0;
 		fclose(input);
 	}
+
+	// Attempt to read the Device Driver
+	strcpy(driverName, "Unknown");
+	sprintf(basePathEnd, "driver/module/drivers");
+	getDriverName(fileName, driverName);
 }
 
 void searchForComPorts(serialPortVector* comPorts)
@@ -524,6 +558,7 @@ void searchForComPorts(serialPortVector* comPorts)
 	char *line = (char*)malloc(maxLineSize), *friendlyName = (char*)malloc(256);
 	char *portLocation = (char*)malloc(128), *interfaceDescription = (char*)malloc(256);
 	char *serialNumber = (char*)malloc(128), *manufacturer = (char*)malloc(128);
+	char *driverName = (char*)malloc(64);
 
 	// Retrieve the list of /dev/ prefixes for all physical serial ports
 	retrievePhysicalPortPrefixes(&physicalPortPrefixes);
@@ -536,9 +571,9 @@ void searchForComPorts(serialPortVector* comPorts)
 		while (directoryEntry)
 		{
 			// Ensure that the file name buffer is large enough
-			if ((64 + strlen(directoryEntry->d_name)) > fileNameMaxLength)
+			if ((128 + strlen(directoryEntry->d_name)) > fileNameMaxLength)
 			{
-				fileNameMaxLength = 64 + strlen(directoryEntry->d_name);
+				fileNameMaxLength = 128 + strlen(directoryEntry->d_name);
 				fileName = (char*)realloc(fileName, fileNameMaxLength);
 			}
 
@@ -602,7 +637,7 @@ void searchForComPorts(serialPortVector* comPorts)
 				sprintf(basePathEnd, "/device/");
 				basePathEnd += 8;
 			}
-			getUsbDetails(fileName, basePathEnd, &vendorID, &productID, serialNumber, manufacturer);
+			getUsbDetails(fileName, basePathEnd, &vendorID, &productID, serialNumber, manufacturer, driverName);
 			sprintf(basePathEnd, "../");
 			getPortLocation(fileName, portLocation, isPhysical ? physicalPortNumber : -1);
 
@@ -639,7 +674,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					}
 					if (interfaceDescription[0] == '\0')
 						strcpy(interfaceDescription, friendlyName);
-					replaceDetails(port, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, "TODO", vendorID, productID, 0);
+					replaceDetails(port, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, driverName, vendorID, productID, 0);
 				}
 
 				// Continue port enumeration
@@ -661,7 +696,7 @@ void searchForComPorts(serialPortVector* comPorts)
 						// Add the port to the list of available ports
 						strcpy(friendlyName, "Physical Port ");
 						strcat(friendlyName, directoryEntry->d_name+3);
-						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation, "Unknown", "Unknown", "TODO", -1, -1, 0);
+						pushBack(comPorts, portDevPath, friendlyName, friendlyName, portLocation, "Unknown", "Unknown", driverName, -1, -1, 0);
 					}
 					close(fd);
 				}
@@ -695,7 +730,7 @@ void searchForComPorts(serialPortVector* comPorts)
 					strcpy(interfaceDescription, friendlyName);
 
 				// Add the port to the list of available ports
-				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, "TODO", vendorID, productID, 0);
+				pushBack(comPorts, portDevPath, friendlyName, interfaceDescription, portLocation, serialNumber, manufacturer, driverName, vendorID, productID, 0);
 			}
 
 			// Read next TTY directory entry
@@ -722,9 +757,9 @@ void searchForComPorts(serialPortVector* comPorts)
 			strcpy(fileName, "/dev/");
 			strcat(fileName, directoryEntry->d_name);
 			if (isPtyDevice(fileName))
-				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", "TODO", -1, -1, 0);
+				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", "Unknown", -1, -1, 0);
 			else if (isBluetoothDevice(fileName))
-				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", "TODO", -1, -1, 0);
+				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", "Unknown", -1, -1, 0);
 			else
 			{
 				// Copy symlinked port details from its existing TTY enumeration
@@ -748,6 +783,7 @@ void searchForComPorts(serialPortVector* comPorts)
 	freeStringVector(&physicalPortPrefixes);
 	if (fileName)
 		free(fileName);
+	free(driverName);
 	free(interfaceDescription);
 	free(serialNumber);
 	free(manufacturer);

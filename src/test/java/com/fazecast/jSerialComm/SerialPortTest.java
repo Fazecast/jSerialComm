@@ -88,13 +88,13 @@ public class SerialPortTest
 		SerialPort[] ports = SerialPort.getCommPorts();
 		System.out.println("\nAvailable Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation() + " (VID = " + ports[i].getVendorID() + ", PID = " + ports[i].getProductID() + ", Serial = " + ports[i].getSerialNumber() + ", Manufacturer = " + ports[i].getManufacturer() + ")");
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation() + " (VID = " + ports[i].getVendorID() + ", PID = " + ports[i].getProductID() + ", Serial = " + ports[i].getSerialNumber() + ", Manufacturer = " + ports[i].getManufacturer() + ", Driver = " + ports[i].getDeviceDriver() + ", Symlink = " + ports[i].isSymlink() + ")");
 		System.out.println("\nRe-enumerating ports again in 2 seconds...\n");
 		try { Thread.sleep(2000); } catch (Exception e) {}
 		ports = SerialPort.getCommPorts();
 		System.out.println("Available Ports:\n");
 		for (int i = 0; i < ports.length; ++i)
-			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation() + " (VID = " + ports[i].getVendorID() + ", PID = " + ports[i].getProductID() + ", Serial = " + ports[i].getSerialNumber() + ", Manufacturer = " + ports[i].getManufacturer() + ")");
+			System.out.println("   [" + i + "] " + ports[i].getSystemPortName() + " (" + ports[i].getSystemPortPath() + "): " + ports[i].getDescriptivePortName() + " - " + ports[i].getPortDescription() + " @ " + ports[i].getPortLocation() + " (VID = " + ports[i].getVendorID() + ", PID = " + ports[i].getProductID() + ", Serial = " + ports[i].getSerialNumber() + ", Manufacturer = " + ports[i].getManufacturer() + ", Driver = " + ports[i].getDeviceDriver() + ", Symlink = " + ports[i].isSymlink() + ")");
 		SerialPort ubxPort;
 		System.out.print("\nChoose your desired serial port or enter -1 to specify a port directly: ");
 		int serialPortChoice = -2;

@@ -729,9 +729,9 @@ public class SerialPort
 	 *    }
 	 *    {@literal @}Override
 	 *    public void serialEvent(SerialPortEvent serialPortEvent) {
-	 *       if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
+	 *       if ((serialPortEvent.getEventType() {@literal &} SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) {@literal >} 0)
 	 *          port.closePort();
-	 *       else if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_DATA_RECEIVED) > 0)
+	 *       else if ((serialPortEvent.getEventType() {@literal &} SerialPort.LISTENING_EVENT_DATA_RECEIVED) {@literal >} 0)
 	 *          // ... you get the idea
 	 *    }
 	 * });

@@ -89,15 +89,15 @@ public interface SerialPortDataListener extends EventListener
 	 * application-level buffering should be implemented and data processing should occur on a separate thread.
 	 * <p>
 	 * Also note that if you are listening for multiple types of events (for instance, {@link SerialPort#LISTENING_EVENT_DATA_AVAILABLE} and
-	 * {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}) at the same time, this callback <i>may<i> be invoked only once for multiple event
+	 * {@link SerialPort#LISTENING_EVENT_PORT_DISCONNECTED}) at the same time, this callback <i>may</i> be invoked only once for multiple event
 	 * types. As such, you should test for your event of interest by bit-masking and not by testing for equivalence. The following code shows
 	 * the correct way to do this:
 	 * <pre>
 	 * {@literal @}Override
 	 * public void serialEvent(SerialPortEvent serialPortEvent) {
-	 *    if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) > 0)
+	 *    if ((serialPortEvent.getEventType() {@literal &} SerialPort.LISTENING_EVENT_PORT_DISCONNECTED) {@literal >} 0)
 	 *       port.closePort();
-	 *    else if ((serialPortEvent.getEventType() & SerialPort.LISTENING_EVENT_DATA_AVAILABLE) > 0)
+	 *    else if ((serialPortEvent.getEventType() {@literal &} SerialPort.LISTENING_EVENT_DATA_AVAILABLE) {@literal >} 0)
 	 *       // ... you get the idea
 	 * }
 	 * </pre>
