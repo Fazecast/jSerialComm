@@ -1,0 +1,137 @@
+name: Release to Maven Central Signed MacOS
+permissions:
+  actions: read
+  contents: write
+  deployments: write
+  pages: write
+
+on: [workflow_dispatch]
+
+jobs:
+  buildpublish:
+    runs-on: macos-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      - name: Get source code version number
+        id: gitversion
+        run: echo "version=$(grep -o "versionString = [^, ;]*" src/main/java/com/fazecast/jSerialComm/SerialPort.java | grep -o "\".*\"" | grep -o [^\"].*[^\"])" >> $GITHUB_OUTPUT
+
+      - name: Update library version string
+        run: |
+          sed -i "s/@version .*/@version ${{ steps.gitversion.outputs.version }}/" src/main/java/com/fazecast/jSerialComm/package-info.java
+          sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"${{ steps.gitversion.outputs.version }}\"/g" src/main/c/Posix/SerialPort_Posix.c
+          sed -i "s/nativeLibraryVersion\[\] = [^, ;]*/nativeLibraryVersion\[\] = \"${{ steps.gitversion.outputs.version }}\"/g" src/main/c/Windows/SerialPort_Windows.c
+
+      - name: Build native libraries using Docker toolchain
+        uses: addnab/docker-run-action@v3
+        with:
+          image: fazecast/jserialcomm:builder
+          options: --user root --privileged --rm -v ${{ github.workspace }}:/home/toolchain/jSerialComm
+          run: /home/toolchain/compile.sh libs
+
+      - name: Sign MacOS native libraries
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.PROD_MACOS_CERTIFICATE }}
+          MACOS_INTERMEDIATE_CERTIFICATE: ${{ secrets.PROD_MACOS_INTERMEDIATE_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}
+          MACOS_CERTIFICATE_NAME: ${{ secrets.PROD_MACOS_CERTIFICATE_NAME }}
+          MACOS_CI_KEYCHAIN_PWD: ${{ secrets.PROD_MACOS_CI_KEYCHAIN_PWD }}
+        run: |
+          echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+          echo $MACOS_INTERMEDIATE_CERTIFICATE | base64 --decode > intermediate.cer
+          security create-keychain -p "$MACOS_CI_KEYCHAIN_PWD" build.keychain 
+          security default-keychain -s build.keychain
+          security list-keychains -s build.keychain
+          security unlock-keychain -p "$MACOS_CI_KEYCHAIN_PWD" build.keychain
+          security set-keychain-settings build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign -T /usr/bin/productsign
+          security import intermediate.cer -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$MACOS_CI_KEYCHAIN_PWD" build.keychain
+          /usr/bin/codesign --force -s "$MACOS_CERTIFICATE_NAME" --options runtime src/main/resources/OSX/aarch64/libjSerialComm.jnilib -v
+          /usr/bin/codesign --force -s "$MACOS_CERTIFICATE_NAME" --options runtime src/main/resources/OSX/x86/libjSerialComm.jnilib -v
+          /usr/bin/codesign --force -s "$MACOS_CERTIFICATE_NAME" --options runtime src/main/resources/OSX/x86_64/libjSerialComm.jnilib -v
+
+      - name: Notarize MacOS native libraries
+        env:
+          PROD_MACOS_NOTARIZATION_APPLE_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
+          PROD_MACOS_NOTARIZATION_TEAM_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
+          PROD_MACOS_NOTARIZATION_PWD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
+        run: |
+          xcrun notarytool store-credentials "notarytool-profile" --apple-id "$PROD_MACOS_NOTARIZATION_APPLE_ID" --team-id "$PROD_MACOS_NOTARIZATION_TEAM_ID" --password "$PROD_MACOS_NOTARIZATION_PWD"
+          ditto -c -k --keepParent "src/main/resources/OSX" "notarization.zip"
+          xcrun notarytool submit "notarization.zip" --keychain-profile "notarytool-profile" --wait
+
+      - name: Set up Java build environment
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: SIGN_KEY_PASS
+
+      - name: Build and publish library using Maven
+        run: ./mvnw versions:set -DnewVersion=${{ steps.gitversion.outputs.version }} && ./mvnw clean deploy -DskipTests
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSS_SONATYPE_PASSWORD }}
+          SIGN_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          SIGN_KEY_PASS: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.3.1
+        with:
+          myToken: ${{ secrets.GRADLE_UPDATE_PAT }}
+
+      - name: Create GitHub release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GRADLE_UPDATE_PAT }}
+          name: "jSerialComm v${{ steps.gitversion.outputs.version }}"
+          tag: "v${{ steps.gitversion.outputs.version }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          commit: "master"
+          artifacts: "target/jSerialComm-${{ steps.gitversion.outputs.version }}.jar"
+          generateReleaseNotes: false
+          prerelease: false
+          makeLatest: true
+          draft: true
+
+      - name: Check out existing library documentation
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: documentation
+
+      - name: Update Javadoc library documentation
+        run: rm -rf documentation/binaries/* documentation/javadoc && mv target/javadoc/apidocs documentation/javadoc && sed -i "s@maven2/com/fazecast/jSerialComm/[^\"]*@maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar@g" documentation/index.html
+
+      - name: Publish new library documentation
+        uses: s0/git-publish-subdir-action@develop
+        env:
+          REPO: self
+          BRANCH: gh-pages
+          FOLDER: documentation
+          GITHUB_TOKEN: ${{ secrets.GRADLE_UPDATE_PAT }}
+          MESSAGE: "Updated docs to v${{ steps.gitversion.outputs.version }}"
+
+      - name: Check out Wiki source data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: markdown
+
+      - name: Update and publish Wiki release link
+        run: |
+          cd markdown
+          sed -i "s@\*\*Current Version\*\*:.*@\*\*Current Version\*\*: \*${{ steps.gitversion.outputs.version }}\* ([[Download JAR file here|https://repo1.maven.org/maven2/com/fazecast/jSerialComm/${{ steps.gitversion.outputs.version }}/jSerialComm-${{ steps.gitversion.outputs.version }}.jar]])<br />@" Home.md
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "New jSerialComm release version" && git push
