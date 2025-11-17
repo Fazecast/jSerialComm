@@ -92,7 +92,7 @@ int configPort(serialPort *port)
 	// Apply changes
 	if (fcntl(port->handle, F_SETFL, flags))
 		return 0;
-	if (setConfigOptions(port->handle, baudRate, &options))
+	if (setCustomBaudRate(port->handle, baudRate))
 		return 0;
 	return 1;
 }
