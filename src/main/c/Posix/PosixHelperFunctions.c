@@ -319,34 +319,17 @@ static char isPtyDevice(const char *deviceLink)
 	return isPtyDevice;
 }
 
-static char* isSymlinkedTtyDevice(const char *deviceLink)
+static char* isSymlink(const char *deviceLink)
 {
 	// Attempt to read the path that the potential TTY device link points to
 	struct stat fileInfo;
 	char *symlink = NULL;
 	if ((lstat(deviceLink, &fileInfo) == 0) && fileInfo.st_size && ((fileInfo.st_mode & S_IFMT) == S_IFLNK))
 	{
-		ssize_t bufferSize = fileInfo.st_size + 1;
-		symlink = (char*)malloc(bufferSize);
-		if (symlink)
-		{
-			ssize_t symlinkSize = readlink(deviceLink, symlink, bufferSize);
-			if (symlinkSize >= 0)
-			{
-				symlink[symlinkSize] = '\0';
-				if (!strstr(symlink, "dev/tty"))
-				{
-					free(symlink);
-					symlink = NULL;
-				}
-			}
-			else
-			{
-				free(symlink);
-				symlink = NULL;
-			}
-		}
+		// realpath automatically adds /dev and allocates the correct buffer size
+		symlink = realpath(deviceLink, NULL);
 	}
+	// Note: Calling function will check if symlink points to serial port
 	return symlink;
 }
 
@@ -739,7 +722,7 @@ void searchForComPorts(serialPortVector* comPorts)
 		closedir(directoryIterator);
 	}
 
-	// Search through the system DEV directory for Bluetooth and PTY devices and symlinks
+	// Search through the system DEV directory for Bluetooth and PTY devices
 	directoryIterator = opendir("/dev/");
 	if (directoryIterator)
 	{
@@ -760,17 +743,41 @@ void searchForComPorts(serialPortVector* comPorts)
 				pushBack(comPorts, fileName, "PTY Device", "Pseudo-Terminal Device", "0-0", "Unknown", "Unknown", "Unknown", -1, -1, 0);
 			else if (isBluetoothDevice(fileName))
 				pushBack(comPorts, fileName, "Bluetooth Device", "Bluetooth Device", "0-0", "Unknown", "Unknown", "Unknown", -1, -1, 0);
-			else
+
+			// Read next TTY directory entry
+			directoryEntry = readdir(directoryIterator);
+		}
+		closedir(directoryIterator);
+	}
+
+	// Search through the system DEV directory again for symlinks
+	// Can't combine with loop above because otherwise symlinks to Bluetooth devices
+	// will only be found if they come after Bluetooth device in the iterator
+	directoryIterator = opendir("/dev/");
+	if (directoryIterator)
+	{
+		struct dirent *directoryEntry = readdir(directoryIterator);
+		while (directoryEntry)
+		{
+			// Ensure that the file name buffer is large enough
+			if ((16 + strlen(directoryEntry->d_name)) > fileNameMaxLength)
 			{
-				// Copy symlinked port details from its existing TTY enumeration
-				char *symlink = isSymlinkedTtyDevice(fileName);
-				if (symlink)
-				{
-					const serialPort *port = fetchPort(comPorts, symlink);
-					if (port)
-						pushBack(comPorts, fileName, port->friendlyName, port->portDescription, port->portLocation, port->serialNumber, port->manufacturer, port->deviceDriver, port->vendorID, port->productID, 1);
-					free(symlink);
-				}
+				fileNameMaxLength = 16 + strlen(directoryEntry->d_name);
+				fileName = (char*)realloc(fileName, fileNameMaxLength);
+			}
+
+			// Build full filename
+			strcpy(fileName, "/dev/");
+			strcat(fileName, directoryEntry->d_name);
+			// Find target of symbolic link if it is one
+			char *targetDevice = isSymlink(fileName);
+			if (targetDevice)
+			{
+				// check if symlink points to a serial port
+				const serialPort *port = fetchPort(comPorts, targetDevice);
+				if (port)
+					pushBack(comPorts, fileName, port->friendlyName, port->portDescription, port->portLocation, port->serialNumber, port->manufacturer, port->deviceDriver, port->vendorID, port->productID, 1);
+				free(targetDevice);
 			}
 
 			// Read next TTY directory entry
