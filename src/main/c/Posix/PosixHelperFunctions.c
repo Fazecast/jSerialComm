@@ -319,34 +319,17 @@ static char isPtyDevice(const char *deviceLink)
 	return isPtyDevice;
 }
 
-static char* isSymlinkedTtyDevice(const char *deviceLink)
+static char* isSymlink(const char *deviceLink)
 {
 	// Attempt to read the path that the potential TTY device link points to
 	struct stat fileInfo;
 	char *symlink = NULL;
 	if ((lstat(deviceLink, &fileInfo) == 0) && fileInfo.st_size && ((fileInfo.st_mode & S_IFMT) == S_IFLNK))
 	{
-		ssize_t bufferSize = fileInfo.st_size + 1;
-		symlink = (char*)malloc(bufferSize);
-		if (symlink)
-		{
-			ssize_t symlinkSize = readlink(deviceLink, symlink, bufferSize);
-			if (symlinkSize >= 0)
-			{
-				symlink[symlinkSize] = '\0';
-				if (!strstr(symlink, "dev/tty"))
-				{
-					free(symlink);
-					symlink = NULL;
-				}
-			}
-			else
-			{
-				free(symlink);
-				symlink = NULL;
-			}
-		}
+		// realpath automatically adds /dev and allocates the correct buffer size
+		symlink = realpath(deviceLink, NULL);
 	}
+	// Note: Calling function will check if symlink points to serial port
 	return symlink;
 }
 
@@ -787,7 +770,7 @@ void searchForComPorts(serialPortVector* comPorts)
 			strcpy(fileName, "/dev/");
 			strcat(fileName, directoryEntry->d_name);
 			// Find target of symbolic link if it is one
-			char *targetDevice = isSymlinkedTtyDevice(fileName);
+			char *targetDevice = isSymlink(fileName);
 			if (targetDevice)
 			{
 				// check if symlink points to a serial port
