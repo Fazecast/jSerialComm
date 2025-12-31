@@ -801,7 +801,18 @@ JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_retrievePortDeta
 	jstring portNameJString = (jstring)(*env)->GetObjectField(env, obj, comPortField);
 	if (checkJniError(env, __LINE__ - 1)) return;
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return;
+	if (checkJniError(env, __LINE__ - 1))
+	{
+		if (portName)
+			(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
+		return;
+	}
+	if (!portName)
+	{
+		lastErrorLineNumber = __LINE__ - 9;
+		lastErrorNumber = ERROR_INVALID_PARAMETER;
+		return;
+	}
 
 	// Ensure that the serial port exists
 	char continueRetrieval = 1;
@@ -874,7 +885,18 @@ JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_openPortNative(
 	unsigned char isRtsEnabled = (*env)->GetBooleanField(env, obj, isRtsEnabledField);
 	if (checkJniError(env, __LINE__ - 1)) return 0;
 	const wchar_t *portName = (wchar_t*)(*env)->GetStringChars(env, portNameJString, NULL);
-	if (checkJniError(env, __LINE__ - 1)) return 0;
+	if (checkJniError(env, __LINE__ - 1))
+	{
+		if (portName)
+			(*env)->ReleaseStringChars(env, portNameJString, (const jchar*)portName);
+		return 0;
+	}
+	if (!portName)
+	{
+		lastErrorLineNumber = __LINE__ - 9;
+		lastErrorNumber = ERROR_INVALID_PARAMETER;
+		return 0;
+	}
 
 	// Ensure that the serial port still exists and is not already open
 	EnterCriticalSection(&criticalSection);
@@ -1132,10 +1154,12 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_flushRxTxBuf
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
-	// Create an asynchronous event structure
+	// Validate port and create an asynchronous event structure
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_PORT_DISCONNECTED;
 	OVERLAPPED overlappedStruct;
 	memset(&overlappedStruct, 0, sizeof(OVERLAPPED));
-	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	overlappedStruct.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	jint event = com_fazecast_jSerialComm_SerialPort_LISTENING_EVENT_TIMED_OUT;
 	if (!overlappedStruct.hEvent)
@@ -1211,10 +1235,14 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_waitForEvent(JNI
 
 JNIEXPORT jlong JNICALL Java_com_fazecast_jSerialComm_SerialPort_closePortNative(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
+	// Validate port pointer and handle
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return 0;
+
 	// Force the port to enter non-blocking mode to ensure that any current reads return
 	COMMTIMEOUTS timeouts;
 	memset(&timeouts, 0, sizeof(COMMTIMEOUTS));
-	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
 	timeouts.WriteTotalTimeoutMultiplier = 0;
 	timeouts.ReadIntervalTimeout = MAXDWORD;
 	timeouts.ReadTotalTimeoutMultiplier = 0;
@@ -1243,14 +1271,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAvailable(J
 	// Retrieve bytes available to read
 	COMSTAT commInfo;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+	{
+		lastErrorLineNumber = __LINE__ - 2;
+		lastErrorNumber = ERROR_INVALID_HANDLE;
+		return -1;
+	}
 	if (ClearCommError(port->handle, NULL, &commInfo))
 		return commInfo.cbInQue;
 	else
 	{
 		port->errorLineNumber = __LINE__ - 4;
 		port->errorNumber = GetLastError();
+		return -1;
 	}
-	return -1;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWrite(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -1258,14 +1292,20 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_bytesAwaitingWri
 	// Retrieve bytes awaiting write
 	COMSTAT commInfo;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+	{
+		lastErrorLineNumber = __LINE__ - 2;
+		lastErrorNumber = ERROR_INVALID_HANDLE;
+		return -1;
+	}
 	if (ClearCommError(port->handle, NULL, &commInfo))
 		return commInfo.cbOutQue;
 	else
 	{
 		port->errorLineNumber = __LINE__ - 4;
 		port->errorNumber = GetLastError();
+		return -1;
 	}
-	return -1;
 }
 
 JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv *env, jobject obj, jlong serialPortPointer, jbyteArray buffer, jint bytesToRead, jint offset, jint timeoutMode, jint readTimeout)
@@ -1273,6 +1313,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	// Ensure that a positive number of bytes was passed in to read
 	jsize bufferLength = (*env)->GetArrayLength(env, buffer);
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return -1;
 	if ((bytesToRead < 0) || (offset < 0) || (bufferLength < offset))
 		return -1;
 
@@ -1291,13 +1333,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_readBytes(JNIEnv
 	{
 		port->errorNumber = GetLastError();
 		port->errorLineNumber = __LINE__ - 4;
-		CloseHandle(overlappedStruct.hEvent);
 		(*env)->ReleaseByteArrayElements(env, buffer, readBuffer, JNI_ABORT);
 		return -1;
 	}
 
 	// Read from the serial port
-	BOOL result;
+	BOOL result = FALSE;
 	DWORD numBytesRead = 0;
 	if (((result = ReadFile(port->handle, readBuffer + offset, bytesToRead, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
 	{
@@ -1321,6 +1362,8 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 {
 	// Ensure that a positive number of bytes was passed in to write
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return -1;
 	if ((bytesToWrite < 0) || (offset < 0))
 		return -1;
 
@@ -1340,13 +1383,12 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 	{
 		port->errorNumber = GetLastError();
 		port->errorLineNumber = __LINE__ - 4;
-		CloseHandle(overlappedStruct.hEvent);
 		(*env)->ReleaseByteArrayElements(env, buffer, writeBuffer, JNI_ABORT);
 		return -1;
 	}
 
 	// Write to the serial port
-	BOOL result;
+	BOOL result = FALSE;
 	DWORD numBytesWritten = 0;
 	if (((result = WriteFile(port->handle, writeBuffer + offset, bytesToWrite, NULL, &overlappedStruct)) == FALSE) && (GetLastError() != ERROR_IO_PENDING))
 	{
@@ -1368,12 +1410,17 @@ JNIEXPORT jint JNICALL Java_com_fazecast_jSerialComm_SerialPort_writeBytes(JNIEn
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_setEventListeningStatus(JNIEnv *env, jobject obj, jlong serialPortPointer, jboolean eventListenerRunning)
 {
-	((serialPort*)(intptr_t)serialPortPointer)->eventListenerRunning = eventListenerRunning;
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port)
+		return;
+	port->eventListenerRunning = eventListenerRunning;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!SetCommBreak(port->handle))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1386,6 +1433,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setBreak(JNI
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!ClearCommBreak(port->handle))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1398,6 +1447,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearBreak(J
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!EscapeCommFunction(port->handle, SETRTS))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1410,6 +1461,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setRTS(JNIEn
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!EscapeCommFunction(port->handle, CLRRTS))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1422,6 +1475,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearRTS(JNI
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!EscapeCommFunction(port->handle, SETDTR))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1434,6 +1489,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTR(JNIEn
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_clearDTR(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!EscapeCommFunction(port->handle, CLRDTR))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1449,6 +1506,8 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS
 	// So we must call EscapeCommFunction separately for each line.
 	// This still typically results in a single USB control transfer on Windows CDC drivers.
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
 	if (!EscapeCommFunction(port->handle, dtr ? SETDTR : CLRDTR))
 	{
 		port->errorLineNumber = __LINE__ - 2;
@@ -1467,19 +1526,28 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_setDTRandRTS
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getCTS(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	DWORD modemStatus = 0;
-	return GetCommModemStatus(((serialPort*)(intptr_t)serialPortPointer)->handle, &modemStatus) && (modemStatus & MS_CTS_ON);
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
+	return GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_CTS_ON);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDSR(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	DWORD modemStatus = 0;
-	return GetCommModemStatus(((serialPort*)(intptr_t)serialPortPointer)->handle, &modemStatus) && (modemStatus & MS_DSR_ON);
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
+	return GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_DSR_ON);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDCD(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	DWORD modemStatus = 0;
-	return GetCommModemStatus(((serialPort*)(intptr_t)serialPortPointer)->handle, &modemStatus) && (modemStatus & MS_RLSD_ON);
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
+	return GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RLSD_ON);
 }
 
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getDTR(JNIEnv *env, jobject obj, jlong serialPortPointer)
@@ -1495,12 +1563,18 @@ JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRTS(JNIEn
 JNIEXPORT jboolean JNICALL Java_com_fazecast_jSerialComm_SerialPort_getRI(JNIEnv *env, jobject obj, jlong serialPortPointer)
 {
 	DWORD modemStatus = 0;
-	return GetCommModemStatus(((serialPort*)(intptr_t)serialPortPointer)->handle, &modemStatus) && (modemStatus & MS_RING_ON);
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return JNI_FALSE;
+	return GetCommModemStatus(port->handle, &modemStatus) && (modemStatus & MS_RING_ON);
 }
 
 JNIEXPORT void JNICALL Java_com_fazecast_jSerialComm_SerialPort_quickConfig(JNIEnv *env, jobject obj, jlong serialPortPointer, jint newDataBits, jint newStopBits, jint newParity)
 {
-	void *portHandle = ((serialPort*)(intptr_t)serialPortPointer)->handle;
+	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
+	if (!port || (port->handle == INVALID_HANDLE_VALUE))
+		return;
+	void *portHandle = port->handle;
 	DCB dcbSerialParams;
 	memset(&dcbSerialParams, 0, sizeof(DCB));
 	dcbSerialParams.DCBlength = sizeof(DCB);
