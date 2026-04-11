@@ -608,7 +608,8 @@ public class SerialPort
 				try { Thread.sleep(safetySleepTimeMS); } catch (Exception e) { Thread.currentThread().interrupt(); }
 
 			// If this is an Android root application, we must explicitly allow serial port access to the library
-			File portFile = isAndroidDelete ? new File(comPort) : null;
+			// Skip su/chmod when androidPort is already set (USB serial path handles open itself)
+			File portFile = (isAndroidDelete && androidPort == null) ? new File(comPort) : null;
 			if (portFile != null && (!portFile.canRead() || !portFile.canWrite()))
 			{
 				Process process = null;
@@ -1130,6 +1131,10 @@ public class SerialPort
 
 	// SerialPort Constructors
 	private SerialPort() {}
+	private SerialPort(String port, String friendly, String description, String location, String serial, String manufacture, int vid, int pid)
+	{
+		this(port, friendly, description, location, serial, manufacture, "", vid, pid);
+	}
 	private SerialPort(String port, String friendly, String description, String location, String serial, String manufacture, String driver, int vid, int pid)
 	{
 		comPort = port;
