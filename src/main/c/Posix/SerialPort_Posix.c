@@ -180,6 +180,7 @@ void* eventReadingThread1(void *serialPortPointer)
 			pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 		}
 	}
+	port->eventsThread1 = 0;
 	return NULL;
 }
 
@@ -236,6 +237,7 @@ void* eventReadingThread2(void *serialPortPointer)
 		pthread_mutex_unlock(&port->eventMutex);
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldValue);
 	}
+	port->eventsThread2 = 0;
 	return NULL;
 }
 
