@@ -135,6 +135,16 @@ static void enumeratePorts(void)
 // Event listening threads
 void* eventReadingThread1(void *serialPortPointer)
 {
+	// Block signals that could be triggered by serial port operations in this thread only,
+	// avoiding process-wide signal handler changes that would interfere with the JVM
+	sigset_t signalMask;
+	sigemptyset(&signalMask);
+	sigaddset(&signalMask, SIGHUP);
+	sigaddset(&signalMask, SIGIO);
+	sigaddset(&signalMask, SIGTTOU);
+	sigaddset(&signalMask, SIGTTIN);
+	pthread_sigmask(SIG_BLOCK, &signalMask, NULL);
+
 	// Make this thread immediately and asynchronously cancellable
 	int oldValue;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
@@ -185,6 +195,16 @@ void* eventReadingThread1(void *serialPortPointer)
 
 void* eventReadingThread2(void *serialPortPointer)
 {
+	// Block signals that could be triggered by serial port operations in this thread only,
+	// avoiding process-wide signal handler changes that would interfere with the JVM
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGHUP);
+	sigaddset(&mask, SIGIO);
+	sigaddset(&mask, SIGTTOU);
+	sigaddset(&mask, SIGTTIN);
+	pthread_sigmask(SIG_BLOCK, &mask, NULL);
+
 	// Make this thread immediately and asynchronously cancellable
 	int oldValue;
 	serialPort *port = (serialPort*)(intptr_t)serialPortPointer;
@@ -332,20 +352,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
 	eventFlagsField = (*env)->GetFieldID(env, serialCommClass, "eventFlags", "I");
 	if (checkJniError(env, __LINE__ - 1)) return JNI_ERR;
-
-	// Disable handling of various POSIX signals
-	sigset_t blockMask;
-	memset(&blockMask, 0, sizeof(blockMask));
-	struct sigaction ignoreAction = { 0 };
-	ignoreAction.sa_handler = SIG_IGN;
-	ignoreAction.sa_mask = blockMask;
-	sigaction(SIGIO, &ignoreAction, NULL);
-	sigaction(SIGHUP, &ignoreAction, NULL);
-	sigaction(SIGCONT, &ignoreAction, NULL);
-	sigaction(SIGUSR1, &ignoreAction, NULL);
-	sigaction(SIGUSR2, &ignoreAction, NULL);
-	sigaction(SIGTTOU, &ignoreAction, NULL);
-	sigaction(SIGTTIN, &ignoreAction, NULL);
 
 	// Initialize the critical section lock
 	pthread_mutex_init(&criticalSection, NULL);
