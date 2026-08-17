@@ -123,7 +123,14 @@ public class SerialPort
 			cleanUpDirectory(new File(userHomeDirectory, ".."));
 
 			// Determine Operating System and architecture
-			if (System.getProperty("java.vm.vendor", "").toLowerCase().contains("android"))
+			// Check multiple Java system properties for Android detection to handle OEM builds where
+			// java.vm.vendor does not contain "android" (e.g. some MediaTek/Qualcomm Android POS devices).
+			// java.vm.name is "Dalvik" on all standard Android runtimes regardless of OEM customization.
+			final boolean isAndroidRuntime =
+					System.getProperty("java.vm.vendor", "").toLowerCase().contains("android") ||
+					System.getProperty("java.vm.name", "").toLowerCase().contains("dalvik") ||
+					System.getProperty("java.vendor", "").toLowerCase().contains("android");
+			if (isAndroidRuntime)
 			{
 				isAndroidDelete = true;
 				libraryPath = "Android";
@@ -185,8 +192,15 @@ public class SerialPort
 				System.exit(-1);
 			}
 
-			// Load platform-specific binaries for non-Android systems
-			if (!isAndroid)
+			// Load platform-specific binaries for non-Android systems.
+			// When running inside an Android app that manages USB Host access itself, the host
+			// sets jSerialComm.android.override=true before this class is loaded so that native
+			// library loading (which would fail on Android due to path and version constraints)
+			// is skipped entirely.  The host app then calls setAndroidContext() and sets
+			// isAndroid=true via reflection to activate the USB Host API path.
+			final boolean androidOverride = isAndroidRuntime &&
+					System.getProperty("jSerialComm.android.override", "false").equalsIgnoreCase("true");
+			if (!isAndroid && !androidOverride)
 			{
 				// Attempt to load from a manually-specified user location
 				boolean libraryLoaded = false;
