@@ -147,15 +147,17 @@ public abstract class AndroidPort
                     AndroidPort androidPort = null;
 
                     Constructor<SerialPort> serialPortConstructor =
-                            SerialPort.class.getDeclaredConstructor(String.class, String.class, String.class, String.class, String.class, int.class, int.class);
+                            SerialPort.class.getDeclaredConstructor(String.class, String.class, String.class, String.class, String.class, String.class, String.class, int.class, int.class);
                     serialPortConstructor.setAccessible(true);
 
                     SerialPort serialPort = serialPortConstructor.newInstance(
                             "COM" + (ports.size() + 1),
-                            device.getDeviceName(),
                             device.getProductName(),
+                            device.getProductName(),
+                            device.getDeviceName(),
                             device.getSerialNumber(),
-                            device.getSerialNumber(),
+                            device.getManufacturerName(),
+                            "",
                             device.getVendorId(),
                             device.getProductId()
                     );
