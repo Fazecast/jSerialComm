@@ -158,3 +158,8 @@ section.
 If you do choose to build this library from source, please follow the instructions
 in the [Building Tutorial](https://github.com/Fazecast/jSerialComm/wiki/Building-Tutorial)
 to set up the required toolchains.
+
+
+## 开发者附注
+
+进入 ```src/main/c/Posix``` 目录，执行 ```make linuxLoong64``` ，就可以编译出Java库和loong64版本的JNI库，文件位于build目录中。

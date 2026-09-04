@@ -1,6 +1,7 @@
 # Compiler tools, commands, and flags
 COMPILE_LINUX_X86           := i486-unknown-linux-gnu-gcc
 COMPILE_LINUX_X86_64        := x86_64-unknown-linux-gnu-gcc
+COMPILE_LINUX_LOONG64       := loongarch64-linux-gnu-gcc
 COMPILE_ARM32               := arm-unknown-linux-gnueabi-gcc
 COMPILE_ARM32HF             := arm-unknown-linux-gnueabihf-gcc
 COMPILE_ARM64               := aarch64-unknown-linux-gnu-gcc
@@ -53,6 +54,7 @@ JAVAC                       := "$(JDK_HOME)/bin/javac"
 # Architecture-dependent library variables
 OBJECTSlinux32              := $(BUILD_DIR)/linux_x86/SerialPort_Posix.o $(BUILD_DIR)/linux_x86/PosixHelperFunctions.o
 OBJECTSlinux64              := $(BUILD_DIR)/linux_x86_64/SerialPort_Posix.o $(BUILD_DIR)/linux_x86_64/PosixHelperFunctions.o
+OBJECTSlinuxLoong64              := $(BUILD_DIR)/linux_loong64/SerialPort_Posix.o $(BUILD_DIR)/linux_loong64/PosixHelperFunctions.o
 OBJECTSarmv5                := $(BUILD_DIR)/armv5/SerialPort_Posix.o $(BUILD_DIR)/armv5/PosixHelperFunctions.o
 OBJECTSarmv6hf              := $(BUILD_DIR)/armv6hf/SerialPort_Posix.o $(BUILD_DIR)/armv6hf/PosixHelperFunctions.o
 OBJECTSarmv7hf              := $(BUILD_DIR)/armv7hf/SerialPort_Posix.o $(BUILD_DIR)/armv7hf/PosixHelperFunctions.o
@@ -73,6 +75,7 @@ OBJECTSosx64                := $(BUILD_DIR)/osx_x86_64/SerialPort_Posix.o $(BUIL
 OBJECTSosxaarch64           := $(BUILD_DIR)/osx_aarch64/SerialPort_Posix.o $(BUILD_DIR)/osx_aarch64/PosixHelperFunctions.o
 FLAGSlinux32                := -m32
 FLAGSlinux64                := -m64
+FLAGSlinuxLoong64                :=
 FLAGSarmv5                  := -marm -mthumb-interwork -march=armv5 -mfloat-abi=soft
 FLAGSarmv6hf                := -marm -mthumb-interwork -march=armv6+fp -mfloat-abi=hard
 FLAGSarmv7hf                := -mthumb -mthumb-interwork -march=armv7+fp -mfloat-abi=hard
@@ -93,7 +96,7 @@ FLAGSosx64                  := -arch x86_64 -m64
 FLAGSosxaarch64             := -arch arm64
 
 # Define phony and suffix rules
-.PHONY: all clean linux linux32 linux64 arm armv5 armv6hf armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64 openbsd openbsd32 openbsd64
+.PHONY: all clean linux linux32 linux64 linuxLoong64 arm armv5 armv6hf armv7hf armv8_32 armv8_64 powerpc ppc64le solaris solaris32 solaris64 solarisSparc32 solarisSparc64 osx osx32 osx64 osxaarch64 android freebsd freebsd32 freebsd64 freebsdArm64 openbsd openbsd32 openbsd64
 .SUFFIXES:
 .SUFFIXES: .cpp .c .o .class .java .h
 
@@ -149,6 +152,11 @@ linux64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/linux_x86_64 $(BUILD_DIR)/linux_x86_64/
 	$(DELETE) -rf $(BUILD_DIR)/linux_x86_64/*.o
 	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/x86_64/
 	$(COPY) $(BUILD_DIR)/linux_x86_64/*.* $(RESOURCE_DIR_LINUX)/x86_64/
+
+linuxLoong64 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/linux_loong64 $(BUILD_DIR)/linux_loong64/$(LIBRARY_NAME_POSIX)
+	$(DELETE) -rf $(BUILD_DIR)/linux_loong64/*.o
+	$(MKDIR) -p $(RESOURCE_DIR_LINUX)/linuxLoong64/
+	$(COPY) $(BUILD_DIR)/linux_loong64/*.* $(RESOURCE_DIR_LINUX)/linuxLoong64/
 
 # Build architecture-specific ARM libraries
 armv5 : $(JAVA_CLASS_DIR) $(BUILD_DIR)/armv5 $(BUILD_DIR)/armv5/$(LIBRARY_NAME_POSIX)
@@ -243,6 +251,8 @@ $(BUILD_DIR)/linux_x86 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/linux_x86_64 :
 	$(MKDIR) -p $@
+$(BUILD_DIR)/linux_loong64 :
+	$(MKDIR) -p $@
 $(BUILD_DIR)/armv5 :
 	$(MKDIR) -p $@
 $(BUILD_DIR)/armv6hf :
@@ -287,6 +297,8 @@ $(BUILD_DIR)/linux_x86/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSlinux32)
 	$(COMPILE_LINUX_X86) $(LDFLAGS_POSIX) $(FLAGSlinux32) -o $@ $(OBJECTSlinux32) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/linux_x86_64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSlinux64)
 	$(COMPILE_LINUX_X86_64) $(LDFLAGS_POSIX) $(FLAGSlinux64) -o $@ $(OBJECTSlinux64) $(LIBRARIES_POSIX)
+$(BUILD_DIR)/linux_loong64/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSlinuxLoong64)
+	$(COMPILE_LINUX_LOONG64) $(LDFLAGS_POSIX) $(FLAGSlinuxLoong64) -o $@ $(OBJECTSlinuxLoong64) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv5/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv5)
 	$(COMPILE_ARM32) $(LDFLAGS_POSIX) $(FLAGSarmv5) -o $@ $(OBJECTSarmv5) $(LIBRARIES_POSIX)
 $(BUILD_DIR)/armv6hf/$(LIBRARY_NAME_POSIX) : $(JNI_HEADER) $(OBJECTSarmv6hf)
@@ -329,6 +341,8 @@ $(BUILD_DIR)/linux_x86/%.o : %.c
 	$(COMPILE_LINUX_X86) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSlinux32) -c $< -o $@
 $(BUILD_DIR)/linux_x86_64/%.o : %.c
 	$(COMPILE_LINUX_X86_64) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSlinux64) -c $< -o $@
+$(BUILD_DIR)/linux_loong64/%.o : %.c
+	$(COMPILE_LINUX_LOONG64) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSlinuxLoong64) -c $< -o $@
 $(BUILD_DIR)/armv5/%.o : %.c
 	$(COMPILE_ARM32) $(INCLUDES) $(CFLAGS_POSIX) $(FLAGSarmv5) -c $< -o $@
 $(BUILD_DIR)/armv6hf/%.o : %.c
@@ -372,4 +386,5 @@ $(JNI_HEADER) : $(JAVA_CLASS)
 
 # Suffix rule to get from *.java -> *.class
 $(JAVA_CLASS) :
+	echo "$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../..:$(ANDROID_JAR) $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h .."
 	$(JAVAC) $(JFLAGS) -d $(JAVA_CLASS_DIR)/../../.. -cp $(JAVA_SOURCE_DIR)/../../..:$(ANDROID_JAR) $(JAVA_SOURCE_DIR)/$(basename $(notdir $@)).java -h ..

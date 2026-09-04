@@ -175,7 +175,7 @@ public class SerialPort
 				else if (arch.contains("86") || arch.contains("amd"))
 					architectures = new String[] { "x86_64", "x86", "armv5", "armv6hf", "armv7hf", "armv8_64", "armv8_32", "ppc64le" };
 				else
-					architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86" };
+				    architectures = new String[] { "armv5", "armv6hf", "armv7hf", "armv8_64", "x86_64", "armv8_32", "ppc64le", "x86", "loong64" };
 			}
 			else
 			{
